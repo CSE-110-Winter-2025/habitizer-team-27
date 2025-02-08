@@ -61,7 +61,7 @@ public class Routine {
             return;
         }
 
-        Task prevTask = tasks.getFirst(); //get the start time
+        Task prevTask = tasks.get(0); //get the start time
         for (int i = 1; i < tasks.size(); i++) {
             Task currentTask = tasks.get(i);
 
