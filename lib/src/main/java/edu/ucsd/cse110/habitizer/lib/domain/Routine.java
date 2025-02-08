@@ -29,19 +29,19 @@ public class Routine {
         tasks.add(new Task(routineName, false, startTime)); 
     }
 
-    public void checkOffTask(String taskName) {
+    public void checkOffTask(Task task) {
         /*when check off the task, we need the task name to ensure
         * is the right task to check off*/
         LocalTime checkOffTime = LocalTime.now();
-        tasks.add(new Task(taskName, false, checkOffTime));
+        task.setCheckOffTime(LocalTime.now());
     }
 
-    public void skipTask(String taskName) {
+    public void skipTask(Task task) {
         /*when skip the task, we also require the task name
         * to ensure the right task to skip and also set the
         * check off time is null, when we calculating the duration
         * of time  we don't count this task */
-        tasks.add(new Task(taskName, true, null));
+        tasks.setSkip(true);
     }
 
     public void endRoutine() {
