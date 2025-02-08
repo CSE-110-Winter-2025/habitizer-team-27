@@ -25,14 +25,14 @@ public class RoutineList {
     public Routine getRoutineByName(String name) {
         for (Routine routine : routines) {
             if (routine.getRoutineName().equals(name)) {
-                return routine;  // ✅ 按名称获取 Routine
+                return routine;  // get the Routine
             }
         }
-        return null; // ✅ 如果找不到，返回 null
+        return null;
     }
 
     /* allow user to remove the whole routine from the list */
     public void removeRoutine(String name) {
-        routines.removeIf(routine -> routine.getRoutineName().equals(name));  // ✅ 按名称删除 Routine
+        routines.removeIf(routine -> routine.getRoutineName().equals(name));
     }
 }
