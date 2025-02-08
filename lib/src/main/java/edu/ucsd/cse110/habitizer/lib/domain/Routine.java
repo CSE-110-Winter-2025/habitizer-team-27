@@ -26,7 +26,7 @@ public class Routine {
 
         isRoutineStarted = true;
         LocalTime startTime = LocalTime.now();
-        tasks.add(new Task(routineName, false, startTime));  // ✅ 存储 Routine 开始时间
+        tasks.add(new Task(routineName, false, startTime)); 
     }
 
     public void checkOffTask(String taskName) {
@@ -70,7 +70,7 @@ public class Routine {
             } else {
                 long durationMinutes = Duration.between(prevTask.getCheckOffTime(), currentTask.getCheckOffTime()).toMinutes();
                 currentTask.setDurationTime(durationMinutes);
-                System.out.println(currentTask.getTaskName() + " Used " + currentTask.getDurationTime() + " 分钟 ✅");
+                System.out.println(currentTask.getTaskName() + " Used " + currentTask.getDurationTime() + "minute");
                 prevTask = currentTask;
             }
         }
