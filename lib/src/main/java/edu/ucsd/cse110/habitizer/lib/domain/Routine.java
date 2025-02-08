@@ -41,7 +41,7 @@ public class Routine {
         * to ensure the right task to skip and also set the
         * check off time is null, when we calculating the duration
         * of time  we don't count this task */
-        tasks.setSkip(true);
+        task.setSkip(true);
     }
 
     public void endRoutine() {
