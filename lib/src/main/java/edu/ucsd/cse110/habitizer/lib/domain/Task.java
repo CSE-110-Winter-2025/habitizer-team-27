@@ -29,6 +29,14 @@ public class Task {
     public void setDurationTime(long durationTime) {
         this.durationTime = durationTime;
     }
+    /*set the check off time */
+    public void setCheckOffTime(LocalTime checkOffTime) {
+        this.checkOffTime = checkOffTime;
+    }
+    /*set the status*/
+    public void setSkip(boolean skip) {
+        this.isSkip = skip;
+    }
 
     /*Get the Task name */
     public String getTaskName() {
