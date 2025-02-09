@@ -4,27 +4,32 @@ import java.time.Duration;
 import java.time.LocalTime;
 
 public class Task {
-    private final String taskName; // Marked as final (immutable)
-    private final LocalTime startTime; // Marked as final (immutable)
-    private LocalTime endTime; // Can be updated when task is completed
-    private boolean isCompleted; // Tracks completion status
+    private final String taskName; // Task name (immutable)
+    private LocalTime startTime;   // Task start time
+    private LocalTime endTime;     // Task end time
+    private boolean isCompleted;   // Task completion status
 
-    public Task(String taskName, LocalTime startTime) {
+    public Task(String taskName) {
         this.taskName = taskName;
-        this.startTime = startTime;
-        this.isCompleted = false; // Default to not completed
+        this.isCompleted = false;
     }
 
-    // Mark the task as completed and set the end time
-    public void markCompleted(LocalTime endTime) {
+    // Start the task and record the start time
+    public void startTask(LocalTime startTime) {
+        this.startTime = startTime;
+    }
+
+    // Complete the task and record the end time
+    public void completeTask(LocalTime endTime) {
         this.endTime = endTime;
         this.isCompleted = true;
     }
 
-    // Dynamic duration calculation
+    // Calculate the task duration in minutes (rounded down)
     public long getDurationMinutes() {
-        if (endTime == null || startTime == null) return 0;
-        return Duration.between(startTime, endTime).toMinutes();
+        if (startTime == null || endTime == null) return 0;
+        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
+        return durationSeconds / 60; // Round down
     }
 
     // Getters
