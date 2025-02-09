@@ -1,60 +1,35 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
+import java.time.Duration;
 import java.time.LocalTime;
 
 public class Task {
-    /* The name of the task, if we need the description
-    *of the task later on, we can add the fort and back
-    *like the flash card */
-    public String taskName;
-    /* the status of the task, allow  user skip the task */
-    public boolean isSkip;
-    /* whenever the user clicks check off, the current
-    *time will be stored here for further calculation */
-    public LocalTime checkOffTime;
+    private final String taskName; // Marked as final (immutable)
+    private final LocalTime startTime; // Marked as final (immutable)
+    private LocalTime endTime; // Can be updated when task is completed
+    private boolean isCompleted; // Tracks completion status
 
-    /* Use to store the duration time for each task */
-    private long durationTime;
-
-
-
-    public Task(String taskName, boolean isSkip, LocalTime checkOffTime) {
+    public Task(String taskName, LocalTime startTime) {
         this.taskName = taskName;
-        this.isSkip = isSkip;
-        this.checkOffTime = checkOffTime;
-        this.durationTime = 0;
+        this.startTime = startTime;
+        this.isCompleted = false; // Default to not completed
     }
 
-    /* Set the duration time */
-    public void setDurationTime(long durationTime) {
-        this.durationTime = durationTime;
-    }
-    /*set the check off time */
-    public void setCheckOffTime(LocalTime checkOffTime) {
-        this.checkOffTime = checkOffTime;
-    }
-    /*set the status*/
-    public void setSkip(boolean skip) {
-        this.isSkip = skip;
+    // Mark the task as completed and set the end time
+    public void markCompleted(LocalTime endTime) {
+        this.endTime = endTime;
+        this.isCompleted = true;
     }
 
-    /*Get the Task name */
-    public String getTaskName() {
-        return taskName;
+    // Dynamic duration calculation
+    public long getDurationMinutes() {
+        if (endTime == null || startTime == null) return 0;
+        return Duration.between(startTime, endTime).toMinutes();
     }
 
-    /* Get skip status */
-    public boolean isSkip() {
-        return isSkip;
-    }
-
-    /* Get the check off time */
-    public LocalTime getCheckOffTime() {
-        return checkOffTime;
-    }
-
-    /* Get the duration time */
-    public long getDurationTime() {
-        return durationTime;
-    }
+    // Getters
+    public String getTaskName() { return taskName; }
+    public LocalTime getStartTime() { return startTime; }
+    public LocalTime getEndTime() { return endTime; }
+    public boolean isCompleted() { return isCompleted; }
 }
