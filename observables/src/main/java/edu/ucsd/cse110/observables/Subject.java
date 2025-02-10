@@ -41,7 +41,7 @@ public interface Subject<T> {
      * @return The observer that was registered, so that it can be unregistered later.
      */
     @MainThread
-    Observer<? super T> observe(@NonNull Observer<? super T> observer);
+    Observer<T> observe(@NonNull Observer<T> observer);
 
     /**
      * Unregister an observer so that it will no longer be notified when the value changes.
@@ -49,7 +49,7 @@ public interface Subject<T> {
      * @param observer The observer to unregister.
      */
     @MainThread
-    void removeObserver(@NonNull Observer<? super T> observer);
+    void removeObserver(@NonNull Observer<T> observer);
 
 
     /**
@@ -65,5 +65,5 @@ public interface Subject<T> {
      * @return The list of observers.
      */
     @VisibleForTesting
-    List<Observer<? super T>> getObservers();
+    List<Observer<T>> getObservers();
 }

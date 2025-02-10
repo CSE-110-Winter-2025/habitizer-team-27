@@ -12,6 +12,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @DisplayName("Subject Observation")
 public class ObservationTests {
@@ -25,6 +26,35 @@ public class ObservationTests {
         @Nested
         @DisplayName("When an observer is registered")
         class WhenUpdated {
+            @Test
+            @DisplayName("Then it is called with a value immediately if the subject is initialized")
+            void ThenReceivesCurrentValueInitialized() {
+                subject.setValue(UPDATE_VALUE);
+                var latch = new CountDownLatch(1);
+                subject.observe(value -> {
+                    assertThat(value, is(UPDATE_VALUE));
+                    latch.countDown();
+                });
+            }
+
+            @Test
+            @DisplayName("Then it is not called if the subject is not initialized")
+            void ThenNotReceivesUnInitialized() {
+                assertThat(subject.isInitialized(), is(false));
+                subject.observe(value -> fail());
+            }
+
+            @Test
+            @DisplayName("Then it receives the current value immediately")
+            void ThenReceivesCurrentValue() {
+                subject.setValue(UPDATE_VALUE);
+                var latch = new CountDownLatch(1);
+                subject.observe(value -> {
+                    assertThat(value, is(UPDATE_VALUE));
+                    latch.countDown();
+                });
+            }
+
             @Test
             @DisplayName("Then it has observers")
             void ThenHasObservers() {

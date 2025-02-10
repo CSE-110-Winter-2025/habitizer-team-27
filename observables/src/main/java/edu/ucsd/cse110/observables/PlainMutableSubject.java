@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class PlainMutableSubject<T> implements MutableSubject<T> {
     private final AtomicReference<Optional<T>> value = new AtomicReference<>(Optional.empty());
-    private final ConcurrentLinkedQueue<Observer<? super T>> observers = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<Observer<T>> observers = new ConcurrentLinkedQueue<>();
 
     public PlainMutableSubject() {
     }
@@ -63,15 +63,16 @@ public class PlainMutableSubject<T> implements MutableSubject<T> {
     }
 
     @Override
-    public Observer<? super T> observe(@NonNull Observer<? super T> observer) {
+    public Observer<T> observe(@NonNull Observer<T> observer) {
         if (!observers.contains(observer)) {
             observers.add(observer);
+            if (isInitialized()) observer.onChanged(getValue());
         }
         return observer;
     }
 
     @Override
-    public void removeObserver(@NonNull Observer<? super T> observer) {
+    public void removeObserver(@NonNull Observer<T> observer) {
         observers.removeIf(o -> o.equals(observer));
     }
 
@@ -82,7 +83,7 @@ public class PlainMutableSubject<T> implements MutableSubject<T> {
 
     @Override
     @VisibleForTesting
-    public List<Observer<? super T>> getObservers() {
+    public List<Observer<T>> getObservers() {
         return List.copyOf(observers);
     }
 }
