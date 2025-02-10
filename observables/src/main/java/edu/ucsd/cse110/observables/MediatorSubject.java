@@ -22,7 +22,7 @@ public interface MediatorSubject<T> extends MutableSubject<T> {
      * @param <S>      The type of the subject subject.
      */
     @MainThread
-    <S> void addSource(Subject<S> subject, Observer<? super S> observer);
+    <S> void addSource(Subject<S> subject, Observer<S> observer);
 
 
     /**
