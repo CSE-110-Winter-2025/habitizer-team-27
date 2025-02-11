@@ -9,7 +9,7 @@ import java.util.List;
 public class Routine {
     private final String routineName;
     private final List<Task> tasks = new ArrayList<>();
-    private final RoutineTimer routineTimer = new RoutineTimer();
+    private final Timer routineTimer = new RoutineTimer();
 
     public Routine(String routineName) {
         this.routineName = routineName;
