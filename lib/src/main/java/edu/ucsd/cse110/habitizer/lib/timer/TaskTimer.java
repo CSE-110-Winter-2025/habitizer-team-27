@@ -4,9 +4,11 @@ import java.time.Duration;
 
 public class TaskTimer extends Timer {
     @Override
-    public long getElapsedMinutes() {
+    public int getElapsedMinutes() {
         if (startTime == null || endTime == null) return 0;
-        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
-        return durationSeconds / 60; // Floor division
+
+        // calculating duration includes any fast forward clicks
+        long durationSeconds = Duration.between(startTime, endTime).toSeconds() + 30L * numFastForward;
+        return (int) Math.ceil(durationSeconds / 60.0);
     }
 }
