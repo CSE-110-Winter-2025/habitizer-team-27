@@ -3,13 +3,14 @@ package edu.ucsd.cse110.habitizer.lib.domain;
 import edu.ucsd.cse110.habitizer.lib.timer.RoutineTimer;
 import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Routine {
     private final String routineName;
     private final List<Task> tasks = new ArrayList<>();
-    private final Timer routineTimer = new RoutineTimer();
+    private final RoutineTimer routineTimer = new RoutineTimer();
 
     public Routine(String routineName) {
         this.routineName = routineName;
@@ -17,12 +18,12 @@ public class Routine {
 
     // Start the routine
     public void startRoutine() {
-        routineTimer.start();
+        routineTimer.start(LocalTime.now());
     }
 
     // End the routine
     public void endRoutine() {
-        routineTimer.end();
+        routineTimer.end(LocalTime.now());
     }
 
     // Get the time for the routine(round up)

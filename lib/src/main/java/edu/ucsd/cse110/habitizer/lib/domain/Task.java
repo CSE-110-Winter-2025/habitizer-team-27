@@ -1,10 +1,12 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
+import java.time.LocalTime;
+
 import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
 
 public class Task {
     private final String taskName;
-    private final Timer taskTimer = new TaskTimer();
+    private final TaskTimer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
 
     public Task(String taskName) {
@@ -13,12 +15,12 @@ public class Task {
 
     // Start the task
     public void startTask() {
-        taskTimer.start();
+        taskTimer.start(LocalTime.now());
     }
 
     // End the task
     public void completeTask() {
-        taskTimer.end();
+        taskTimer.end(LocalTime.now());
         isCompleted = true;
     }
 

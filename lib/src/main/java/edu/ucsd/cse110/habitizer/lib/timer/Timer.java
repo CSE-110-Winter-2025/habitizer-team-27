@@ -3,25 +3,26 @@ package edu.ucsd.cse110.habitizer.lib.timer;
 
 import java.time.Duration;
 import java.time.LocalTime;
+import java.time.temporal.Temporal;
 
 public abstract class Timer {
-    protected LocalTime startTime;
-    protected LocalTime endTime;
+    protected Temporal startTime;
+    protected Temporal endTime;
     protected boolean isRunning = false;
     int numFastForward = 0;
 
     // Starts timer
-    public void start() {
+    public void start(Temporal startTime) {
         if (!isRunning) {
-            startTime = LocalTime.now();
+            this.startTime = startTime;
             isRunning = true;
         }
     }
 
     // Ends timer
-    public void end() {
+    public void end(Temporal endTime) {
         if (isRunning) {
-            endTime = LocalTime.now();
+            this.endTime = endTime;
             isRunning = false;
         }
     }
@@ -30,8 +31,8 @@ public abstract class Timer {
     public abstract int getElapsedMinutes();
 
     // Common getters
-    public LocalTime getStartTime() { return startTime; }
-    public LocalTime getEndTime() { return endTime; }
+    public Temporal getStartTime() { return startTime; }
+    public Temporal getEndTime() { return endTime; }
     public boolean isRunning() { return isRunning; }
 
     // Testing functions
