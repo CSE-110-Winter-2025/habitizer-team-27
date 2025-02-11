@@ -4,7 +4,7 @@ import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
 
 public class Task {
     private final String taskName;
-    private final TaskTimer taskTimer = new TaskTimer();
+    private final Timer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
 
     public Task(String taskName) {
