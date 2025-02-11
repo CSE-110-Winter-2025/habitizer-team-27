@@ -1,23 +1,27 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
+import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+
 import org.junit.Test;
 
 import java.time.LocalTime;
-import static org.junit.Assert.*;
 
 import edu.ucsd.cse110.habitizer.lib.timer.RoutineTimer;
 import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
 
 public class TimerTest {
-    RoutineTimer rTimer = new RoutineTimer();
-    TaskTimer tTimer = new TaskTimer();
 
-    LocalTime time1 = LocalTime.of(8, 0); // 8:00 AM
-    LocalTime time2 = LocalTime.of(8, 30); // 8:30 AM
-
-    @Test
     // Checks that starting a timer while running does not do anything
-    public void doubleStartTimer() {
+    @Test
+    public void testDoubleStartTimer() {
+        RoutineTimer rTimer = new RoutineTimer();
+        TaskTimer tTimer = new TaskTimer();
+
+        LocalTime time1 = LocalTime.of(8, 0); // 8:00 AM
+        LocalTime time2 = LocalTime.of(8, 30);
+
         rTimer.start(time1);
         rTimer.start(time2);
         assertEquals(rTimer.getStartTime(), time1);
