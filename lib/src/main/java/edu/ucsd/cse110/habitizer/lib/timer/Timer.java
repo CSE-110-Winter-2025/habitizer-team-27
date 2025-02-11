@@ -2,17 +2,18 @@
 package edu.ucsd.cse110.habitizer.lib.timer;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.Temporal;
 
 public abstract class Timer {
-    protected Temporal startTime;
-    protected Temporal endTime;
+    protected LocalDateTime startTime;
+    protected LocalDateTime endTime;
     protected boolean isRunning = false;
     int numFastForward = 0;
 
     // Starts timer
-    public void start(Temporal startTime) {
+    public void start(LocalDateTime startTime) {
         if (!isRunning) {
             this.startTime = startTime;
             isRunning = true;
@@ -20,8 +21,12 @@ public abstract class Timer {
     }
 
     // Ends timer
-    public void end(Temporal endTime) {
+    public void end(LocalDateTime endTime) {
         if (isRunning) {
+            if (endTime.isBefore(startTime)) {
+                System.out.println("End time before start - Invalid");
+                return;
+            }
             this.endTime = endTime;
             isRunning = false;
         }
@@ -31,8 +36,8 @@ public abstract class Timer {
     public abstract int getElapsedMinutes();
 
     // Common getters
-    public Temporal getStartTime() { return startTime; }
-    public Temporal getEndTime() { return endTime; }
+    public LocalDateTime getStartTime() { return startTime; }
+    public LocalDateTime getEndTime() { return endTime; }
     public boolean isRunning() { return isRunning; }
 
     // Testing functions

@@ -1,5 +1,6 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
@@ -15,12 +16,12 @@ public class Task {
 
     // Start the task
     public void startTask() {
-        taskTimer.start(LocalTime.now());
+        taskTimer.start(LocalDateTime.now());
     }
 
     // End the task
     public void completeTask() {
-        taskTimer.end(LocalTime.now());
+        taskTimer.end(LocalDateTime.now());
         isCompleted = true;
     }
 

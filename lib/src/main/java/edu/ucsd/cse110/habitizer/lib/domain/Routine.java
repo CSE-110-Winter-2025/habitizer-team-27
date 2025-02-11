@@ -3,6 +3,7 @@ package edu.ucsd.cse110.habitizer.lib.domain;
 import edu.ucsd.cse110.habitizer.lib.timer.RoutineTimer;
 import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,12 +19,12 @@ public class Routine {
 
     // Start the routine
     public void startRoutine() {
-        routineTimer.start(LocalTime.now());
+        routineTimer.start(LocalDateTime.now());
     }
 
     // End the routine
     public void endRoutine() {
-        routineTimer.end(LocalTime.now());
+        routineTimer.end(LocalDateTime.now());
     }
 
     // Get the time for the routine(round up)
