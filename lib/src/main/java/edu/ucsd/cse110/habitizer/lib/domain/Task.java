@@ -1,40 +1,38 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
-import java.time.Duration;
-import java.time.LocalTime;
+import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
 
 public class Task {
-    private final String taskName; // Task name (immutable)
-    private LocalTime startTime;   // Task start time
-    private LocalTime endTime;     // Task end time
-    private boolean isCompleted;   // Task completion status
+    private final String taskName;
+    private final TaskTimer taskTimer = new TaskTimer();
+    private boolean isCompleted = false;
 
     public Task(String taskName) {
         this.taskName = taskName;
-        this.isCompleted = false;
     }
 
-    // Start the task and record the start time
-    public void startTask(LocalTime startTime) {
-        this.startTime = startTime;
+    // Start the task
+    public void startTask() {
+        taskTimer.start();
     }
 
-    // Complete the task and record the end time
-    public void completeTask(LocalTime endTime) {
-        this.endTime = endTime;
-        this.isCompleted = true;
+    // End the task
+    public void completeTask() {
+        taskTimer.end();
+        isCompleted = true;
     }
 
-    // Calculate the task duration in minutes (rounded down)
+    // Get the time for the task (round down)
     public long getDurationMinutes() {
-        if (startTime == null || endTime == null) return 0;
-        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
-        return durationSeconds / 60; // Round down
+        return taskTimer.getElapsedMinutes();
     }
 
     // Getters
-    public String getTaskName() { return taskName; }
-    public LocalTime getStartTime() { return startTime; }
-    public LocalTime getEndTime() { return endTime; }
-    public boolean isCompleted() { return isCompleted; }
+    public String getTaskName() {
+        return taskName;
+    }
+
+    public boolean isCompleted() {
+        return isCompleted;
+    }
 }
