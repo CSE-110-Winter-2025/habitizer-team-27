@@ -4,7 +4,7 @@ import androidx.annotation.Nullable;
 
 import java.io.Serializable;
 
-import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
 
 public class Task implements Serializable {
     private final @Nullable Integer id;

@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.habitizer.lib.timer;
+package edu.ucsd.cse110.habitizer.lib.domain.timer;
 
 import java.time.Duration;
 import java.time.LocalTime;

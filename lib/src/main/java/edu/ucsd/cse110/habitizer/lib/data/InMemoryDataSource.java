@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.habitizer.lib.domain;
+package edu.ucsd.cse110.habitizer.lib.data;
 
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +47,7 @@ public class InMemoryDataSource {
 
     public InMemoryDataSource() { }
 
-    public InMemoryDataSource fromDefault() {
+    public static InMemoryDataSource fromDefault() {
         var data = new InMemoryDataSource();
 
         for (Routine routine : DEFAULT_ROUTINES) {

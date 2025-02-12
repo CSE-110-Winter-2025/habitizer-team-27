@@ -2,8 +2,7 @@ package edu.ucsd.cse110.habitizer.lib.domain;
 
 import androidx.annotation.Nullable;
 
-import edu.ucsd.cse110.habitizer.lib.timer.RoutineTimer;
-import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.RoutineTimer;
 
 import java.io.Serializable;
 import java.util.ArrayList;
