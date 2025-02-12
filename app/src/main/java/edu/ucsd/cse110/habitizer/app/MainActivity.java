@@ -25,5 +25,6 @@ public class MainActivity extends AppCompatActivity {
         this.model = new MainViewModel(new TaskRepository(dataSource), new RoutineRepository(dataSource));
 
         this.view = ActivityMainBinding.inflate(getLayoutInflater());
+        setContentView(view.getRoot());
     }
 }
