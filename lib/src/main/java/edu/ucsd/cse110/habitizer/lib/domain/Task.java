@@ -9,12 +9,18 @@ import java.time.LocalDateTime;
 import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
 
 public class Task implements Serializable {
+    private final @Nullable Integer id;
     private final @NonNull String taskName;
     private final TaskTimer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
 
-    public Task(@NonNull String taskName) {
+    public Task(@Nullable Integer id, @NonNull String taskName) {
+        this.id = id;
         this.taskName = taskName;
+    }
+
+    public Task withId(int id) {
+        return new Task(id, this.taskName);
     }
 
     // Start the task

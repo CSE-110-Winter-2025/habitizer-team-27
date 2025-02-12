@@ -4,11 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.security.auth.Subject;
-
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
-import edu.ucsd.cse110.observables.PlainMediatorSubject;
 import edu.ucsd.cse110.observables.PlainMutableSubject;
 
 public class InMemoryDataSource {
@@ -54,13 +51,13 @@ public class InMemoryDataSource {
     // Method to populate default routines
     private void initializeDefaultRoutines() {
         Routine morningRoutine = new Routine("Morning Routine");
-        morningRoutine.addTask(new Task("Brush Teeth"));
-        morningRoutine.addTask(new Task("Eat Breakfast"));
+        morningRoutine.addTask(new Task(, "Brush Teeth"));
+        morningRoutine.addTask(new Task(, "Eat Breakfast"));
         routines.put(morningRoutine.getRoutineName(), morningRoutine);
 
         Routine eveningRoutine = new Routine("Evening Routine");
-        eveningRoutine.addTask(new Task("Shower"));
-        eveningRoutine.addTask(new Task("Read a Book"));
+        eveningRoutine.addTask(new Task(, "Shower"));
+        eveningRoutine.addTask(new Task(, "Read a Book"));
         routines.put(eveningRoutine.getRoutineName(), eveningRoutine);
     }
 
