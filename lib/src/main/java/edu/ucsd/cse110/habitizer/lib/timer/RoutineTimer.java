@@ -1,11 +1,15 @@
 package edu.ucsd.cse110.habitizer.lib.timer;
 
 import java.time.Duration;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 public class RoutineTimer extends Timer {
-    protected LocalTime currentTime;
+    protected LocalDateTime currentTime;
 
+    /**
+     * Gets final elapsed time of routine once completed
+     * @return total number of minutes since routine started, rounded UP
+     */
     @Override
     public int getElapsedMinutes() {
         if (startTime == null || endTime == null) return 0;
@@ -15,10 +19,14 @@ public class RoutineTimer extends Timer {
         return (int) Math.ceil(durationSeconds / 60.0);
     }
 
-    // Gets current time ROUNDED DOWN, used for display
-    public int getCurrentMinutes() {
+    /**
+     * Gets current elapsed time of routine
+     * @param curTime current time
+     * @return total number of minutes since routine started, rounded DOWN
+     */
+    public int getCurrentMinutes(LocalDateTime curTime) {
         if (startTime == null) return 0;
-        currentTime = LocalTime.now();
+        this.currentTime = curTime;
 
         // calculation includes any fast forward clicks (each adds 30s)
         long durationSeconds = Duration.between(startTime, currentTime).toSeconds() + 30L * numFastForward;

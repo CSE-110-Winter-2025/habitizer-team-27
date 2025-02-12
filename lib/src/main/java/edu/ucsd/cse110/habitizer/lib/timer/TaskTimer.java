@@ -3,6 +3,10 @@ package edu.ucsd.cse110.habitizer.lib.timer;
 import java.time.Duration;
 
 public class TaskTimer extends Timer {
+    /**
+     * Get final elapsed time of task once completed
+     * @return total number of minutes since routine started, rounded UP
+     */
     @Override
     public int getElapsedMinutes() {
         if (startTime == null || endTime == null) return 0;
