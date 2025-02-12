@@ -1,10 +1,8 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
-import edu.ucsd.cse110.habitizer.lib.timer.RoutineTimer;
-import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.RoutineTimer;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 

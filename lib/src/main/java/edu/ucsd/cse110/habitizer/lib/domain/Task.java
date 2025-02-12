@@ -1,16 +1,19 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
-import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
 
-public class Task {
-    private final String taskName;
+public class Task implements Serializable {
+    private final @NonNull String taskName;
     private final TaskTimer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
 
-    public Task(String taskName) {
+    public Task(@NonNull String taskName) {
         this.taskName = taskName;
     }
 

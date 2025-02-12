@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.habitizer.lib.timer;
+package edu.ucsd.cse110.habitizer.lib.domain.timer;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -15,7 +15,7 @@ public class RoutineTimer extends Timer {
         if (startTime == null || endTime == null) return 0;
 
         // calculation includes any fast forward clicks (each adds 30s)
-        long durationSeconds = Duration.between(startTime, endTime).toSeconds() + 30L * numFastForward;
+        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
         return (int) Math.ceil(durationSeconds / 60.0);
     }
 
@@ -29,7 +29,7 @@ public class RoutineTimer extends Timer {
         this.currentTime = curTime;
 
         // calculation includes any fast forward clicks (each adds 30s)
-        long durationSeconds = Duration.between(startTime, currentTime).toSeconds() + 30L * numFastForward;
+        long durationSeconds = Duration.between(startTime, currentTime).toSeconds();
         return (int) Math.floor(durationSeconds / 60.0);
     }
 }

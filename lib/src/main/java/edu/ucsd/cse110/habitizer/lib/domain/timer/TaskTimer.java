@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.habitizer.lib.timer;
+package edu.ucsd.cse110.habitizer.lib.domain.timer;
 
 import java.time.Duration;
 
@@ -12,7 +12,7 @@ public class TaskTimer extends Timer {
         if (startTime == null || endTime == null) return 0;
 
         // calculating duration includes any fast forward clicks
-        long durationSeconds = Duration.between(startTime, endTime).toSeconds() + 30L * numFastForward;
+        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
         return (int) Math.ceil(durationSeconds / 60.0);
     }
 }

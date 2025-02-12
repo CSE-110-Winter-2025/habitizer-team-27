@@ -2,15 +2,13 @@ package edu.ucsd.cse110.habitizer.lib.domain;
 
 import static org.junit.Assert.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
 
 import org.junit.Test;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
-import edu.ucsd.cse110.habitizer.lib.timer.RoutineTimer;
-import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.RoutineTimer;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
 
 public class TimerTest {
 
@@ -77,4 +75,15 @@ public class TimerTest {
         assertEquals(rTimer.getCurrentMinutes(time2), 30);
         assertNull(rTimer.getEndTime());
     }
+
+    // Tests fast forward function
+//    @Test
+//    public void testFastForward() {
+//        RoutineTimer rTimer = new RoutineTimer();
+//        TaskTimer tTimer = new TaskTimer();
+//
+//        // Timer is stopped,
+//        rTimer.start(time1);
+//        rTimer.fastForward();
+//    }
 }
