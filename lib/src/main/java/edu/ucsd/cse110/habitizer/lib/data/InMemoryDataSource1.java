@@ -38,6 +38,15 @@ public class InMemoryDataSource1 {
 
     public static InMemoryDataSource1 fromDefault() {
         var data = new InMemoryDataSource1();
+
+        Routine morning = new Routine("Morning Routine");
+        DEFAULT_MORNING.forEach(morning::addTask);
+        data.routines.put(morning.getRoutineName(), morning);
+
+        Routine evening = new Routine("Evening Routine");
+        DEFAULT_EVENING.forEach(evening::addTask);
+        data.routines.put(evening.getRoutineName(), evening);
+
         return data;
     }
 
