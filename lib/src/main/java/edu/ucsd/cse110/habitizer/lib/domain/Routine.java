@@ -1,28 +1,33 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
-import edu.ucsd.cse110.habitizer.lib.timer.RoutineTimer;
-import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
+import androidx.annotation.Nullable;
 
+import edu.ucsd.cse110.habitizer.lib.domain.timer.RoutineTimer;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Routine {
+public class Routine implements Serializable {
+    private final @Nullable Integer id;
     private final String routineName;
     private final List<Task> tasks = new ArrayList<>();
     private final RoutineTimer routineTimer = new RoutineTimer();
 
-    public Routine(String routineName) {
+    public Routine(@Nullable Integer id, String routineName) {
+        this.id = id;
         this.routineName = routineName;
     }
 
     // Start the routine
     public void startRoutine() {
-        routineTimer.start();
+        routineTimer.start(LocalDateTime.now());
     }
 
     // End the routine
     public void endRoutine() {
-        routineTimer.end();
+        routineTimer.end(LocalDateTime.now());
     }
 
     // Get the time for the routine(round up)
@@ -57,6 +62,7 @@ public class Routine {
     public String getRoutineName() {
         return routineName;
     }
+    public Integer getRoutineId() { return id; }
 
     public List<Task> getTasks() {
         return tasks;

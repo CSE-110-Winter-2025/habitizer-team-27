@@ -11,7 +11,9 @@ dependencies {
     // This library contains no executable code, so it is
     // safe to use even in a non-Android library module.
     implementation(libs.androidx.annotations)
+    implementation(project(":observables"))
 
     testImplementation(libs.junit4)
     testImplementation(libs.hamcrest)
 }
+

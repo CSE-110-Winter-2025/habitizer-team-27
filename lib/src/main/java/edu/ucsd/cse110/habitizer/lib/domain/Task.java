@@ -1,24 +1,36 @@
 package edu.ucsd.cse110.habitizer.lib.domain;
 
-import edu.ucsd.cse110.habitizer.lib.timer.TaskTimer;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
-public class Task {
+import java.io.Serializable;
+import java.time.LocalDateTime;
+
+import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
+
+public class Task implements Serializable {
+    private final @Nullable Integer id;
     private final String taskName;
     private final TaskTimer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
 
-    public Task(String taskName) {
+    public Task(@Nullable Integer id, String taskName) {
+        this.id = id;
         this.taskName = taskName;
+    }
+
+    public Task withId(int id) {
+        return new Task(id, this.taskName);
     }
 
     // Start the task
     public void startTask() {
-        taskTimer.start();
+        taskTimer.start(LocalDateTime.now());
     }
 
     // End the task
     public void completeTask() {
-        taskTimer.end();
+        taskTimer.end(LocalDateTime.now());
         isCompleted = true;
     }
 
@@ -31,6 +43,13 @@ public class Task {
     public String getTaskName() {
         return taskName;
     }
+
+    @Override
+    public String toString() {
+        return taskName; // Return just the task name
+    }
+
+    public Integer getTaskId() { return id; }
 
     public boolean isCompleted() {
         return isCompleted;
