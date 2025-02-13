@@ -13,16 +13,16 @@ import edu.ucsd.cse110.observables.Subject;
 public class InMemoryDataSource {
 
     // Observers for routines
-    private final Map<Integer, Routine> routines = new HashMap<>();
-    private final Map<Integer, PlainMutableSubject<Routine>> routineSubjects = new HashMap<>();
-    private final PlainMutableSubject<List<Routine>> allRoutinesSubjects = new PlainMediatorSubject<>();
+    private  Map<Integer, Routine> routines = new HashMap<>();
+    private  Map<Integer, PlainMutableSubject<Routine>> routineSubjects = new HashMap<>();
+    private  PlainMutableSubject<List<Routine>> allRoutinesSubjects = new PlainMediatorSubject<>();
 
     // Observers for tasks
-    private final Map<Integer, Task> tasks = new HashMap<>();
-    private final Map<Integer, PlainMutableSubject<Task>> taskSubjects = new HashMap<>();
-    private final PlainMutableSubject<List<Task>> allTasksSubjects = new PlainMutableSubject<>();
+    private  Map<Integer, Task> tasks = new HashMap<>();
+    private  Map<Integer, PlainMutableSubject<Task>> taskSubjects = new HashMap<>();
+    private  PlainMutableSubject<List<Task>> allTasksSubjects = new PlainMutableSubject<>();
 
-    public final static List<Task> DEFAULT_MORNING = List.of(
+    public  static List<Task> DEFAULT_MORNING = List.of(
             new Task(0, "Shower"),
             new Task(1, "Brush teeth"),
             new Task(2, "Dress"),
@@ -32,7 +32,7 @@ public class InMemoryDataSource {
             new Task(6, "Pack bag")
     );
 
-    public final static List<Task> DEFAULT_EVENING = List.of(
+    public  static List<Task> DEFAULT_EVENING = List.of(
             new Task(100, "Charge devices"), // ID 100 Instead of 0
             new Task(101, "Prepare dinner"),
             new Task(102, "Eat dinner"),
@@ -40,7 +40,7 @@ public class InMemoryDataSource {
             new Task(104, "Homework")
     );
 
-    public final static List<Routine> DEFAULT_ROUTINES = List.of(
+    public  static List<Routine> DEFAULT_ROUTINES = List.of(
             new Routine(0, "Morning"),
             new Routine(1, "Evening")
     );
