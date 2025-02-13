@@ -83,7 +83,7 @@ public class RoutineFragment extends Fragment {
 
         Log.d("RoutineFragment", "Adding task: " + taskName + " (Prepend: " + isPrepend + ")");
 
-        // 获取 TaskRepository
+        // Get TaskRepository
         var taskRepository = activityModel.getTaskRepository();
         var tasksSubject = taskRepository.findAll();
         var tasks = tasksSubject.getValue();
@@ -93,16 +93,16 @@ public class RoutineFragment extends Fragment {
             return;
         }
 
-        // **创建一个新的可变列表**
+        // create a mutable list
         List<Task> mutableTasks = new ArrayList<>(tasks);
 
-        // 生成 Task ID
+        // Generate Task ID
         int taskId = mutableTasks.isEmpty() ? 0 : mutableTasks.size();
 
-        // 创建新任务
+        // Create new task
         Task newTask = new Task(taskId, taskName);
 
-        // 插入任务
+        // Insert task
         if (isPrepend) {
             mutableTasks.add(0, newTask);
             Log.d("RoutineFragment", "Prepending task: " + taskName);
@@ -111,12 +111,12 @@ public class RoutineFragment extends Fragment {
             Log.d("RoutineFragment", "Appending task: " + taskName);
         }
 
-        // 存入 TaskRepository
+        // Save TaskRepository
         taskRepository.save(newTask);
 
         Log.d("RoutineFragment", "Task list size after: " + mutableTasks.size());
 
-        // 🔹 更新 ListView
+        // Update ListView
         taskAdapter.clear();
         taskAdapter.addAll(mutableTasks);
         taskAdapter.notifyDataSetChanged();

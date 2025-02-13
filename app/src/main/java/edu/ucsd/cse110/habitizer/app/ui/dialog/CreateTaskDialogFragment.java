@@ -35,17 +35,17 @@ public class CreateTaskDialogFragment extends DialogFragment {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Add New Task");
 
-        // 加载 dialog_add_task.xml
+        // Load dialog_add_task.xml
         LayoutInflater inflater = requireActivity().getLayoutInflater();
         View view = inflater.inflate(R.layout.dialog_add_task, null);
         builder.setView(view);
 
-        // 获取控件
+
         EditText taskNameInput = view.findViewById(R.id.task_name_edit_text);
         RadioGroup insertModeGroup = view.findViewById(R.id.insert_mode_radio_button_group);
         RadioButton prependOption = view.findViewById(R.id.prepend_radio_button);
 
-        // 设置 OK 按钮
+        // Setup OK button
         builder.setPositiveButton("OK", (dialog, which) -> {
             String taskName = taskNameInput.getText().toString().trim();
             boolean isPrepend = prependOption.isChecked();
@@ -54,7 +54,7 @@ public class CreateTaskDialogFragment extends DialogFragment {
             }
         });
 
-        // 设置 Cancel 按钮
+        // Setup cancel button
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
         return builder.create();
