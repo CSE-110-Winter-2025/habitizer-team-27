@@ -27,4 +27,12 @@ public class MainViewModel extends ViewModel {
         this.taskRepository = taskRepository;
         this.routineRepository = routineRepository;
     }
+
+    public TaskRepository getTaskRepository() {
+        return taskRepository;
+    }
+
+    public RoutineRepository getRoutineRepository() {
+        return routineRepository;
+    }
 }

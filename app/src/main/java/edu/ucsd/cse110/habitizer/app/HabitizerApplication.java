@@ -1,6 +1,7 @@
 package edu.ucsd.cse110.habitizer.app;
 
 import android.app.Application;
+import android.util.Log;
 
 import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
@@ -18,6 +19,10 @@ public class HabitizerApplication extends Application {
         this.dataSource = InMemoryDataSource.fromDefault();
         this.taskRepository = new TaskRepository(dataSource);
         this.routineRepository = new RoutineRepository(dataSource);
+
+        // Debug: Print loaded data
+        Log.d("HabitizerApp", "Tasks: " + dataSource.getTasks());
+        Log.d("HabitizerApp", "Routines: " + dataSource.getRoutines());
     }
 
     public TaskRepository getTaskRepository() {

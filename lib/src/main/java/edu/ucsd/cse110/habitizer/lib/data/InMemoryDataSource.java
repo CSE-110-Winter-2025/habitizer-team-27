@@ -33,11 +33,11 @@ public class InMemoryDataSource {
     );
 
     public final static List<Task> DEFAULT_EVENING = List.of(
-            new Task(0, "Charge devices"),
-            new Task(1, "Prepare dinner"),
-            new Task(2, "Eat dinner"),
-            new Task(3, "Wash dishes"),
-            new Task(4, "Homework")
+            new Task(100, "Charge devices"), // ID 100 Instead of 0
+            new Task(101, "Prepare dinner"),
+            new Task(102, "Eat dinner"),
+            new Task(103, "Wash dishes"),
+            new Task(104, "Homework")
     );
 
     public final static List<Routine> DEFAULT_ROUTINES = List.of(
@@ -55,6 +55,11 @@ public class InMemoryDataSource {
         }
 
         for (Task task : DEFAULT_MORNING) {
+            data.putTask(task);
+        }
+
+        // Also add evening tasks
+        for (Task task : DEFAULT_EVENING) {
             data.putTask(task);
         }
 
