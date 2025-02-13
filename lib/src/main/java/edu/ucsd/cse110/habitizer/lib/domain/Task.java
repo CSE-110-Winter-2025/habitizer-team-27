@@ -44,6 +44,11 @@ public class Task implements Serializable {
         return taskName;
     }
 
+    @Override
+    public String toString() {
+        return taskName; // Return just the task name
+    }
+
     public Integer getTaskId() { return id; }
 
     public boolean isCompleted() {
