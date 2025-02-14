@@ -44,6 +44,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(project(":lib"))
     implementation(project(":observables"))
+    implementation(project(":observables"))
 
     testImplementation(libs.junit4)
 
