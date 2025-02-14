@@ -22,6 +22,9 @@
       <SelectionState runConfigName="testScenario2_SkipMultipleTasks()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
+      <SelectionState runConfigName="SkipTest">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
     </selectionStates>
   </component>
 </project>
