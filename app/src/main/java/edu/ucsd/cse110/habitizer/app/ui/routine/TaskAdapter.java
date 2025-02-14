@@ -17,10 +17,9 @@ import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 
 public class TaskAdapter extends ArrayAdapter<Task> {
-    public TaskAdapter(Context context, List<Task> tasks) {
-        super(context, 0, tasks);
+    public TaskAdapter(Context context, int resource, List<Task> tasks) {
+        super(context, resource, tasks);  // Pass resource to super
     }
-
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {

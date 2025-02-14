@@ -5,6 +5,15 @@ import java.time.LocalDateTime;
 
 public class RoutineTimer extends Timer {
     protected LocalDateTime currentTime;
+    private int advancedSeconds = 0;  // Track skipped time
+
+    /**
+     * Advance the timer by specified seconds to simulate task skipping
+     * @param seconds Number of seconds to advance
+     */
+    public void advanceTime(int seconds) {
+        this.advancedSeconds += seconds;
+    }
 
     /**
      * Gets final elapsed time of routine once completed
@@ -32,4 +41,6 @@ public class RoutineTimer extends Timer {
         long durationSeconds = Duration.between(startTime, currentTime).toSeconds();
         return (int) Math.floor(durationSeconds / 60.0);
     }
+
+
 }
