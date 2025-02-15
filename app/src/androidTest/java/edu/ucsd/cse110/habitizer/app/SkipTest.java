@@ -32,9 +32,9 @@ public class SkipTest {
     private static final int DRESS_ID = 2;
 
     private final List<Task> morningTasks = Arrays.asList(
-            new Task(SHOWER_ID, "Shower"),
-            new Task(BRUSH_TEETH_ID, "Brush teeth"),
-            new Task(DRESS_ID, "Dress")
+            new Task(SHOWER_ID, "Shower", false),
+            new Task(BRUSH_TEETH_ID, "Brush teeth", false),
+            new Task(DRESS_ID, "Dress", false)
     );
 
     private Context context;

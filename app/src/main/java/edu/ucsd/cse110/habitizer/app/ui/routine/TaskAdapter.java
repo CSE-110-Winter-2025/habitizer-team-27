@@ -42,6 +42,13 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             } else {
                 taskTime.setText("");
             }
+
+            // This is so that we are notified if a checkbox is checked
+            checkBox.setOnCheckedChangeListener(null);
+            checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                task.setCheckedOff(isChecked);
+                notifyDataSetChanged();
+            });
         }
 
         return convertView;

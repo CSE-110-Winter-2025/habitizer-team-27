@@ -100,7 +100,7 @@ public class RoutineFragment extends Fragment {
         int taskId = mutableTasks.isEmpty() ? 0 : mutableTasks.size();
 
         // Create new task
-        Task newTask = new Task(taskId, taskName);
+        Task newTask = new Task(taskId, taskName, false);
 
         // Insert task
         if (isPrepend) {

@@ -12,11 +12,14 @@ public class Task implements Serializable {
     private  @Nullable Integer id;
     private  String taskName;
     private boolean isCompleted = false;
+
+    private boolean isCheckedOff;
     private int duration = 0;
 
-    public Task(@Nullable Integer id, String taskName) {
+    public Task(@Nullable Integer id, String taskName, boolean isCheckedOff) {
         this.id = id;
         this.taskName = taskName;
+        this.isCheckedOff = isCheckedOff;
     }
 
     public void setTaskId(int id) {
@@ -28,7 +31,7 @@ public class Task implements Serializable {
     }
 
     public Task withId(int id) {
-        return new Task(id, this.taskName);
+        return new Task(id, this.taskName, isCheckedOff);
     }
 
 
@@ -41,6 +44,17 @@ public class Task implements Serializable {
         this.isCompleted = true;
     }
 
+    // Returns if task is checked off
+    public boolean isCheckedOff() {
+        return isCheckedOff;
+    }
+
+    // Sets the Check
+    public void setCheckedOff(boolean checkedOff) {
+        this.isCheckedOff = checkedOff;
+    }
+
+    // Getters
     public String getTaskName() {
         return taskName;
     }
