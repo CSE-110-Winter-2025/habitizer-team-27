@@ -67,15 +67,6 @@ public class Routine implements Serializable {
         currentTime = currentTime.plusSeconds(seconds);
     }
 
-    // Auto completes routine when everything is checked off
-    public void autoCompleteRoutine() {
-        for(int i = 0; i < tasks.size(); i++){
-            if(!tasks.get(i).isCheckedOff()){
-                return;
-            }
-        }
-        endRoutine();
-    }
 
     // Auto completes routine when everything is checked off
     public void autoCompleteRoutine() {
