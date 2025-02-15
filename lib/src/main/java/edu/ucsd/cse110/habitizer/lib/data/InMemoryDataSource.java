@@ -13,16 +13,16 @@ import edu.ucsd.cse110.observables.Subject;
 public class InMemoryDataSource {
 
     // Observers for routines
-    private  Map<Integer, Routine> routines = new HashMap<>();
-    private  Map<Integer, PlainMutableSubject<Routine>> routineSubjects = new HashMap<>();
-    private  PlainMutableSubject<List<Routine>> allRoutinesSubjects = new PlainMediatorSubject<>();
+    private final Map<Integer, Routine> routines = new HashMap<>();
+    private final Map<Integer, PlainMutableSubject<Routine>> routineSubjects = new HashMap<>();
+    private final PlainMutableSubject<List<Routine>> allRoutinesSubjects = new PlainMediatorSubject<>();
 
     // Observers for tasks
-    private  Map<Integer, Task> tasks = new HashMap<>();
-    private  Map<Integer, PlainMutableSubject<Task>> taskSubjects = new HashMap<>();
-    private  PlainMutableSubject<List<Task>> allTasksSubjects = new PlainMutableSubject<>();
+    private final Map<Integer, Task> tasks = new HashMap<>();
+    private final Map<Integer, PlainMutableSubject<Task>> taskSubjects = new HashMap<>();
+    private final PlainMutableSubject<List<Task>> allTasksSubjects = new PlainMutableSubject<>();
 
-    public  static List<Task> DEFAULT_MORNING = List.of(
+    public final static List<Task> DEFAULT_MORNING = List.of(
             new Task(0, "Shower", false),
             new Task(1, "Brush teeth", false),
             new Task(2, "Dress", false),
@@ -32,7 +32,7 @@ public class InMemoryDataSource {
             new Task(6, "Pack bag", false)
     );
 
-    public  static List<Task> DEFAULT_EVENING = List.of(
+    public final static List<Task> DEFAULT_EVENING = List.of(
             new Task(100, "Charge devices", false), // ID 100 Instead of 0
             new Task(101, "Prepare dinner", false),
             new Task(102, "Eat dinner", false),
@@ -40,7 +40,7 @@ public class InMemoryDataSource {
             new Task(104, "Homework", false)
     );
 
-    public  static List<Routine> DEFAULT_ROUTINES = List.of(
+    public final static List<Routine> DEFAULT_ROUTINES = List.of(
             new Routine(0, "Morning"),
             new Routine(1, "Evening")
     );

@@ -77,6 +77,16 @@ public class Routine implements Serializable {
         endRoutine();
     }
 
+    // Auto completes routine when everything is checked off
+    public void autoCompleteRoutine() {
+        for(int i = 0; i < tasks.size(); i++){
+            if(!tasks.get(i).isCheckedOff()){
+                return;
+            }
+        }
+        endRoutine();
+    }
+
     // Getters
     public String getRoutineName() {
         return routineName;
