@@ -13,6 +13,7 @@ public class Task implements Serializable {
     private  String taskName;
     private  TaskTimer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
+    private int duration = 0;
 
     public Task(@Nullable Integer id, String taskName) {
         this.id = id;
@@ -22,39 +23,45 @@ public class Task implements Serializable {
     public void setTaskId(int id) {
         this.id = id;
     }
+
     public void setTaskName(String taskName) {
         this.taskName = taskName;
     }
-
 
     public Task withId(int id) {
         return new Task(id, this.taskName);
     }
 
-    // Start the task
-    public void startTask() {
-        taskTimer.start(LocalDateTime.now());
+    public void startTask(LocalDateTime startTime) {
+        taskTimer.start(startTime);
     }
 
-    // End the task
-    public void completeTask() {
-        taskTimer.end(LocalDateTime.now());
+    public void completeTask(LocalDateTime endTime) {
+        taskTimer.end(endTime);
+        this.duration = taskTimer.getElapsedMinutes();
         isCompleted = true;
+
     }
 
-    // Get the time for the task (round down)
-    public long getDurationMinutes() {
-        return taskTimer.getElapsedMinutes();
+
+    public int getDuration() {
+        if (!isCompleted) {
+            return taskTimer.getElapsedMinutes();
+        }
+        return duration;
     }
 
-    // Getters
+    public void setDuration(int duration) {
+        this.duration = duration;
+    }
+
     public String getTaskName() {
         return taskName;
     }
 
     @Override
     public String toString() {
-        return taskName; // Return just the task name
+        return taskName;
     }
 
     public Integer getTaskId() { return id; }
@@ -62,4 +69,5 @@ public class Task implements Serializable {
     public boolean isCompleted() {
         return isCompleted;
     }
+
 }

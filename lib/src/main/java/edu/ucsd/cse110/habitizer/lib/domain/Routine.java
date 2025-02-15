@@ -15,6 +15,9 @@ public class Routine implements Serializable {
     private final List<Task> tasks = new ArrayList<>();
     private final RoutineTimer routineTimer = new RoutineTimer();
 
+    public LocalDateTime currentTime = LocalDateTime.now();
+
+
     public Routine(@Nullable Integer id, String routineName) {
         this.id = id;
         this.routineName = routineName;
@@ -22,7 +25,11 @@ public class Routine implements Serializable {
 
     // Start the routine
     public void startRoutine() {
-        routineTimer.start(LocalDateTime.now());
+        routineTimer.start(currentTime);
+        // Start all  tasks
+        for(int i = 0; i < tasks.size(); i++) {
+            tasks.get(i).startTask(currentTime);
+        }
     }
 
     // End the routine
@@ -40,14 +47,6 @@ public class Routine implements Serializable {
         tasks.add(task);
     }
 
-    // Start the task
-    public void startTask(String taskName) {
-        Task task = tasks.stream()
-                .filter(t -> t.getTaskName().equals(taskName))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskName));
-        task.startTask();
-    }
 
     // End the task
     public void completeTask(String taskName) {
@@ -55,8 +54,14 @@ public class Routine implements Serializable {
                 .filter(t -> t.getTaskName().equals(taskName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskName));
-        task.completeTask();
+        task.completeTask(LocalDateTime.now());
     }
+
+    public void advanceTime(int seconds) {
+        currentTime = currentTime.plusSeconds(seconds);
+    }
+
+
 
     // Getters
     public String getRoutineName() {
@@ -67,4 +72,5 @@ public class Routine implements Serializable {
     public List<Task> getTasks() {
         return tasks;
     }
+
 }

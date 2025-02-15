@@ -36,7 +36,12 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         if (task != null) {
             taskName.setText(task.getTaskName());
             checkBox.setChecked(task.isCompleted());
-            taskTime.setText(formatTime(task.getDurationMinutes()));
+            // Modified time display logic
+            if (task.isCompleted()) {
+                taskTime.setText(formatTime(task.getDuration()));
+            } else {
+                taskTime.setText("");
+            }
         }
 
         return convertView;
@@ -45,7 +50,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     private String formatTime(long minutes) {
         if (minutes <= 0) return "";
 
-        return String.format("%d min", minutes);
+        return String.format("%dm", minutes);
     }
 }
 
