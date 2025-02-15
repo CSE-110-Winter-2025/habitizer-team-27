@@ -104,7 +104,7 @@ public class SkipTest {
     private void completeTask(int taskId, int duration) {
         Task task = getTask(taskId);
         morningRoutine.advanceTime(duration);
-        task.completeTask(morningRoutine.currentTime);
+       morningRoutine.completeTask(morningTasks.get(taskId).toString());
     }
 
     private Task getTask(int taskId) {

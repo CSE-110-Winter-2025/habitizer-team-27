@@ -11,7 +11,6 @@ import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
 public class Task implements Serializable {
     private  @Nullable Integer id;
     private  String taskName;
-    private  TaskTimer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
     private int duration = 0;
 
@@ -32,27 +31,14 @@ public class Task implements Serializable {
         return new Task(id, this.taskName);
     }
 
-    public void startTask(LocalDateTime startTime) {
-        taskTimer.start(startTime);
-    }
-
-    public void completeTask(LocalDateTime endTime) {
-        taskTimer.end(endTime);
-        this.duration = taskTimer.getElapsedMinutes();
-        isCompleted = true;
-
-    }
-
 
     public int getDuration() {
-        if (!isCompleted) {
-            return taskTimer.getElapsedMinutes();
-        }
         return duration;
     }
 
-    public void setDuration(int duration) {
+    public void setDurationAndComplete(int duration) {
         this.duration = duration;
+        this.isCompleted = true;
     }
 
     public String getTaskName() {
