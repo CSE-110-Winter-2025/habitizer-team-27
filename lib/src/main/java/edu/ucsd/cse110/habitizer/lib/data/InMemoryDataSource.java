@@ -23,21 +23,21 @@ public class InMemoryDataSource {
     private final PlainMutableSubject<List<Task>> allTasksSubjects = new PlainMutableSubject<>();
 
     public final static List<Task> DEFAULT_MORNING = List.of(
-            new Task(0, "Shower"),
-            new Task(1, "Brush teeth"),
-            new Task(2, "Dress"),
-            new Task(3, "Make coffee"),
-            new Task(4, "Make lunch"),
-            new Task(5, "Dinner prep"),
-            new Task(6, "Pack bag")
+            new Task(0, "Shower", false),
+            new Task(1, "Brush teeth", false),
+            new Task(2, "Dress", false),
+            new Task(3, "Make coffee", false),
+            new Task(4, "Make lunch", false),
+            new Task(5, "Dinner prep", false),
+            new Task(6, "Pack bag", false)
     );
 
     public final static List<Task> DEFAULT_EVENING = List.of(
-            new Task(100, "Charge devices"), // ID 100 Instead of 0
-            new Task(101, "Prepare dinner"),
-            new Task(102, "Eat dinner"),
-            new Task(103, "Wash dishes"),
-            new Task(104, "Homework")
+            new Task(100, "Charge devices", false), // ID 100 Instead of 0
+            new Task(101, "Prepare dinner", false),
+            new Task(102, "Eat dinner", false),
+            new Task(103, "Wash dishes", false),
+            new Task(104, "Homework", false)
     );
 
     public final static List<Routine> DEFAULT_ROUTINES = List.of(

@@ -13,14 +13,16 @@ public class Task implements Serializable {
     private final String taskName;
     private final TaskTimer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
+    private boolean isCheckedOff;
 
-    public Task(@Nullable Integer id, String taskName) {
+    public Task(@Nullable Integer id, String taskName, boolean isCheckedOff) {
         this.id = id;
         this.taskName = taskName;
+        this.isCheckedOff = isCheckedOff;
     }
 
     public Task withId(int id) {
-        return new Task(id, this.taskName);
+        return new Task(id, this.taskName, isCheckedOff);
     }
 
     // Start the task
@@ -37,6 +39,16 @@ public class Task implements Serializable {
     // Get the time for the task (round down)
     public long getDurationMinutes() {
         return taskTimer.getElapsedMinutes();
+    }
+
+    // Returns if task is checked off
+    public boolean isCheckedOff() {
+        return isCheckedOff;
+    }
+
+    // Sets the Check
+    public void setCheckedOff(boolean checkedOff) {
+        this.isCheckedOff = checkedOff;
     }
 
     // Getters
