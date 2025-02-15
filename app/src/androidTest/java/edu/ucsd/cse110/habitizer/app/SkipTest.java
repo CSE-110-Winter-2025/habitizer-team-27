@@ -1,21 +1,16 @@
 package edu.ucsd.cse110.habitizer.app;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+
 
 import android.content.Context;
 import android.widget.CheckBox;
 import android.widget.TextView;
 
 import androidx.test.core.app.ApplicationProvider;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -26,8 +21,6 @@ import edu.ucsd.cse110.habitizer.lib.domain.Task;
 import edu.ucsd.cse110.habitizer.lib.domain.TaskRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.timer.RoutineTimer;
 
-@RunWith(RobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 
 public class SkipTest {
     private Context context;
@@ -80,10 +73,10 @@ public class SkipTest {
         assertEquals(8, timer.getElapsedMinutes());
 
 //        // Verify UI
-//        adapter = new TaskAdapter(context, R.layout.task_page, taskRepo.findAll().getValue());
-//        assertTaskDisplayedCorrectly(0, "Shower", "2m", true);  // Completed first task
-//        assertTaskDisplayedCorrectly(1, "Brush teeth", "", false); // Skipped
-//        assertTaskDisplayedCorrectly(2, "Dress", "8m", true);  // Final task
+          adapter = new TaskAdapter(context, R.layout.task_page, taskRepo.findAll().getValue());
+          assertTaskDisplayedCorrectly(0, "Shower", "2m", true);  // Completed first task
+          assertTaskDisplayedCorrectly(1, "Brush teeth", "", false); // Skipped
+          assertTaskDisplayedCorrectly(2, "Dress", "8m", true);  // Final task
     }
 
     @Test
@@ -107,11 +100,11 @@ public class SkipTest {
         timer.end(startTime.plusSeconds(650));
         assertEquals(11, timer.getElapsedMinutes());
 
-//        // Verify UI
-//        adapter = new TaskAdapter(context, R.layout.task_page, taskRepo.findAll().getValue());
-//        assertTaskDisplayedCorrectly(0, "Shower", "", false);
-//        assertTaskDisplayedCorrectly(1, "Brush teeth", "", false);
-//        assertTaskDisplayedCorrectly(2, "Dress", "11m", true);
+       // Verify UI
+        adapter = new TaskAdapter(context, R.layout.task_page, taskRepo.findAll().getValue());
+        assertTaskDisplayedCorrectly(0, "Shower", "", false);
+        assertTaskDisplayedCorrectly(1, "Brush teeth", "", false);
+        assertTaskDisplayedCorrectly(2, "Dress", "11m", true);
     }
 
     private void assertTaskDisplayedCorrectly(int position, String expectedName,

@@ -43,7 +43,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     }
 
     private String formatTime(long minutes) {
-        if (minutes <= 0) return "0 min";
+        if (minutes <= 0) return "";
 
         return String.format("%d min", minutes);
     }
