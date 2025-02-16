@@ -81,11 +81,10 @@ public class RoutineFragment extends Fragment {
 
         // Create go home listener
         binding.homeButton.setOnClickListener(v -> {
-            // swap back home
+            // swap to home fragment (?)
         });
 
         binding.stopTimerButton.setOnClickListener(v -> {
-            // stop timer
         });
 
         binding.fastForwardButton.setOnClickListener(v -> {

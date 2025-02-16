@@ -14,7 +14,6 @@ public class RoutineTimer extends Timer {
     public int getElapsedMinutes() {
         if (startTime == null || endTime == null) return 0;
 
-        // calculation includes any fast forward clicks (each adds 30s)
         long durationSeconds = Duration.between(startTime, endTime).toSeconds();
         return (int) Math.ceil(durationSeconds / 60.0);
     }
@@ -28,7 +27,6 @@ public class RoutineTimer extends Timer {
         if (startTime == null) return 0;
         this.currentTime = curTime;
 
-        // calculation includes any fast forward clicks (each adds 30s)
         long durationSeconds = Duration.between(startTime, currentTime).toSeconds();
         return (int) Math.floor(durationSeconds / 60.0);
     }

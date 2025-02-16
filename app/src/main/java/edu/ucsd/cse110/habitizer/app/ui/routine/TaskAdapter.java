@@ -2,6 +2,7 @@
 package edu.ucsd.cse110.habitizer.app.ui.routine;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -53,10 +54,14 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             }
 
             // This is so that we are notified if a checkbox is checked
-            checkBox.setOnCheckedChangeListener(null);
+            // checkBox.setOnCheckedChangeListener(null);
             checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 task.setCheckedOff(isChecked);
                 notifyDataSetChanged();
+
+                taskTime.setText(formatTime(task.getDuration()));
+
+                Log.d("Task completed", "Task took " + task.getDuration());
             });
 
             if (routine.autoCompleteRoutine()) {
