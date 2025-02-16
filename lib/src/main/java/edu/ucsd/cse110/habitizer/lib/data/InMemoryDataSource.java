@@ -1,5 +1,8 @@
 package edu.ucsd.cse110.habitizer.lib.data;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,6 +10,7 @@ import java.util.regex.MatchResult;
 
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.observables.Observer;
 import edu.ucsd.cse110.observables.PlainMediatorSubject;
 import edu.ucsd.cse110.observables.PlainMutableSubject;
 import edu.ucsd.cse110.observables.Subject;
@@ -52,17 +56,19 @@ public class InMemoryDataSource {
     public static InMemoryDataSource fromDefault() {
         var data = new InMemoryDataSource();
 
-        for (Routine routine : DEFAULT_ROUTINES) {
-            data.putRoutine(routine);
-        }
+        // Add tasks to routine
 
         for (Task task : DEFAULT_MORNING) {
-            data.putTask(task);
+            DEFAULT_ROUTINES.get(0).addTask(task);
         }
 
         // Also add evening tasks
         for (Task task : DEFAULT_EVENING) {
-            data.putTask(task);
+            DEFAULT_ROUTINES.get(1).addTask(task);
+        }
+
+        for (Routine routine : DEFAULT_ROUTINES) {
+            data.putRoutine(routine);
         }
 
         return data;
@@ -96,6 +102,11 @@ public class InMemoryDataSource {
             routineSubjects.get(routine.getRoutineId()).setValue(routine);
         }
         allRoutinesSubjects.setValue(getRoutines());
+
+        List<Task> tasks = routine.getTasks();
+        for (Task task : tasks) {
+            putTask(task);
+        }
     }
 
 
@@ -128,4 +139,5 @@ public class InMemoryDataSource {
         }
         allTasksSubjects.setValue(getTasks());
     }
+
 }
