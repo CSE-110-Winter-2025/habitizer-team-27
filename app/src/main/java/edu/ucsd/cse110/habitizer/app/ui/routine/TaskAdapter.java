@@ -17,6 +17,8 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import edu.ucsd.cse110.habitizer.app.R;
+import edu.ucsd.cse110.habitizer.app.databinding.TaskPageBinding;
+import edu.ucsd.cse110.habitizer.app.ui.dialog.SetRoutineTimeDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
@@ -34,35 +36,43 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         Task task = getItem(position);
-        if (convertView == null) {
-            convertView = LayoutInflater.from(getContext())
-                    .inflate(R.layout.task_page, parent, false);
+
+        TaskPageBinding binding;
+        if (convertView != null) {
+            binding = TaskPageBinding.bind(convertView);
+        } else {
+            var layoutInflater = LayoutInflater.from(getContext());
+            binding = TaskPageBinding.inflate(layoutInflater, parent, false);
         }
 
-        TextView taskName = convertView.findViewById(R.id.task_name);
-        CheckBox checkBox = convertView.findViewById(R.id.check_task);
-        TextView taskTime = convertView.findViewById(R.id.task_time);
+//        TextView taskName = convertView.findViewById(R.id.task_name);
+//        CheckBox checkBox = convertView.findViewById(R.id.check_task);
+//        TextView taskTime = convertView.findViewById(R.id.task_time);
 
         if (task != null) {
-            taskName.setText(task.getTaskName());
-            checkBox.setChecked(task.isCompleted());
+            binding.taskName.setText(task.getTaskName());
+            binding.checkTask.setChecked(task.isCompleted());
             // Modified time display logic
             if (task.isCompleted()) {
-                taskTime.setText(formatTime(task.getDuration()));
+                binding.taskTime.setText(formatTime(task.getDuration()));
             } else {
-                taskTime.setText("");
+                binding.taskTime.setText("");
             }
 
             // This is so that we are notified if a checkbox is checked
             // checkBox.setOnCheckedChangeListener(null);
-            checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                task.setCheckedOff(isChecked);
-                checkBox.setEnabled(false);
+            binding.checkTask.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                task.setCheckedOff(true);
+                binding.checkTask.setEnabled(false);
                 notifyDataSetChanged();
 
-                taskTime.setText(formatTime(task.getDuration()));
+                binding.taskTime.setText(formatTime(task.getDuration()));
 
                 Log.d("Task completed", "Task took " + task.getDuration());
+            });
+
+            binding.taskName.setOnClickListener(v -> {
+                Log.d("Hello", "Hello");
             });
 
             if (routine.autoCompleteRoutine()) {
@@ -70,7 +80,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             }
         }
 
-        return convertView;
+        return binding.getRoot();
     }
 
     private String formatTime(long minutes) {
