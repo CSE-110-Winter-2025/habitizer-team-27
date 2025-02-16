@@ -17,28 +17,5 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Radio Group for Prepend / Append -->
-    <RadioGroup
-        android:id="@+id/insert_mode_radio_button_group"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/task_name_edit_text"
-        android:layout_marginTop="16dp">
-
-        <RadioButton
-            android:id="@+id/prepend_radio_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Prepend" />
-
-        <RadioButton
-            android:id="@+id/append_radio_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="Append" />
-    </RadioGroup>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
