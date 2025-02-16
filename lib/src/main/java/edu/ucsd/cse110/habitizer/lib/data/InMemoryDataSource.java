@@ -140,4 +140,7 @@ public class InMemoryDataSource {
         allTasksSubjects.setValue(getTasks());
     }
 
+    public int getRoutineCount() {
+        return routines.size();
+    }
 }

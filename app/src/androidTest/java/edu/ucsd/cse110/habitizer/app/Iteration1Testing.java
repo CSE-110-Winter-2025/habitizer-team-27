@@ -37,7 +37,7 @@ public class Iteration1Testing {
     public void testStartRoutine() {
         // Tap the button labeled "Start Morning Routine"
         Espresso.onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning Routine"))
+                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
         // Verify that a routine step (e.g., "Shower") is now visible on screen.
@@ -54,7 +54,7 @@ public class Iteration1Testing {
     public void testMarkStepComplete() {
         // Start the routine first.
         Espresso.onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning Routine"))
+                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
         // Ensure the "Shower" step is visible.

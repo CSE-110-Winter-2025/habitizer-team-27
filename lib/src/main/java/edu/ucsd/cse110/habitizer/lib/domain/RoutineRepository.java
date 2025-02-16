@@ -8,6 +8,10 @@ import edu.ucsd.cse110.observables.Subject;
 public class RoutineRepository {
     private final InMemoryDataSource dataSource;
 
+    public int count() {
+        return dataSource.getRoutineCount();
+    }
+
     public RoutineRepository(InMemoryDataSource dataSource) {
         this.dataSource = dataSource;
     }

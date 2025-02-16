@@ -44,14 +44,4 @@ public abstract class Timer {
     public void updateStartTime(LocalDateTime newStart) { startTime = newStart; }
     public void updateEndTime(LocalDateTime newEnd) { endTime = newEnd; }
 
-    // Fast forward timer by 30 seconds
-        // If timer not running (aka timer has a start and end time), update the end time
-        // If timer is running (timer has only a start time), update the start time
-    public void fastForward() {
-        if (isRunning) {
-            updateStartTime(startTime.minus(Duration.ofSeconds(30)));
-        } else {
-            updateEndTime(endTime.plus(Duration.ofSeconds(30)));
-        }
-    }
 }
