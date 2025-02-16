@@ -17,7 +17,7 @@ public class Routine implements Serializable {
     private final RoutineTimer routineTimer = new RoutineTimer();
     private final TaskTimer taskTimer = new TaskTimer();
 
-    public LocalDateTime currentTime = LocalDateTime.now();
+    private LocalDateTime currentTime = LocalDateTime.now();
 
 
     public Routine(@Nullable Integer id, String routineName) {
@@ -35,6 +35,7 @@ public class Routine implements Serializable {
     // End the routine
     public void endRoutine() {
         routineTimer.end(LocalDateTime.now());
+
     }
 
     // Get the time for the routine(round up)
@@ -69,13 +70,14 @@ public class Routine implements Serializable {
 
 
     // Auto completes routine when everything is checked off
-    public void autoCompleteRoutine() {
+    public boolean autoCompleteRoutine() {
         for(int i = 0; i < tasks.size(); i++){
             if(!tasks.get(i).isCheckedOff()){
-                return;
+                return false;
             }
         }
         endRoutine();
+        return true;
     }
 
     // Getters

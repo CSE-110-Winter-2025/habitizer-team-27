@@ -13,12 +13,21 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 
+import javax.sql.DataSource;
+
 import edu.ucsd.cse110.habitizer.app.R;
+import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
 public class TaskAdapter extends ArrayAdapter<Task> {
-    public TaskAdapter(Context context, int resource, List<Task> tasks) {
+    private final Routine routine;
+    private final InMemoryDataSource dataSource;
+
+    public TaskAdapter(Context context, int resource, List<Task> tasks, Routine routine, InMemoryDataSource dataSource) {
         super(context, resource, tasks);  // Pass resource to super
+        this.routine = routine;
+        this.dataSource = dataSource;
     }
     @NonNull
     @Override
@@ -49,6 +58,10 @@ public class TaskAdapter extends ArrayAdapter<Task> {
                 task.setCheckedOff(isChecked);
                 notifyDataSetChanged();
             });
+
+            if (routine.autoCompleteRoutine()) {
+                dataSource.putRoutine(routine); // Ensure data persistence
+            }
         }
 
         return convertView;
