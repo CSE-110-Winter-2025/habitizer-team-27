@@ -119,6 +119,11 @@ public class RoutineFragment extends Fragment {
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
         });
 
+        binding.expectedTime.setOnClickListener(v -> {
+            SetRoutineTimeDialogFragment dialog = SetRoutineTimeDialogFragment.newInstance(currentRoutine.getRoutineId());
+            dialog.show(getParentFragmentManager(), "SetTimeDialog");
+        });
+
         binding.endRoutineButton.setOnClickListener(v -> {
             isTimerRunning = false;
             currentRoutine.endRoutine(LocalDateTime.now());
@@ -176,6 +181,10 @@ public class RoutineFragment extends Fragment {
 
     }
 
+    private void editRoutineTime(int newTime) {
+        if (newTime < 0) return;
+    }
+
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
         // if (minutes == 0) binding.actualTime.setText("-");
@@ -192,7 +201,6 @@ public class RoutineFragment extends Fragment {
         // Update task list times
         taskAdapter.notifyDataSetChanged();
     }
-
 
     @Override
     public void onDestroyView() {

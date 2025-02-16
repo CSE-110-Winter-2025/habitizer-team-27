@@ -58,7 +58,6 @@ public class SetRoutineTimeDialogFragment extends DialogFragment {
     }
 
     private void onPositiveButtonClick(DialogInterface dialog, int which) {
-        activityModel.updateRoutineTime(Integer.parseInt(view.routineGoalTimeEdit.getText().toString()), routineId);
         dialog.dismiss();
     }
 
