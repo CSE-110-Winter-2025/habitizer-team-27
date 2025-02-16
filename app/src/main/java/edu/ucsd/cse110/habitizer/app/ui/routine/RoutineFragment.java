@@ -7,6 +7,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.ListView;
 
 import androidx.fragment.app.Fragment;
@@ -74,6 +76,7 @@ public class RoutineFragment extends Fragment {
         );
         taskListView.setAdapter(taskAdapter);
 
+
         // Observe task data
         activityModel.getRoutineRepository().find(currentRoutine.getRoutineId())
                 .observe(routine -> {
@@ -89,8 +92,19 @@ public class RoutineFragment extends Fragment {
             CreateTaskDialogFragment dialog = CreateTaskDialogFragment.newInstance(this::addTaskToRoutine);
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
         });
+
+        // when End Routine is pressed
+        binding.endRoutineButton.setOnClickListener(v -> {
+            Button endRoutine = v.findViewById(R.id.end_routine_button);
+            currentRoutine.endRoutine();
+            endRoutine.setText("Routine Ended");
+            endRoutine.setEnabled(false);
+        });
+
         return binding.getRoot();
     }
+
+
 
     private void addTaskToRoutine(String taskName) {
         if (taskName == null || taskName.trim().isEmpty()) return;
