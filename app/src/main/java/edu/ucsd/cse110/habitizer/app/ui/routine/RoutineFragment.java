@@ -14,6 +14,7 @@ import android.widget.TextView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -93,7 +94,7 @@ public class RoutineFragment extends Fragment {
         });
 
         binding.endRoutineButton.setOnClickListener(v -> {
-            currentRoutine.endRoutine();
+            currentRoutine.endRoutine(LocalDateTime.now());
             binding.actualTime.setText(String.format("%d", currentRoutine.getRoutineDurationMinutes()));
             binding.endRoutineButton.setEnabled(false);
         });
@@ -104,6 +105,9 @@ public class RoutineFragment extends Fragment {
 
         binding.stopTimerButton.setOnClickListener(v -> {
             binding.stopTimerButton.setEnabled(false);
+        });
+
+        binding.fastForwardButton.setOnClickListener(v -> {
         });
 
         return binding.getRoot();

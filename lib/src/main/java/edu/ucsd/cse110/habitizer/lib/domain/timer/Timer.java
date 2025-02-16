@@ -44,8 +44,4 @@ public abstract class Timer {
     public void updateStartTime(LocalDateTime newStart) { startTime = newStart; }
     public void updateEndTime(LocalDateTime newEnd) { endTime = newEnd; }
 
-    // Fast forward timer by 30 seconds
-    public void fastForward() {
-        updateStartTime(startTime.minus(Duration.ofSeconds(30)));
-    }
 }

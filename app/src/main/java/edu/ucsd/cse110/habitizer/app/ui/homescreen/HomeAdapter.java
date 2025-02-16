@@ -7,6 +7,8 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.BaseAdapter;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -54,7 +56,7 @@ public class HomeAdapter extends BaseAdapter {
 
         startRoutineButton.setOnClickListener(v -> {
             onRoutineStart.accept(routine.getRoutineId());
-            routine.startRoutine();
+            routine.startRoutine(LocalDateTime.now());
         });
 
         return convertView;

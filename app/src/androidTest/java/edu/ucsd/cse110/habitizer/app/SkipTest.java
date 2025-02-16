@@ -64,7 +64,7 @@ public class SkipTest {
 
     @Test
     public void testScenario1_SkipAndCompleteNext() {
-        morningRoutine.startRoutine();
+        morningRoutine.startRoutine(LocalDateTime.now());
 
         // Complete Shower
         completeTask(SHOWER_ID, 0);
@@ -82,7 +82,7 @@ public class SkipTest {
 
     @Test
     public void testScenario2_SkipMultipleTasks() {
-        morningRoutine.startRoutine();
+        morningRoutine.startRoutine(LocalDateTime.now());
 
         // Skip Shower after 2 min 10 s
         morningRoutine.advanceTime(130);
@@ -104,7 +104,7 @@ public class SkipTest {
     private void completeTask(int taskId, int duration) {
         Task task = getTask(taskId);
         morningRoutine.advanceTime(duration);
-       morningRoutine.completeTask(morningTasks.get(taskId).toString());
+        morningRoutine.completeTask(morningTasks.get(taskId).toString());
     }
 
     private Task getTask(int taskId) {
