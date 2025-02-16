@@ -55,8 +55,8 @@ public class HomeAdapter extends BaseAdapter {
         routineNameText.setText(routine.getRoutineName());
 
         startRoutineButton.setOnClickListener(v -> {
-            onRoutineStart.accept(routine.getRoutineId());
             routine.startRoutine(LocalDateTime.now());
+            onRoutineStart.accept(routine.getRoutineId());
         });
 
         return convertView;

@@ -102,10 +102,12 @@ public class RoutineFragment extends Fragment {
         });
 
         binding.stopTimerButton.setOnClickListener(v -> {
+            currentRoutine.pauseTime(LocalDateTime.now());
             binding.stopTimerButton.setEnabled(false);
         });
 
         binding.fastForwardButton.setOnClickListener(v -> {
+            currentRoutine.fastForwardTime();
         });
 
         return binding.getRoot();
