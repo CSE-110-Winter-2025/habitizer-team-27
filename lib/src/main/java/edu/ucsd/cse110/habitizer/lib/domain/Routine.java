@@ -18,8 +18,9 @@ public class Routine implements Serializable {
     private final TaskTimer taskTimer = new TaskTimer();
 
     // private LocalDateTime currentTime = LocalDateTime.now();
-    LocalDateTime time1 = LocalDateTime.of(2025, 2, 1, 8, 0, 0); // 8:00:00 AM, 02/01/2025
-    LocalDateTime time2 = LocalDateTime.of(2025, 2, 1, 8, 30, 15); // 8:30:15 AM, 02/01/2025
+    private LocalDateTime routineStartTime;
+    private LocalDateTime routineEndTime;
+
 
     public Routine(@Nullable Integer id, String routineName) {
         this.id = id;
@@ -28,14 +29,14 @@ public class Routine implements Serializable {
 
     // Start the routine
     public void startRoutine() {
-        routineTimer.start(time1);
+        routineTimer.start(routineStartTime);
         // Start the timer of the task automatically
-        taskTimer.start(time1);
+        taskTimer.start(routineStartTime);
     }
 
     // End the routine
     public void endRoutine() {
-        routineTimer.end(time2);
+        routineTimer.end(routineEndTime);
     }
 
     // Get the time for the routine(round up)

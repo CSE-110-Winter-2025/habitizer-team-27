@@ -2,12 +2,14 @@
 package edu.ucsd.cse110.habitizer.app.ui.routine;
 
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -120,8 +122,19 @@ public class RoutineFragment extends Fragment {
         // Update repository
         activityModel.getRoutineRepository().save(currentRoutine);
 
-
-        // Update ListView
-        taskAdapter.notifyDataSetChanged();
     }
+
+    private void setupTimeDisplay() {
+        // Show the time
+        final TextView timerText = binding.actualTime;
+        final Handler handler = new Handler();
+        final Runnable updateTime = new Runnable() {
+            @Override
+            public void run() {
+                if (currentRoutine.getRoutineStartTime() != null) {
+                    timerText.setText(currentRoutine.getFormattedDuration());
+                }
+                handler.postDelayed(this, 1000);
+            }
+        };
 }
