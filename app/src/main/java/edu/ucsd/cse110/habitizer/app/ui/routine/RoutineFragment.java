@@ -20,6 +20,7 @@ import edu.ucsd.cse110.habitizer.app.MainViewModel;
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.databinding.FragmentRoutineScreenBinding;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
+import edu.ucsd.cse110.habitizer.app.ui.dialog.SetRoutineTimeDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 import edu.ucsd.cse110.observables.Subject;
@@ -89,6 +90,12 @@ public class RoutineFragment extends Fragment {
             CreateTaskDialogFragment dialog = CreateTaskDialogFragment.newInstance(this::addTaskToRoutine);
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
         });
+
+        binding.expectedTime.setOnClickListener(v -> {
+            SetRoutineTimeDialogFragment dialog = SetRoutineTimeDialogFragment.newInstance(currentRoutine.getRoutineId());
+            dialog.show(getParentFragmentManager(), "SetRoutineTimeDialog");
+        });
+
         return binding.getRoot();
     }
 
@@ -104,7 +111,6 @@ public class RoutineFragment extends Fragment {
 
         // Update repository
         activityModel.getRoutineRepository().save(currentRoutine);
-
 
         // Update ListView
         taskAdapter.notifyDataSetChanged();

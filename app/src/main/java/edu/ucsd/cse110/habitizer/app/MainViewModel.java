@@ -35,4 +35,8 @@ public class MainViewModel extends ViewModel {
     public RoutineRepository getRoutineRepository() {
         return routineRepository;
     }
+
+    public void updateRoutineTime(int time, int routineId) {
+        routineRepository.getRoutine(routineId).updateGoalTime(time);
+    }
 }

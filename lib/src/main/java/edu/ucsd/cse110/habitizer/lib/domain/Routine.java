@@ -16,6 +16,7 @@ public class Routine implements Serializable {
     private final List<Task> tasks = new ArrayList<>();
     private final RoutineTimer routineTimer = new RoutineTimer();
     private final TaskTimer taskTimer = new TaskTimer();
+    private @Nullable Integer goalTime;
 
     private LocalDateTime currentTime = LocalDateTime.now();
 
@@ -23,6 +24,7 @@ public class Routine implements Serializable {
     public Routine(@Nullable Integer id, String routineName) {
         this.id = id;
         this.routineName = routineName;
+        this.goalTime = null;
     }
 
     // Start the routine
@@ -78,6 +80,10 @@ public class Routine implements Serializable {
         }
         endRoutine();
         return true;
+    }
+
+    public void updateGoalTime(int goalTime) {
+        this.goalTime = goalTime;
     }
 
     // Getters
