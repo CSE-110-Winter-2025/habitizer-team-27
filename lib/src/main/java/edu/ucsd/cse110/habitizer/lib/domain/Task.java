@@ -42,6 +42,7 @@ public class Task implements Serializable {
     public void setDurationAndComplete(int duration) {
         this.duration = duration;
         this.isCompleted = true;
+        this.isCheckedOff = true;
     }
 
     // Returns if task is checked off
@@ -52,6 +53,7 @@ public class Task implements Serializable {
     // Sets the Check
     public void setCheckedOff(boolean checkedOff) {
         this.isCheckedOff = checkedOff;
+        this.isCompleted = checkedOff;
     }
 
     // Getters
