@@ -16,6 +16,10 @@ public class RoutineRepository {
         return dataSource.getRoutineSubject(id);
     }
 
+    public Routine getRoutine(int id) {
+        return dataSource.getRoutine(id);
+    }
+
     public Subject<List<Routine>> findAll() {
         return dataSource.getAllRoutinesSubject();
     }

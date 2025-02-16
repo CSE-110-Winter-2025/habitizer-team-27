@@ -8,27 +8,30 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.BaseAdapter;
 import java.util.List;
+import java.util.function.Consumer;
+
 import edu.ucsd.cse110.habitizer.app.R;
+import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
 public class HomeAdapter extends BaseAdapter {
     private final Context context;
-    private final List<String> routineNames;
-    private final Runnable onRoutineStart;
+    private final List<Routine> routines;
+    private final Consumer<Integer> onRoutineStart;
 
-    public HomeAdapter(Context context, List<String> routineNames, Runnable onRoutineStart) {
+    public HomeAdapter(Context context, List<Routine> routines, Consumer<Integer>  onRoutineStart) {
         this.context = context;
-        this.routineNames = routineNames;
+        this.routines = routines;
         this.onRoutineStart = onRoutineStart;
     }
 
     @Override
     public int getCount() {
-        return routineNames.size();
+        return routines.size();
     }
 
     @Override
     public Object getItem(int position) {
-        return routineNames.get(position);
+        return routines.get(position);
     }
 
     @Override
@@ -45,11 +48,13 @@ public class HomeAdapter extends BaseAdapter {
         TextView routineNameText = convertView.findViewById(R.id.routine_name);
         Button startRoutineButton = convertView.findViewById(R.id.start_routine_button);
 
-        // Set routine name
-        routineNameText.setText(routineNames.get(position));
 
-        // Set button click listener
-        startRoutineButton.setOnClickListener(v -> onRoutineStart.run());
+        Routine routine = routines.get(position);
+        routineNameText.setText(routine.getRoutineName());
+
+        startRoutineButton.setOnClickListener(v ->
+                onRoutineStart.accept(routine.getRoutineId())
+        );
 
         return convertView;
     }
