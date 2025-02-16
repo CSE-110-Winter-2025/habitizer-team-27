@@ -49,6 +49,7 @@ public class Routine implements Serializable {
 
     // Get the time for the routine
     public long getRoutineDurationMinutes() {
+
         return routineTimer.getLiveMinutes();
     }
 

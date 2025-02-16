@@ -123,12 +123,13 @@ public class RoutineFragment extends Fragment {
             binding.endRoutineButton.setEnabled(false);
         });
 
-       binding.stopTimerButton.setOnClickListener(v -> {
+        binding.stopTimerButton.setOnClickListener(v -> {
             if (currentRoutine.isActive()) {
-                currentRoutine.pauseTime(LocalDateTime.now());
+                // Pause at current simulated time
+                currentRoutine.pauseTime(currentRoutine.getCurrentTime());
+                updateTimeDisplay();
             }
         });
-
 
 
         binding.homeButton.setOnClickListener(v -> {
@@ -140,6 +141,16 @@ public class RoutineFragment extends Fragment {
         binding.homeButton.setEnabled(false);
 
         binding.fastForwardButton.setOnClickListener(v -> {
+            // Fast forward 30 seconds
+            currentRoutine.fastForwardTime();
+
+            // Force immediate UI update
+            updateTimeDisplay();
+
+            // If routine completed via FF, update state
+            if (currentRoutine.autoCompleteRoutine()) {
+                binding.endRoutineButton.setEnabled(false);
+            }
         });
 
         return binding.getRoot();
@@ -161,21 +172,20 @@ public class RoutineFragment extends Fragment {
     }
 
     private void updateTimeDisplay() {
-
         long minutes = currentRoutine.getRoutineDurationMinutes();
-        binding.actualTime.setText(String.valueOf(minutes));
+        if (minutes == 0) binding.actualTime.setText("-");
+        else binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
-        if (!currentRoutine.isActive()) {
-            binding.endRoutineButton.setText("Routine Ended");
-            binding.endRoutineButton.setEnabled(false);
-            binding.stopTimerButton.setEnabled(false);
-            binding.fastForwardButton.setEnabled(false);
+        boolean isActive = currentRoutine.isActive();
 
-            binding.homeButton.setEnabled(true);  // Enable when routine completes
-        } else {
-            binding.homeButton.setEnabled(false); // Disable during active routine
-        }
+        // Control button states
+        binding.endRoutineButton.setEnabled(isActive);
+        binding.stopTimerButton.setEnabled(isActive);
+        binding.fastForwardButton.setEnabled(isActive);
+        binding.homeButton.setEnabled(!isActive);
 
+        // Update task list times
+        taskAdapter.notifyDataSetChanged();
     }
 
 
