@@ -39,6 +39,7 @@ public class RoutineFragment extends Fragment {
 
     private Handler timerHandler = new Handler(Looper.getMainLooper());
     private Runnable timerRunnable;
+    private boolean isTimerRunning = true;
     private static final int UPDATE_INTERVAL_MS = 1000;
 
     public RoutineFragment() {
@@ -77,6 +78,7 @@ public class RoutineFragment extends Fragment {
         this.activityModel = modelProvider.get(MainViewModel.class);
 
         int routineId = getArguments().getInt(ARG_ROUTINE_ID);
+        isTimerRunning = true;
 
         // Get routine
         this.currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
@@ -117,7 +119,6 @@ public class RoutineFragment extends Fragment {
 
 
         binding.endRoutineButton.setOnClickListener(v -> {
-
             currentRoutine.endRoutine(LocalDateTime.now());
             updateTimeDisplay();
             binding.endRoutineButton.setEnabled(false);
@@ -129,6 +130,8 @@ public class RoutineFragment extends Fragment {
                 currentRoutine.pauseTime(currentRoutine.getCurrentTime());
                 updateTimeDisplay();
             }
+            binding.stopTimerButton.setEnabled(false);
+            isTimerRunning = false;
         });
 
 
@@ -173,14 +176,14 @@ public class RoutineFragment extends Fragment {
 
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
-        if (minutes == 0) binding.actualTime.setText("-");
-        else binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+        // if (minutes == 0) binding.actualTime.setText("-");
+        binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
         boolean isActive = currentRoutine.isActive();
 
         // Control button states
         binding.endRoutineButton.setEnabled(isActive);
-        binding.stopTimerButton.setEnabled(isActive);
+        binding.stopTimerButton.setEnabled(isTimerRunning);
         binding.fastForwardButton.setEnabled(isActive);
         binding.homeButton.setEnabled(!isActive);
 

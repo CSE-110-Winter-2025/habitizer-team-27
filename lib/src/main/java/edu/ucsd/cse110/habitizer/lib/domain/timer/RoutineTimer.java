@@ -45,7 +45,10 @@ public class RoutineTimer extends Timer {
     }
 
     // Helper method for UI updates
-    public int getLiveMinutes() {
+    public int getLiveMinutes(boolean isStopped, LocalDateTime currentTime) {
+        if (isStopped) {
+            return getCurrentMinutes(currentTime);
+        }
         return isActive() ?
                 getCurrentMinutes(LocalDateTime.now()) :
                 getElapsedMinutes();
