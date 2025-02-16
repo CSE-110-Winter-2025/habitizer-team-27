@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -114,6 +115,7 @@ public class RoutineFragment extends Fragment {
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
         });
 
+
         binding.endRoutineButton.setOnClickListener(v -> {
 
             currentRoutine.endRoutine(LocalDateTime.now());
@@ -121,7 +123,7 @@ public class RoutineFragment extends Fragment {
             binding.endRoutineButton.setEnabled(false);
         });
 
-//        binding.stopTimerButton.setOnClickListener(v -> {
+       binding.stopTimerButton.setOnClickListener(v -> {
 //            if (currentRoutine.isActive()) {
 //                currentRoutine.pauseRoutine(LocalDateTime.now());
 //                binding.stopTimerButton.setText("Resume");
@@ -129,7 +131,7 @@ public class RoutineFragment extends Fragment {
 //                currentRoutine.resumeRoutine(LocalDateTime.now());
 //                binding.stopTimerButton.setText("Pause");
 //            }
-//        });
+        });
 
 
 
@@ -165,7 +167,10 @@ public class RoutineFragment extends Fragment {
         long minutes = currentRoutine.getRoutineDurationMinutes();
         binding.actualTime.setText(String.valueOf(minutes));
 
-        binding.endRoutineButton.setEnabled(currentRoutine.isActive());
+        if (!currentRoutine.isActive()) {
+            binding.endRoutineButton.setText("Routine Ended");
+            binding.endRoutineButton.setEnabled(false);
+        }
         binding.stopTimerButton.setEnabled(currentRoutine.isActive());
     }
 
