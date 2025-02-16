@@ -67,6 +67,34 @@ public class EditRoutineTests {
         assertTrue(eveningRoutine.getTasks().contains(test3));
     }
 
+    // add task to empty routine
+    @Test
+    public void addTaskEmptyRoutine() {
+        Routine eveningRoutine = new Routine(1, "Evening Routine");
+
+        Task test1 = new Task(101, "Eat Dinner", false);
+
+        eveningRoutine.addTask(test1);
+
+        assertTrue(eveningRoutine.getTasks().contains(test1));
+    }
+
+    // adds 3 tasks to an empty routine
+    @Test
+    public void addMultiEmptyRoutine() {
+        Routine eveningRoutine = new Routine(1, "Evening Routine");
+
+        Task test1 = new Task(101, "Eat Dinner", false);
+        Task test2 = new Task(102, "Wash Dishes", false);
+        Task test3 = new Task(103, "Clean kitchen", false);
+        eveningRoutine.addTask(test1);
+        eveningRoutine.addTask(test2);
+        eveningRoutine.addTask(test3);
+        assertTrue(eveningRoutine.getTasks().contains(test1));
+        assertTrue(eveningRoutine.getTasks().contains(test2));
+        assertTrue(eveningRoutine.getTasks().contains(test3));
+    }
+
     // check if new added test is the last on the list
     @Test
     public void lastTask() {
