@@ -72,10 +72,26 @@ public class RoutineFragment extends Fragment {
                     taskAdapter.notifyDataSetChanged();
                 }
         );
+
+        // Create add task listener
         binding.addTaskButton.setOnClickListener(v -> {
             CreateTaskDialogFragment dialog = CreateTaskDialogFragment.newInstance(this::addTaskToRoutine);
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
         });
+
+        // Create go home listener
+        binding.homeButton.setOnClickListener(v -> {
+            // swap back home
+        });
+
+        binding.stopTimerButton.setOnClickListener(v -> {
+            // stop timer
+        });
+
+        binding.fastForwardButton.setOnClickListener(v -> {
+            // fast forward timer
+        });
+
         return binding.getRoot();
     }
 
