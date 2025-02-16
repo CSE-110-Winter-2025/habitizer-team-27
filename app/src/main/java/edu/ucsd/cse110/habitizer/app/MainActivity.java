@@ -26,11 +26,6 @@ public class MainActivity extends AppCompatActivity {
         this.view = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(view.getRoot());
 
-        // Initialize with home screen fragment first
-        getSupportFragmentManager()
-                .beginTransaction()
-                .add(R.id.fragment_container, HomeScreenFragment.newInstance())
-                .commit();
     }
 
     private void swapFragments() {
