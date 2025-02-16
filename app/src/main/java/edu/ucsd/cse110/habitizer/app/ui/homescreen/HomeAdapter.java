@@ -52,9 +52,10 @@ public class HomeAdapter extends BaseAdapter {
         Routine routine = routines.get(position);
         routineNameText.setText(routine.getRoutineName());
 
-        startRoutineButton.setOnClickListener(v ->
-                onRoutineStart.accept(routine.getRoutineId())
-        );
+        startRoutineButton.setOnClickListener(v -> {
+            onRoutineStart.accept(routine.getRoutineId());
+            routine.startRoutine();
+        });
 
         return convertView;
     }
