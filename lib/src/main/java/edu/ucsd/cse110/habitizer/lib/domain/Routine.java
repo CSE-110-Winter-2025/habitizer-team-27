@@ -17,8 +17,9 @@ public class Routine implements Serializable {
     private final RoutineTimer routineTimer = new RoutineTimer();
     private final TaskTimer taskTimer = new TaskTimer();
 
-    private LocalDateTime currentTime = LocalDateTime.now();
-
+    // private LocalDateTime currentTime = LocalDateTime.now();
+    LocalDateTime time1 = LocalDateTime.of(2025, 2, 1, 8, 0, 0); // 8:00:00 AM, 02/01/2025
+    LocalDateTime time2 = LocalDateTime.of(2025, 2, 1, 8, 30, 15); // 8:30:15 AM, 02/01/2025
 
     public Routine(@Nullable Integer id, String routineName) {
         this.id = id;
@@ -27,14 +28,14 @@ public class Routine implements Serializable {
 
     // Start the routine
     public void startRoutine() {
-        routineTimer.start(currentTime);
+        routineTimer.start(time1);
         // Start the timer of the task automatically
-        taskTimer.start(currentTime);
+        taskTimer.start(time1);
     }
 
     // End the routine
     public void endRoutine() {
-        routineTimer.end(LocalDateTime.now());
+        routineTimer.end(time2);
     }
 
     // Get the time for the routine(round up)
@@ -54,17 +55,17 @@ public class Routine implements Serializable {
                 .filter(t -> t.getTaskName().equals(taskName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskName));
-        taskTimer.end(currentTime);
+        taskTimer.end(LocalDateTime.now());
 
         int elapsedMinutes = taskTimer.getElapsedMinutes();
         task.setDurationAndComplete(elapsedMinutes);
 
         // Reset the timer of the task
-        taskTimer.start(currentTime);
+        taskTimer.start(LocalDateTime.now());
     }
 
     public void advanceTime(int seconds) {
-        currentTime = currentTime.plusSeconds(seconds);
+        // currentTime = currentTime.plusSeconds(seconds);
     }
 
 
