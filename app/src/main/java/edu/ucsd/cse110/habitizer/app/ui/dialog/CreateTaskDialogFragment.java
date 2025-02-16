@@ -18,7 +18,7 @@ import edu.ucsd.cse110.habitizer.app.R;
 
 public class CreateTaskDialogFragment extends DialogFragment {
     public interface CreateTaskListener {
-        void onTaskCreated(String taskName, boolean isPrepend);
+        void onTaskCreated(String taskName);
     }
 
     private CreateTaskListener listener;
@@ -42,15 +42,12 @@ public class CreateTaskDialogFragment extends DialogFragment {
 
 
         EditText taskNameInput = view.findViewById(R.id.task_name_edit_text);
-        RadioGroup insertModeGroup = view.findViewById(R.id.insert_mode_radio_button_group);
-        RadioButton prependOption = view.findViewById(R.id.prepend_radio_button);
 
         // Setup OK button
         builder.setPositiveButton("OK", (dialog, which) -> {
             String taskName = taskNameInput.getText().toString().trim();
-            boolean isPrepend = prependOption.isChecked();
             if (listener != null && !taskName.isEmpty()) {
-                listener.onTaskCreated(taskName, isPrepend);
+                listener.onTaskCreated(taskName);
             }
         });
 
