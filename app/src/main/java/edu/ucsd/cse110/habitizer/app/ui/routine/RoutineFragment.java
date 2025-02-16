@@ -124,22 +124,20 @@ public class RoutineFragment extends Fragment {
         });
 
        binding.stopTimerButton.setOnClickListener(v -> {
-//            if (currentRoutine.isActive()) {
-//                currentRoutine.pauseRoutine(LocalDateTime.now());
-//                binding.stopTimerButton.setText("Resume");
-//            } else {
-//                currentRoutine.resumeRoutine(LocalDateTime.now());
-//                binding.stopTimerButton.setText("Pause");
-//            }
+            if (currentRoutine.isActive()) {
+                currentRoutine.pauseTime(LocalDateTime.now());
+            }
         });
 
 
 
         binding.homeButton.setOnClickListener(v -> {
-
+            // Navigate back to HomeScreenFragment
+            requireActivity().getOnBackPressedDispatcher().onBackPressed();
         });
 
-
+        // Initial state setup
+        binding.homeButton.setEnabled(false);
 
         binding.fastForwardButton.setOnClickListener(v -> {
         });
@@ -170,9 +168,16 @@ public class RoutineFragment extends Fragment {
         if (!currentRoutine.isActive()) {
             binding.endRoutineButton.setText("Routine Ended");
             binding.endRoutineButton.setEnabled(false);
+            binding.stopTimerButton.setEnabled(false);
+            binding.fastForwardButton.setEnabled(false);
+
+            binding.homeButton.setEnabled(true);  // Enable when routine completes
+        } else {
+            binding.homeButton.setEnabled(false); // Disable during active routine
         }
-        binding.stopTimerButton.setEnabled(currentRoutine.isActive());
+
     }
+
 
     @Override
     public void onDestroyView() {

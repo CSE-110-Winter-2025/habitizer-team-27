@@ -77,8 +77,6 @@ public class HomeScreenFragment extends Fragment {
         });
 
 
-
-
         return view;
     }
 
