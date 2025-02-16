@@ -85,6 +85,7 @@ public class RoutineFragment extends Fragment {
                 });
 
         binding.routineNameTask.setText(currentRoutine.getRoutineName());
+        binding.homeButton.setEnabled(false);
 
         binding.addTaskButton.setOnClickListener(v -> {
             CreateTaskDialogFragment dialog = CreateTaskDialogFragment.newInstance(this::addTaskToRoutine);
@@ -95,6 +96,7 @@ public class RoutineFragment extends Fragment {
             currentRoutine.endRoutine(LocalDateTime.now());
             binding.actualTime.setText(String.format("%d", currentRoutine.getRoutineDurationMinutes()));
             binding.endRoutineButton.setEnabled(false);
+            binding.homeButton.setEnabled(true);
         });
 
         binding.homeButton.setOnClickListener(v -> {
