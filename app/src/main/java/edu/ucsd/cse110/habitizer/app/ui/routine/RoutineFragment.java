@@ -3,6 +3,7 @@ package edu.ucsd.cse110.habitizer.app.ui.routine;
 
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,8 +36,26 @@ public class RoutineFragment extends Fragment {
     private static final String ARG_ROUTINE_ID = "routine_id";
     private Routine currentRoutine;
 
+    private Handler timerHandler = new Handler(Looper.getMainLooper());
+    private Runnable timerRunnable;
+    private static final int UPDATE_INTERVAL_MS = 1000;
+
     public RoutineFragment() {
         // required empty public constructor
+    }
+
+    private void initTimerUpdates() {
+        timerRunnable = new Runnable() {
+            @Override
+            public void run() {
+                updateTimeDisplay();
+
+                timerHandler.postDelayed(this, UPDATE_INTERVAL_MS);
+            }
+        };
+
+        // Start
+        timerHandler.post(timerRunnable);
     }
 
     public static RoutineFragment newInstance(int routineId) {
@@ -67,6 +86,8 @@ public class RoutineFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentRoutineScreenBinding.inflate(inflater, container, false);
 
+        initTimerUpdates();
+
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
         taskAdapter = new ArrayAdapter<Task>(
@@ -94,18 +115,29 @@ public class RoutineFragment extends Fragment {
         });
 
         binding.endRoutineButton.setOnClickListener(v -> {
+
             currentRoutine.endRoutine(LocalDateTime.now());
-            binding.actualTime.setText(String.format("%d", currentRoutine.getRoutineDurationMinutes()));
+            updateTimeDisplay();
             binding.endRoutineButton.setEnabled(false);
         });
+
+//        binding.stopTimerButton.setOnClickListener(v -> {
+//            if (currentRoutine.isActive()) {
+//                currentRoutine.pauseRoutine(LocalDateTime.now());
+//                binding.stopTimerButton.setText("Resume");
+//            } else {
+//                currentRoutine.resumeRoutine(LocalDateTime.now());
+//                binding.stopTimerButton.setText("Pause");
+//            }
+//        });
+
+
 
         binding.homeButton.setOnClickListener(v -> {
 
         });
 
-        binding.stopTimerButton.setOnClickListener(v -> {
-            binding.stopTimerButton.setEnabled(false);
-        });
+
 
         binding.fastForwardButton.setOnClickListener(v -> {
         });
@@ -128,17 +160,20 @@ public class RoutineFragment extends Fragment {
 
     }
 
-    private void setupTimeDisplay() {
-        // Show the time
-        final TextView timerText = binding.actualTime;
-        final Handler handler = new Handler();
-        final Runnable updateTime = new Runnable() {
-            @Override
-            public void run() {
-                if (currentRoutine.getRoutineStartTime() != null) {
-                    timerText.setText(currentRoutine.getFormattedDuration());
-                }
-                handler.postDelayed(this, 1000);
-            }
-        };
+    private void updateTimeDisplay() {
+
+        long minutes = currentRoutine.getRoutineDurationMinutes();
+        binding.actualTime.setText(String.valueOf(minutes));
+
+        binding.endRoutineButton.setEnabled(currentRoutine.isActive());
+        binding.stopTimerButton.setEnabled(currentRoutine.isActive());
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        timerHandler.removeCallbacks(timerRunnable);
+    }
+
+
 }

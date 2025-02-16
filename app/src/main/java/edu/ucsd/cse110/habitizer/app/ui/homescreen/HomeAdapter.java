@@ -1,6 +1,8 @@
 package edu.ucsd.cse110.habitizer.app.ui.homescreen;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +18,7 @@ import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
 public class HomeAdapter extends BaseAdapter {
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final Context context;
     private final List<Routine> routines;
     private final Consumer<Integer> onRoutineStart;
@@ -55,10 +58,9 @@ public class HomeAdapter extends BaseAdapter {
         routineNameText.setText(routine.getRoutineName());
 
         startRoutineButton.setOnClickListener(v -> {
+            // Fetch routine from repository instead of local list
             onRoutineStart.accept(routine.getRoutineId());
-            routine.startRoutine(LocalDateTime.now());
         });
-
         return convertView;
     }
 }

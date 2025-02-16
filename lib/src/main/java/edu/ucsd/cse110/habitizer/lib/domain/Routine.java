@@ -20,8 +20,8 @@ public class Routine implements Serializable {
 
     private LocalDateTime currentTime = LocalDateTime.now();
     private boolean timerStopped;
-    LocalDateTime time1 = LocalDateTime.of(2025, 2, 1, 8, 0, 0); // 8:00:00 AM, 02/01/2025
-    LocalDateTime time2 = LocalDateTime.of(2025, 2, 1, 8, 30, 15); // 8:30:15 AM, 02/01/2025
+//    LocalDateTime time1 = LocalDateTime.of(2025, 2, 1, 8, 0, 0); // 8:00:00 AM, 02/01/2025
+//    LocalDateTime time2 = LocalDateTime.of(2025, 2, 1, 8, 30, 15); // 8:30:15 AM, 02/01/2025
 
     public Routine(@Nullable Integer id, String routineName) {
         this.id = id;
@@ -47,9 +47,13 @@ public class Routine implements Serializable {
         routineTimer.end(endTime);
     }
 
-    // Get the time for the routine(round up)
+    // Get the time for the routine
     public long getRoutineDurationMinutes() {
-        return routineTimer.getElapsedMinutes();
+        return routineTimer.getLiveMinutes();
+    }
+
+    public boolean isActive() {
+        return routineTimer.isActive();
     }
 
     // Add the task
