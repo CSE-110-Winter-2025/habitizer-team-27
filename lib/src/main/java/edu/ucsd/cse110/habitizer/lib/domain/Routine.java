@@ -99,7 +99,7 @@ public class Routine implements Serializable {
         return true;
     }
 
-    public void updateGoalTime(int goalTime) {
+    public void updateGoalTime(@Nullable Integer goalTime) {
         this.goalTime = goalTime;
     }
 
@@ -154,6 +154,10 @@ public class Routine implements Serializable {
 
     public LocalDateTime getCurrentTime() {
         return currentTime;
+    }
+
+    public @Nullable Integer getGoalTime() {
+        return goalTime;
     }
 
 }
