@@ -14,11 +14,13 @@ import androidx.lifecycle.ViewModelProvider;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.databinding.FragmentRoutineScreenBinding;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
+import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 import edu.ucsd.cse110.observables.Subject;
 
@@ -27,14 +29,17 @@ public class RoutineFragment extends Fragment {
     private FragmentRoutineScreenBinding binding;
     private ArrayAdapter<Task> taskAdapter;
 
+    private static final String ARG_ROUTINE_ID = "routine_id";
+    private Routine currentRoutine;
 
     public RoutineFragment() {
         // required empty public constructor
     }
 
-    public static RoutineFragment newInstance() {
+    public static RoutineFragment newInstance(int routineId) {
         RoutineFragment fragment = new RoutineFragment();
         Bundle args = new Bundle();
+        args.putInt(ARG_ROUTINE_ID, routineId);
         fragment.setArguments(args);
         return fragment;
     }
@@ -47,6 +52,11 @@ public class RoutineFragment extends Fragment {
         var modelFactory = ViewModelProvider.Factory.from(MainViewModel.initializer);
         var modelProvider = new ViewModelProvider(modelOwner, modelFactory);
         this.activityModel = modelProvider.get(MainViewModel.class);
+
+        int routineId = getArguments().getInt(ARG_ROUTINE_ID);
+
+        // Get routine
+        this.currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
     }
 
 
@@ -65,13 +75,16 @@ public class RoutineFragment extends Fragment {
         taskListView.setAdapter(taskAdapter);
 
         // Observe task data
-        activityModel.getTaskRepository().findAll().observe(
-                tasks -> {
+        activityModel.getRoutineRepository().find(currentRoutine.getRoutineId())
+                .observe(routine -> {
                     taskAdapter.clear();
-                    taskAdapter.addAll(tasks);
+                    assert routine != null;
+                    taskAdapter.addAll(routine.getTasks());
                     taskAdapter.notifyDataSetChanged();
-                }
-        );
+                });
+
+        binding.routineNameTask.setText(currentRoutine.getRoutineName());
+
         binding.addTaskButton.setOnClickListener(v -> {
             CreateTaskDialogFragment dialog = CreateTaskDialogFragment.newInstance(this::addTaskToRoutine);
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
@@ -79,47 +92,21 @@ public class RoutineFragment extends Fragment {
         return binding.getRoot();
     }
 
-    private void addTaskToRoutine(String taskName, boolean isPrepend) {
+    private void addTaskToRoutine(String taskName) {
         if (taskName == null || taskName.trim().isEmpty()) return;
 
-        Log.d("RoutineFragment", "Adding task: " + taskName + " (Prepend: " + isPrepend + ")");
+        // Create task with auto-increment ID
+        int newTaskId = currentRoutine.getTasks().size() + 1;
+        Task newTask = new Task(newTaskId, taskName, false);
 
-        // Get TaskRepository
-        var taskRepository = activityModel.getTaskRepository();
-        var tasksSubject = taskRepository.findAll();
-        var tasks = tasksSubject.getValue();
+        // Add to current routine
+        currentRoutine.addTask(newTask);
 
-        if (tasks == null) {
-            Log.e("RoutineFragment", "tasksSubject.getValue() returned null!");
-            return;
-        }
+        // Update repository
+        activityModel.getRoutineRepository().save(currentRoutine);
 
-        // create a mutable list
-        List<Task> mutableTasks = new ArrayList<>(tasks);
-
-        // Generate Task ID
-        int taskId = mutableTasks.isEmpty() ? 0 : mutableTasks.size();
-
-        // Create new task
-        Task newTask = new Task(taskId, taskName, false);
-
-        // Insert task
-        if (isPrepend) {
-            mutableTasks.add(0, newTask);
-            Log.d("RoutineFragment", "Prepending task: " + taskName);
-        } else {
-            mutableTasks.add(newTask);
-            Log.d("RoutineFragment", "Appending task: " + taskName);
-        }
-
-        // Save TaskRepository
-        taskRepository.save(newTask);
-
-        Log.d("RoutineFragment", "Task list size after: " + mutableTasks.size());
 
         // Update ListView
-        taskAdapter.clear();
-        taskAdapter.addAll(mutableTasks);
         taskAdapter.notifyDataSetChanged();
     }
 }
