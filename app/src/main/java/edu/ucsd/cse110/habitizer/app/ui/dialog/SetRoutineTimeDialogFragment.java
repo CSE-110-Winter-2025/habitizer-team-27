@@ -60,9 +60,11 @@ public class SetRoutineTimeDialogFragment extends DialogFragment {
         EditText timeInput = view.findViewById(R.id.routine_goal_time_edit);
 
         builder.setPositiveButton("OK", (dialog, which) -> {
-            int newTime = Integer.parseInt(timeInput.getText().toString());
-            if (listener != null && !(newTime < 0)) {
-                listener.onRoutineChanged(newTime);
+            if (!timeInput.getText().toString().isEmpty()) {
+                int newTime = Integer.parseInt(timeInput.getText().toString());
+                if (listener != null && !(newTime < 0)) {
+                    listener.onRoutineChanged(newTime);
+                }
             }
         });
 
