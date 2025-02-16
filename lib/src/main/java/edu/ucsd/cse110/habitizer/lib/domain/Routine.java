@@ -86,6 +86,11 @@ public class Routine implements Serializable {
         this.goalTime = goalTime;
     }
 
+    public String formatGoalTime() {
+        if (goalTime == null) return "-";
+        return goalTime.toString();
+    }
+
     // Getters
     public String getRoutineName() {
         return routineName;
