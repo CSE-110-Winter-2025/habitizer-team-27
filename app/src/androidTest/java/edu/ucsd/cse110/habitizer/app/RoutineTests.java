@@ -36,7 +36,7 @@ public class RoutineTests {
         // check current durations
         assertEquals(30, morningRoutine.getRoutineTimer().getCurrentMinutes(time2));
 
-        // fast forward by 5 minutes -- current time now 9:35:15
+        // fast forward by 5 minutes -- current time now 8:35:15
         for (int i = 0; i < 10; i++) {
             morningRoutine.fastForwardTime();
         }

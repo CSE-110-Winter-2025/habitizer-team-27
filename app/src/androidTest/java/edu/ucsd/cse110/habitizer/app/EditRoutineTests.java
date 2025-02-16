@@ -100,7 +100,7 @@ public class EditRoutineTests {
     public void lastTask() {
 
         Espresso.onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning Routine"))
+                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
         Espresso.onView(withId(R.id.add_task_button))
@@ -110,15 +110,13 @@ public class EditRoutineTests {
                 .check(matches(isDisplayed()))
                 .perform(typeText("Sweep kitchen"), closeSoftKeyboard());
 
-//        Espresso.onView(withId(R.id.append_radio_button))
-//                .perform(click());
 
         Espresso.onView(withText("OK"))
                 .perform(click());
 
         onData(anything())
                 .inAdapterView(withId(R.id.routine_list))
-                .atPosition(9)
+                .atPosition(7)
                 .perform(scrollTo());
 
         Espresso.onView(withText("Sweep kitchen"))

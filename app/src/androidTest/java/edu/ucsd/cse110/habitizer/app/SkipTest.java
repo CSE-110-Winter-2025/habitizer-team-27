@@ -63,17 +63,18 @@ public class SkipTest {
     }
 
     @Test
-    public void testScenario1_SkipAndCompleteNext() {
+    public void testScenario1_SkipAndCompleteNext() throws InterruptedException {
         morningRoutine.startRoutine(LocalDateTime.now());
 
         // Complete Shower
         completeTask(SHOWER_ID, 0);
 
         // Skip Brush Teeth after 2 min 10 s
-       morningRoutine.advanceTime(130);
+        Thread.sleep(130 * 1000L);
 
         // Complete Dress after 5 min 20 s
-        completeTask(DRESS_ID, 320);
+        Thread.sleep(320 * 1000L);
+        completeTask(DRESS_ID, 0);
 
         // Verify UI
         assertTaskDisplayed(BRUSH_TEETH_ID, "", false);
@@ -81,17 +82,18 @@ public class SkipTest {
     }
 
     @Test
-    public void testScenario2_SkipMultipleTasks() {
+    public void testScenario2_SkipMultipleTasks() throws InterruptedException {
         morningRoutine.startRoutine(LocalDateTime.now());
 
         // Skip Shower after 2 min 10 s
-        morningRoutine.advanceTime(130);
+        Thread.sleep(130 * 1000L);
 
         // Skip Brush Teeth after 3 min 20 s
-        morningRoutine.advanceTime(200);
+        Thread.sleep(200 * 1000L);
 
         // Complete Dress after 5 min 20 s
-        completeTask(DRESS_ID, 320);
+        Thread.sleep(320 * 1000L);
+        completeTask(DRESS_ID, 0);
 
         // Verify UI
         assertTaskDisplayed(SHOWER_ID, "", false);

@@ -2,12 +2,16 @@
 package edu.ucsd.cse110.habitizer.app.ui.routine;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -33,8 +37,27 @@ public class RoutineFragment extends Fragment {
     private static final String ARG_ROUTINE_ID = "routine_id";
     private Routine currentRoutine;
 
+    private Handler timerHandler = new Handler(Looper.getMainLooper());
+    private Runnable timerRunnable;
+    private boolean isTimerRunning = true;
+    private static final int UPDATE_INTERVAL_MS = 1000;
+
     public RoutineFragment() {
         // required empty public constructor
+    }
+
+    private void initTimerUpdates() {
+        timerRunnable = new Runnable() {
+            @Override
+            public void run() {
+                updateTimeDisplay();
+
+                timerHandler.postDelayed(this, UPDATE_INTERVAL_MS);
+            }
+        };
+
+        // Start
+        timerHandler.post(timerRunnable);
     }
 
     public static RoutineFragment newInstance(int routineId) {
@@ -55,6 +78,7 @@ public class RoutineFragment extends Fragment {
         this.activityModel = modelProvider.get(MainViewModel.class);
 
         int routineId = getArguments().getInt(ARG_ROUTINE_ID);
+        isTimerRunning = true;
 
         // Get routine
         this.currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
@@ -64,6 +88,9 @@ public class RoutineFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentRoutineScreenBinding.inflate(inflater, container, false);
+
+        initTimerUpdates();
+        isTimerRunning = true;
 
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
@@ -85,7 +112,6 @@ public class RoutineFragment extends Fragment {
                 });
 
         binding.routineNameTask.setText(currentRoutine.getRoutineName());
-        binding.homeButton.setEnabled(false);
 
         binding.addTaskButton.setOnClickListener(v -> {
             CreateTaskDialogFragment dialog = CreateTaskDialogFragment.newInstance(this::addTaskToRoutine);
@@ -93,23 +119,42 @@ public class RoutineFragment extends Fragment {
         });
 
         binding.endRoutineButton.setOnClickListener(v -> {
+            isTimerRunning = false;
             currentRoutine.endRoutine(LocalDateTime.now());
-            binding.actualTime.setText(String.format("%d", currentRoutine.getRoutineDurationMinutes()));
+            updateTimeDisplay();
             binding.endRoutineButton.setEnabled(false);
-            binding.homeButton.setEnabled(true);
-        });
-
-        binding.homeButton.setOnClickListener(v -> {
-
-        });
-
-        binding.stopTimerButton.setOnClickListener(v -> {
-            currentRoutine.pauseTime(LocalDateTime.now());
             binding.stopTimerButton.setEnabled(false);
         });
 
+        binding.stopTimerButton.setOnClickListener(v -> {
+            if (currentRoutine.isActive()) {
+                // Pause at current simulated time
+                currentRoutine.pauseTime(LocalDateTime.now());
+                updateTimeDisplay();
+            }
+            binding.stopTimerButton.setEnabled(false);
+            isTimerRunning = false;
+        });
+
+        binding.homeButton.setOnClickListener(v -> {
+            // Navigate back to HomeScreenFragment
+            requireActivity().getOnBackPressedDispatcher().onBackPressed();
+        });
+
+        // Initial state setup
+        binding.homeButton.setEnabled(false);
+
         binding.fastForwardButton.setOnClickListener(v -> {
+            // Fast forward 30 seconds
             currentRoutine.fastForwardTime();
+
+            // Force immediate UI update
+            updateTimeDisplay();
+
+            // If routine completed via FF, update state
+            if (currentRoutine.autoCompleteRoutine()) {
+                binding.endRoutineButton.setEnabled(false);
+            }
         });
 
         return binding.getRoot();
@@ -128,8 +173,31 @@ public class RoutineFragment extends Fragment {
         // Update repository
         activityModel.getRoutineRepository().save(currentRoutine);
 
+    }
 
-        // Update ListView
+    private void updateTimeDisplay() {
+        long minutes = currentRoutine.getRoutineDurationMinutes();
+        // if (minutes == 0) binding.actualTime.setText("-");
+        binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+
+        boolean isActive = currentRoutine.isActive();
+
+        // Control button states
+        binding.endRoutineButton.setEnabled(isActive);
+        binding.stopTimerButton.setEnabled(isTimerRunning);
+        binding.fastForwardButton.setEnabled(isActive);
+        binding.homeButton.setEnabled(!isActive);
+
+        // Update task list times
         taskAdapter.notifyDataSetChanged();
     }
+
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        timerHandler.removeCallbacks(timerRunnable);
+    }
+
+
 }
