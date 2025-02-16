@@ -8,6 +8,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import edu.ucsd.cse110.habitizer.app.databinding.ActivityMainBinding;
+import edu.ucsd.cse110.habitizer.app.ui.homescreen.HomeScreenFragment;
 import edu.ucsd.cse110.habitizer.app.ui.routine.RoutineFragment;
 import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
@@ -35,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, RoutineFragment.newInstance())
+                    .replace(R.id.fragment_container, HomeScreenFragment.newInstance())
                     .commit();
         }
         isShowingRoutine = !isShowingRoutine;

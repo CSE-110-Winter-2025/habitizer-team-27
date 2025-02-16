@@ -78,6 +78,7 @@ public class RoutineFragment extends Fragment {
         });
         return binding.getRoot();
     }
+
     private void addTaskToRoutine(String taskName, boolean isPrepend) {
         if (taskName == null || taskName.trim().isEmpty()) return;
 
