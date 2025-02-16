@@ -64,6 +64,17 @@ public class TaskAdapter extends ArrayAdapter<Task> {
                 Log.d("Task completed", "Task took " + task.getDuration());
             });
 
+            taskName.setOnClickListener(v -> {
+                task.setCheckedOff(true);
+                routine.completeTask(task.getTaskName());
+                notifyDataSetChanged();
+
+                taskTime.setText(formatTime(task.getDuration()));
+
+                Log.d("Task completed", "Task took " + task.getDuration());
+            });
+
+
             if (routine.autoCompleteRoutine()) {
                 dataSource.putRoutine(routine); // Ensure data persistence
             }
