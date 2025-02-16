@@ -90,6 +90,7 @@ public class RoutineFragment extends Fragment {
         binding = FragmentRoutineScreenBinding.inflate(inflater, container, false);
 
         initTimerUpdates();
+        isTimerRunning = true;
 
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
@@ -117,23 +118,23 @@ public class RoutineFragment extends Fragment {
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
         });
 
-
         binding.endRoutineButton.setOnClickListener(v -> {
+            isTimerRunning = false;
             currentRoutine.endRoutine(LocalDateTime.now());
             updateTimeDisplay();
             binding.endRoutineButton.setEnabled(false);
+            binding.stopTimerButton.setEnabled(false);
         });
 
         binding.stopTimerButton.setOnClickListener(v -> {
             if (currentRoutine.isActive()) {
                 // Pause at current simulated time
-                currentRoutine.pauseTime(currentRoutine.getCurrentTime());
+                currentRoutine.pauseTime(LocalDateTime.now());
                 updateTimeDisplay();
             }
             binding.stopTimerButton.setEnabled(false);
             isTimerRunning = false;
         });
-
 
         binding.homeButton.setOnClickListener(v -> {
             // Navigate back to HomeScreenFragment
