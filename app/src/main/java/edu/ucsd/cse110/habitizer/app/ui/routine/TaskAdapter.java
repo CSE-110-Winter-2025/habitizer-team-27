@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import javax.sql.DataSource;
@@ -43,25 +44,40 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         CheckBox checkBox = convertView.findViewById(R.id.check_task);
         TextView taskTime = convertView.findViewById(R.id.task_time);
 
+        checkBox.setOnCheckedChangeListener(null);
         if (task != null) {
+            checkBox.setEnabled(!task.isCompleted());
+
             taskName.setText(task.getTaskName());
-            checkBox.setChecked(task.isCompleted());
+            //checkBox.setChecked(task.isCompleted());
+
             // Modified time display logic
-            if (task.isCompleted()) {
-                taskTime.setText(formatTime(task.getDuration()));
-            } else {
-                taskTime.setText("");
-            }
+//            if (task.isCompleted()) {
+//                taskTime.setText(formatTime(task.getDuration()));
+//            } else {
+//                taskTime.setText("");
+//            }
 
             // This is so that we are notified if a checkbox is checked
             // checkBox.setOnCheckedChangeListener(null);
             checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 task.setCheckedOff(isChecked);
-                notifyDataSetChanged();
 
-                taskTime.setText(formatTime(task.getDuration()));
+                if (isChecked) {
+                    routine.completeTask(task.getTaskName());
+                    // Disable checkbox immediately after checking
+                    checkBox.setEnabled(false);
+                    notifyDataSetChanged();
+                }
 
-                Log.d("Task completed", "Task took " + task.getDuration());
+                checkBox.setChecked(task.isCheckedOff());
+                checkBox.setEnabled(!task.isCheckedOff());
+
+                if (task.isCheckedOff()) {
+                    taskTime.setText(formatTime(task.getDuration()));
+                }
+
+                Log.d("Task_completed", "Task took " + task.getDuration());
             });
 
             if (routine.autoCompleteRoutine()) {
