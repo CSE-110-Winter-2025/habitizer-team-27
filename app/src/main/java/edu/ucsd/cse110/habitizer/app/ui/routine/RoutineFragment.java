@@ -7,6 +7,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.ListView;
 
 import androidx.fragment.app.Fragment;
@@ -84,9 +86,6 @@ public class RoutineFragment extends Fragment {
                     taskAdapter.notifyDataSetChanged();
                 });
 
-        // Observe routine goal time
-
-
         binding.routineNameTask.setText(currentRoutine.getRoutineName());
 
         binding.addTaskButton.setOnClickListener(v -> {
@@ -94,9 +93,12 @@ public class RoutineFragment extends Fragment {
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
         });
 
-        binding.expectedTime.setOnClickListener(v -> {
-            SetRoutineTimeDialogFragment dialog = SetRoutineTimeDialogFragment.newInstance(currentRoutine.getRoutineId());
-            dialog.show(getParentFragmentManager(), "SetRoutineTimeDialog");
+        // when End Routine is pressed
+        binding.endRoutineButton.setOnClickListener(v -> {
+            Button endRoutine = v.findViewById(R.id.end_routine_button);
+            currentRoutine.endRoutine();
+            endRoutine.setText("Routine Ended");
+            endRoutine.setEnabled(false);
         });
 
         return binding.getRoot();
@@ -114,6 +116,7 @@ public class RoutineFragment extends Fragment {
 
         // Update repository
         activityModel.getRoutineRepository().save(currentRoutine);
+
 
         // Update ListView
         taskAdapter.notifyDataSetChanged();

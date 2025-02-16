@@ -16,9 +16,7 @@
       <SelectionState runConfigName="SkipTest">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="testScenario1_SkipAndCompleteNext()">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
+
       <SelectionState runConfigName="SkipTest">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
