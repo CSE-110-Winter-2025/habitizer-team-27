@@ -27,13 +27,20 @@ public class MainActivity extends AppCompatActivity {
 
         this.view = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(view.getRoot());
+
+        // Initialize with home screen fragment first
+        getSupportFragmentManager()
+                .beginTransaction()
+                .add(R.id.fragment_container, HomeScreenFragment.newInstance())
+                .commit();
     }
 
     private void swapFragments() {
         if (isShowingRoutine) {
+            int defaultRoutineId = 1;
             getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, RoutineFragment.newInstance())
+                    .replace(R.id.fragment_container, RoutineFragment.newInstance(defaultRoutineId))
                     .commit();
         } else {
             getSupportFragmentManager()
