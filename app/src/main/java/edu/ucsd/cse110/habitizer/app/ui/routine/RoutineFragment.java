@@ -177,10 +177,15 @@ public class RoutineFragment extends Fragment {
 
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
-        // if (minutes == 0) binding.actualTime.setText("-");
-        binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+        if (minutes == 0) binding.actualTime.setText("-");
+        else  binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
         boolean isActive = currentRoutine.isActive();
+
+        if (!currentRoutine.isActive()) {
+            binding.endRoutineButton.setText("Routine Ended");
+            binding.endRoutineButton.setEnabled(false);
+        }
 
         // Control button states
         binding.endRoutineButton.setEnabled(isActive);
