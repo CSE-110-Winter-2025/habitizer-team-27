@@ -13,14 +13,22 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 
+import javax.sql.DataSource;
+
 import edu.ucsd.cse110.habitizer.app.R;
+import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
 public class TaskAdapter extends ArrayAdapter<Task> {
-    public TaskAdapter(Context context, List<Task> tasks) {
-        super(context, 0, tasks);
-    }
+    private final Routine routine;
+    private final InMemoryDataSource dataSource;
 
+    public TaskAdapter(Context context, int resource, List<Task> tasks, Routine routine, InMemoryDataSource dataSource) {
+        super(context, resource, tasks);  // Pass resource to super
+        this.routine = routine;
+        this.dataSource = dataSource;
+    }
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
@@ -37,16 +45,32 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         if (task != null) {
             taskName.setText(task.getTaskName());
             checkBox.setChecked(task.isCompleted());
-            taskTime.setText(formatTime(task.getDurationMinutes()));
+            // Modified time display logic
+            if (task.isCompleted()) {
+                taskTime.setText(formatTime(task.getDuration()));
+            } else {
+                taskTime.setText("");
+            }
+
+            // This is so that we are notified if a checkbox is checked
+            checkBox.setOnCheckedChangeListener(null);
+            checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                task.setCheckedOff(isChecked);
+                notifyDataSetChanged();
+            });
+
+            if (routine.autoCompleteRoutine()) {
+                dataSource.putRoutine(routine); // Ensure data persistence
+            }
         }
 
         return convertView;
     }
 
     private String formatTime(long minutes) {
-        if (minutes <= 0) return "0 min";
+        if (minutes <= 0) return "";
 
-        return String.format("%d min", minutes);
+        return String.format("%dm", minutes);
     }
 }
 

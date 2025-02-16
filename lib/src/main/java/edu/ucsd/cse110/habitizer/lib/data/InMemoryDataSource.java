@@ -3,44 +3,46 @@ package edu.ucsd.cse110.habitizer.lib.data;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.MatchResult;
 
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 import edu.ucsd.cse110.observables.PlainMediatorSubject;
 import edu.ucsd.cse110.observables.PlainMutableSubject;
 import edu.ucsd.cse110.observables.Subject;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.RoutineTimer;
 
 public class InMemoryDataSource {
 
     // Observers for routines
-    private  Map<Integer, Routine> routines = new HashMap<>();
-    private  Map<Integer, PlainMutableSubject<Routine>> routineSubjects = new HashMap<>();
-    private  PlainMutableSubject<List<Routine>> allRoutinesSubjects = new PlainMediatorSubject<>();
+    private final Map<Integer, Routine> routines = new HashMap<>();
+    private final Map<Integer, PlainMutableSubject<Routine>> routineSubjects = new HashMap<>();
+    private final PlainMutableSubject<List<Routine>> allRoutinesSubjects = new PlainMediatorSubject<>();
 
     // Observers for tasks
-    private  Map<Integer, Task> tasks = new HashMap<>();
-    private  Map<Integer, PlainMutableSubject<Task>> taskSubjects = new HashMap<>();
-    private  PlainMutableSubject<List<Task>> allTasksSubjects = new PlainMutableSubject<>();
+    private final Map<Integer, Task> tasks = new HashMap<>();
+    private final Map<Integer, PlainMutableSubject<Task>> taskSubjects = new HashMap<>();
+    private final PlainMutableSubject<List<Task>> allTasksSubjects = new PlainMutableSubject<>();
 
-    public  static List<Task> DEFAULT_MORNING = List.of(
-            new Task(0, "Shower"),
-            new Task(1, "Brush teeth"),
-            new Task(2, "Dress"),
-            new Task(3, "Make coffee"),
-            new Task(4, "Make lunch"),
-            new Task(5, "Dinner prep"),
-            new Task(6, "Pack bag")
+    public final static List<Task> DEFAULT_MORNING = List.of(
+            new Task(0, "Shower", false),
+            new Task(1, "Brush teeth", false),
+            new Task(2, "Dress", false),
+            new Task(3, "Make coffee", false),
+            new Task(4, "Make lunch", false),
+            new Task(5, "Dinner prep", false),
+            new Task(6, "Pack bag", false)
     );
 
-    public  static List<Task> DEFAULT_EVENING = List.of(
-            new Task(100, "Charge devices"), // ID 100 Instead of 0
-            new Task(101, "Prepare dinner"),
-            new Task(102, "Eat dinner"),
-            new Task(103, "Wash dishes"),
-            new Task(104, "Homework")
+    public final static List<Task> DEFAULT_EVENING = List.of(
+            new Task(100, "Charge devices", false), // ID 100 Instead of 0
+            new Task(101, "Prepare dinner", false),
+            new Task(102, "Eat dinner", false),
+            new Task(103, "Wash dishes", false),
+            new Task(104, "Homework", false)
     );
 
-    public  static List<Routine> DEFAULT_ROUTINES = List.of(
+    public final static List<Routine> DEFAULT_ROUTINES = List.of(
             new Routine(0, "Morning"),
             new Routine(1, "Evening")
     );
@@ -95,6 +97,7 @@ public class InMemoryDataSource {
         }
         allRoutinesSubjects.setValue(getRoutines());
     }
+
 
     // Task Functions
     public List<Task> getTasks() {

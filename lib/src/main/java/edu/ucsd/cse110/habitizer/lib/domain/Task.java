@@ -11,40 +11,49 @@ import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
 public class Task implements Serializable {
     private  @Nullable Integer id;
     private  String taskName;
-    private  TaskTimer taskTimer = new TaskTimer();
     private boolean isCompleted = false;
 
-    public Task(@Nullable Integer id, String taskName) {
+    private boolean isCheckedOff;
+    private int duration = 0;
+
+    public Task(@Nullable Integer id, String taskName, boolean isCheckedOff) {
         this.id = id;
         this.taskName = taskName;
+        this.isCheckedOff = isCheckedOff;
     }
 
     public void setTaskId(int id) {
         this.id = id;
     }
+
     public void setTaskName(String taskName) {
         this.taskName = taskName;
     }
 
-
     public Task withId(int id) {
-        return new Task(id, this.taskName);
+        return new Task(id, this.taskName, isCheckedOff);
     }
 
-    // Start the task
-    public void startTask() {
-        taskTimer.start(LocalDateTime.now());
+
+    public int getDuration() {
+        return duration;
     }
 
-    // End the task
-    public void completeTask() {
-        taskTimer.end(LocalDateTime.now());
-        isCompleted = true;
+    public void setDurationAndComplete(int duration) {
+        this.duration = duration;
+        this.isCompleted = true;
+        this.isCheckedOff = true;
     }
 
-    // Get the time for the task (round down)
-    public long getDurationMinutes() {
-        return taskTimer.getElapsedMinutes();
+    // Returns if task is checked off
+    public boolean isCheckedOff() {
+        return isCheckedOff;
+    }
+
+    // Sets the Check
+    public void setCheckedOff(boolean checkedOff) {
+        this.isCheckedOff = checkedOff;
+        this.isCompleted = checkedOff;
     }
 
     // Getters
@@ -54,7 +63,7 @@ public class Task implements Serializable {
 
     @Override
     public String toString() {
-        return taskName; // Return just the task name
+        return taskName;
     }
 
     public Integer getTaskId() { return id; }
@@ -62,4 +71,5 @@ public class Task implements Serializable {
     public boolean isCompleted() {
         return isCompleted;
     }
+
 }
