@@ -7,16 +7,12 @@ import androidx.lifecycle.viewmodel.ViewModelInitializer;
 
 import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.TaskRepository;
-import edu.ucsd.cse110.observables.PlainMutableSubject;
-import edu.ucsd.cse110.observables.Subject;
 
 public class MainViewModel extends ViewModel {
     private static final String LOG_TAG = "MainViewModel";
 
     private final TaskRepository taskRepository;
     private final RoutineRepository routineRepository;
-
-    private final Subject<String> goalTime;
 
     public static final ViewModelInitializer<MainViewModel> initializer =
             new ViewModelInitializer<>(
@@ -31,8 +27,7 @@ public class MainViewModel extends ViewModel {
         this.taskRepository = taskRepository;
         this.routineRepository = routineRepository;
 
-        this.goalTime = new PlainMutableSubject<>();
-
+        // Create observable subjects
     }
 
     public TaskRepository getTaskRepository() {
@@ -41,13 +36,5 @@ public class MainViewModel extends ViewModel {
 
     public RoutineRepository getRoutineRepository() {
         return routineRepository;
-    }
-
-    public void updateRoutineTime(int time, int routineId) {
-        routineRepository.getRoutine(routineId).updateGoalTime(time);
-    }
-
-    public Subject<String> getGoalTime() {
-        return goalTime;
     }
 }
