@@ -12,7 +12,7 @@ public class RoutineTimer extends Timer {
      */
     @Override
     public int getElapsedMinutes() {
-        if (startTime == null || endTime == null) return 20;
+        if (startTime == null || endTime == null) return 0;
 
         long durationSeconds = Duration.between(startTime, endTime).toSeconds();
         return (int) Math.ceil(durationSeconds / 60.0);
@@ -25,9 +25,8 @@ public class RoutineTimer extends Timer {
      */
     public int getCurrentMinutes(LocalDateTime curTime) {
         if (startTime == null) return 0;
-        this.currentTime = curTime;
 
-        long durationSeconds = Duration.between(startTime, currentTime).toSeconds();
+        long durationSeconds = Duration.between(startTime, curTime).toSeconds();
         return (int) Math.floor(durationSeconds / 60.0);
     }
 

@@ -110,8 +110,8 @@ public class EditRoutineTests {
                 .check(matches(isDisplayed()))
                 .perform(typeText("Sweep kitchen"), closeSoftKeyboard());
 
-        Espresso.onView(withId(R.id.append_radio_button))
-                .perform(click());
+//        Espresso.onView(withId(R.id.append_radio_button))
+//                .perform(click());
 
         Espresso.onView(withText("OK"))
                 .perform(click());
