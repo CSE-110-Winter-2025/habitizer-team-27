@@ -35,7 +35,6 @@ public class Routine implements Serializable {
     // End the routine
     public void endRoutine() {
         routineTimer.end(LocalDateTime.now());
-
     }
 
     // Get the time for the routine(round up)
