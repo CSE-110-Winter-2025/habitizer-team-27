@@ -58,7 +58,7 @@ public class EditRoutineTests {
 
         Task test1 = new Task(103, "Eat Dinner", false);
         Task test2 = new Task(104, "Wash Dishes", false);
-        Task test3 = new Task(104, "Clean kitchen", false);
+        Task test3 = new Task(105, "Clean kitchen", false);
         eveningRoutine.addTask(test1);
         eveningRoutine.addTask(test2);
         eveningRoutine.addTask(test3);
