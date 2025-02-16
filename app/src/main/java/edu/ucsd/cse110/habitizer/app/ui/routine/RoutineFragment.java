@@ -84,6 +84,9 @@ public class RoutineFragment extends Fragment {
                     taskAdapter.notifyDataSetChanged();
                 });
 
+        // Observe routine goal time
+
+
         binding.routineNameTask.setText(currentRoutine.getRoutineName());
 
         binding.addTaskButton.setOnClickListener(v -> {
