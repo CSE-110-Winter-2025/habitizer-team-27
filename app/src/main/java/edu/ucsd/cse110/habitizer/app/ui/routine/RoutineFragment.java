@@ -210,7 +210,7 @@ public class RoutineFragment extends Fragment {
 
         // Control button states
         binding.endRoutineButton.setEnabled(isActive);
-        binding.stopTimerButton.setEnabled(isActive);
+        binding.stopTimerButton.setEnabled(isTimerRunning);
         binding.fastForwardButton.setEnabled(isActive);
         binding.homeButton.setEnabled(!isActive);
 
