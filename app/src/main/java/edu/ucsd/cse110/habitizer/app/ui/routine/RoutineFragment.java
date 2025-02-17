@@ -165,6 +165,7 @@ public class RoutineFragment extends Fragment {
             // If routine completed via FF, update state
             if (currentRoutine.autoCompleteRoutine()) {
                 binding.endRoutineButton.setEnabled(false);
+                isTimerRunning = false;
             }
         });
 
@@ -198,8 +199,8 @@ public class RoutineFragment extends Fragment {
 
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
-        // if (minutes == 0) binding.actualTime.setText("-");
-        binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+        if (minutes == 0) binding.actualTime.setText("-");
+        else binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
         boolean isActive = currentRoutine.isActive();
 
@@ -210,7 +211,11 @@ public class RoutineFragment extends Fragment {
 
         // Control button states
         binding.endRoutineButton.setEnabled(isActive);
-        binding.stopTimerButton.setEnabled(isTimerRunning);
+        if (!isActive) {
+            binding.stopTimerButton.setEnabled(false);
+        } else {
+            binding.stopTimerButton.setEnabled(isTimerRunning);
+        }
         binding.fastForwardButton.setEnabled(isActive);
         binding.homeButton.setEnabled(!isActive);
 
