@@ -160,6 +160,7 @@ public class Milestone1Testing {
         onView(withId(R.id.actual_time)).check(matches(withText("47m")));
     }
 
+    @Test
     public void testEndToEndTwo() {
         // Start Evening Routine
         // Check that routine started successfully
@@ -197,6 +198,7 @@ public class Milestone1Testing {
         onView(withId(R.id.actual_time)).check(matches(withText("180m")));
     }
 
+    @Test
     public void testEndToEndThree() {
         // Start Evening Routine
         // Check that routine started successfully
