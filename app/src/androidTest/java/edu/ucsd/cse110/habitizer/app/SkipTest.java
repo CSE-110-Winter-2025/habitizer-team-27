@@ -58,7 +58,7 @@ public class SkipTest {
             morningRoutine.addTask(task);
         });
 
-        adapter = new TaskAdapter(context, R.layout.task_page, taskRepo.findAll().getValue(), morningRoutine, dataSource);
+        adapter = new TaskAdapter(context, R.layout.task_page, taskRepo.findAll().getValue(), morningRoutine, dataSource, null);
 
     }
 
