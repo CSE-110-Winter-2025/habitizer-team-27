@@ -20,6 +20,10 @@ public class TaskTimer extends Timer {
 
         // calculating duration includes any fast forward clicks
         long durationSeconds = Duration.between(startTime, endTime).toSeconds();
+        // only occurs if you click multiple tasks at the same paused time, which would in the real world be "1m"
+        if (durationSeconds == 0) {
+            return 1;
+        }
         return (int) Math.ceil(durationSeconds / 60.0);
     }
 }
