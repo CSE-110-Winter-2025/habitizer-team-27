@@ -70,10 +70,18 @@ public class SkipTest {
         completeTask(SHOWER_ID, 0);
 
         // Skip Brush Teeth after 2 min 10 s
-        Thread.sleep(130 * 1000L);
+        for (int i = 0; i < 130 / 30; i++) {
+            morningRoutine.fastForwardTime();
+        }
+        morningRoutine.fastForwardTime();
+
 
         // Complete Dress after 5 min 20 s
-        Thread.sleep(320 * 1000L);
+        for (int i = 0; i < 320 / 30; i++) {
+            morningRoutine.fastForwardTime();
+        }
+        morningRoutine.fastForwardTime();
+
         completeTask(DRESS_ID, 0);
 
         // Verify UI
@@ -86,13 +94,22 @@ public class SkipTest {
         morningRoutine.startRoutine(LocalDateTime.now());
 
         // Skip Shower after 2 min 10 s
-        Thread.sleep(130 * 1000L);
+        for (int i = 0; i < 130 / 30; i++) {
+            morningRoutine.fastForwardTime();
+        }
+        morningRoutine.fastForwardTime();
 
         // Skip Brush Teeth after 3 min 20 s
-        Thread.sleep(200 * 1000L);
+        for (int i = 0; i < 200 / 30; i++) {
+            morningRoutine.fastForwardTime();
+        }
+        morningRoutine.fastForwardTime();
 
         // Complete Dress after 5 min 20 s
-        Thread.sleep(320 * 1000L);
+        for (int i = 0; i < 320 / 30; i++) {
+            morningRoutine.fastForwardTime();
+        }
+
         completeTask(DRESS_ID, 0);
 
         // Verify UI
