@@ -187,11 +187,11 @@ public class Milestone1Testing {
         // #3: Eat Dinner after 60 minutes
         checkTaskCompleted(60.0, "60m", 2);
 
-        // #4: Wash dishes after 30 minutes
-        checkTaskCompleted(30.0, "30m", 3);
+        // #4: Wash dishes after 15 minutes
+        checkTaskCompleted(30.0, "15m", 3);
 
-        // #5: Pack Bag after 30 minutes
-        checkTaskCompleted(30.0, "30m", 4);
+        // #5: Pack Bag after 15 minutes
+        checkTaskCompleted(30.0, "15m", 4);
 
         // #6: Do homework after 60 minutes
         checkTaskCompleted(60.0, "60m", 5);
@@ -199,7 +199,7 @@ public class Milestone1Testing {
 
         // End Routine Automatically
         // onView(withId(R.id.end_routine_button)).check(matches(isNotClickable()));
-        onView(withId(R.id.actual_time)).check(matches(withText("180m")));
+        onView(withId(R.id.actual_time)).check(matches(withText("181m")));
     }
 
     @Test
