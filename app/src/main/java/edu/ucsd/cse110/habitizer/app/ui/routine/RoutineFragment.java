@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
+import edu.ucsd.cse110.habitizer.app.HabitizerApplication;
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.databinding.FragmentRoutineScreenBinding;
@@ -90,11 +91,12 @@ public class RoutineFragment extends Fragment {
 
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
-        taskAdapter = new ArrayAdapter<Task>(
+        taskAdapter = new TaskAdapter(
                 requireContext(),
                 R.layout.task_page,
-                R.id.task_name,
-                new ArrayList<>()
+                new ArrayList<>(),
+                currentRoutine,
+                ((HabitizerApplication) requireContext().getApplicationContext()).getDataSource()
         );
         taskListView.setAdapter(taskAdapter);
 
