@@ -34,6 +34,12 @@ public class Task implements Serializable {
         return new Task(id, this.taskName, isCheckedOff);
     }
 
+    public void reset() {
+        this.isCompleted = false;
+        this.duration = 0;
+        this.isCheckedOff = false;
+    }
+
 
     public int getDuration() {
         return duration;

@@ -1,8 +1,15 @@
 package edu.ucsd.cse110.habitizer.lib.domain.timer;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 public class TaskTimer extends Timer {
+    @Override
+    public void start(LocalDateTime start) {
+        super.start(start);
+        this.endTime = null;
+    }
+
     /**
      * Get final elapsed time of task once completed
      * @return total number of minutes since routine started, rounded UP

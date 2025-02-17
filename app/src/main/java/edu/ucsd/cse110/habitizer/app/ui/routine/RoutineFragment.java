@@ -91,9 +91,10 @@ public class RoutineFragment extends Fragment {
 
         // Clear "completed" statuses of all tasks
         for (Task task : currentRoutine.getTasks()) {
-            task.setDurationAndComplete(0);
-            task.setCheckedOff(false);
+            task.reset();
         }
+
+        // Reset both timers
 
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
