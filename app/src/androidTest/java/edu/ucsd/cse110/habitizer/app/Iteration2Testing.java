@@ -1,5 +1,6 @@
 package edu.ucsd.cse110.habitizer.app;
 
+import androidx.test.espresso.Espresso;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -13,8 +14,10 @@ import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
 import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.ViewMatchers.hasSibling;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.Matchers.anything;
 
 @RunWith(AndroidJUnit4.class)
@@ -34,7 +37,9 @@ public class Iteration2Testing {
     public void testEndRoutineFlow() {
         //home screen has a ListView (@+id/card_list) of routines using routine_list.xml.
         //since there are both Morning and Evening routines the test uses (Morning) routine.
-        onView(withId(R.id.start_routine_button)).perform(click());
+        Espresso.onView(allOf(
+                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        )).perform(click());
 
         //now in fragment_routine_screen.xml tap the "End Routine" button.
         onView(withId(R.id.end_routine_button)).perform(click());
@@ -53,7 +58,9 @@ public class Iteration2Testing {
     @Test
     public void testAddTaskFlow() {
         //start the routine from the home screen
-        onView(withId(R.id.start_routine_button)).perform(click());
+        Espresso.onView(allOf(
+                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        )).perform(click());
 
         //In fragment_routine_screen.xml tap the "add task" button.
         onView(withId(R.id.add_task_button)).perform(click());
@@ -68,7 +75,7 @@ public class Iteration2Testing {
         //verify the new task "Brush Teeth" appears in the routine_list ListView.
         onData(anything())
                 .inAdapterView(withId(R.id.routine_list))
-                .atPosition(0)
+                .atPosition(7)
                 .onChildView(withId(R.id.task_name))
                 .check(matches(withText("Brush Teeth")));
     }
@@ -80,7 +87,9 @@ public class Iteration2Testing {
     @Test
     public void testAddTaskEmptyName() {
         //start routine
-        onView(withId(R.id.start_routine_button)).perform(click());
+        Espresso.onView(allOf(
+                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        )).perform(click());
 
         //tap "Add Task"
         onView(withId(R.id.add_task_button)).perform(click());
@@ -97,10 +106,12 @@ public class Iteration2Testing {
     @Test
     public void testTimeUpdatesAfterCompletion() {
         //start routine
-        onView(withId(R.id.start_routine_button)).perform(click());
+        Espresso.onView(allOf(
+                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        )).perform(click());
 
-        //verify the "actual_time" TextView initially displays "0".
-        onView(withId(R.id.actual_time)).check(matches(withText("0")));
+        //verify the "actual_time" TextView initially displays "-".
+        onView(withId(R.id.actual_time)).check(matches(withText("-")));
 
         //complete a task at position 0 by tapping its check box
         onData(anything())
@@ -108,5 +119,13 @@ public class Iteration2Testing {
                 .atPosition(0)
                 .onChildView(withId(R.id.check_task))
                 .perform(click());
+
+        //verify the "actual_time" TextView now displays "1m".
+        onView(
+                allOf(
+                        withId(R.id.task_time),
+                        hasSibling(withText("Shower")) 
+                )
+        ).check(matches(withText("1m")));
     }
 }
