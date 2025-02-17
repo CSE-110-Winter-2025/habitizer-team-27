@@ -14,6 +14,9 @@ public class Task implements Serializable {
     private boolean isCompleted = false;
 
     private boolean isCheckedOff;
+
+    private boolean isSkipped = false;
+
     private int duration = 0;
 
     public Task(@Nullable Integer id, String taskName, boolean isCheckedOff) {
@@ -49,6 +52,7 @@ public class Task implements Serializable {
         this.duration = duration;
         this.isCompleted = true;
         this.isCheckedOff = true;
+        this.isSkipped = false;
     }
 
     // Returns if task is checked off
@@ -60,6 +64,7 @@ public class Task implements Serializable {
     public void setCheckedOff(boolean checkedOff) {
         this.isCheckedOff = checkedOff;
         this.isCompleted = checkedOff;
+        this.isSkipped = !checkedOff;
     }
 
     // Getters
@@ -76,6 +81,14 @@ public class Task implements Serializable {
 
     public boolean isCompleted() {
         return isCompleted;
+    }
+
+    public void setSkipped(boolean skipped) {
+        isSkipped = skipped;
+    }
+
+    public boolean isSkipped() {
+        return isSkipped;
     }
 
 }
