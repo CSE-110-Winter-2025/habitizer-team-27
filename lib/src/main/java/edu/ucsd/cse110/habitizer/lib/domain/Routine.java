@@ -17,6 +17,7 @@ public class Routine implements Serializable {
     private final List<Task> tasks = new ArrayList<>();
     private final RoutineTimer routineTimer = new RoutineTimer();
     private final TaskTimer taskTimer = new TaskTimer();
+    private @Nullable Integer goalTime;
 
     private LocalDateTime currentTime = LocalDateTime.now();
     private boolean timerStopped;
@@ -26,6 +27,7 @@ public class Routine implements Serializable {
     public Routine(@Nullable Integer id, String routineName) {
         this.id = id;
         this.routineName = routineName;
+        this.goalTime = null;
         timerStopped = false;
     }
 
@@ -61,6 +63,7 @@ public class Routine implements Serializable {
         tasks.add(task);
     }
 
+
     // End the task
     public void completeTask(String taskName) {
         Task task = tasks.stream()
@@ -84,6 +87,7 @@ public class Routine implements Serializable {
         }
     }
 
+
     // Auto completes routine when everything is checked off
     public boolean autoCompleteRoutine() {
         for(int i = 0; i < tasks.size(); i++){
@@ -93,6 +97,15 @@ public class Routine implements Serializable {
         }
         endRoutine(LocalDateTime.now());
         return true;
+    }
+
+    public void updateGoalTime(@Nullable Integer goalTime) {
+        this.goalTime = goalTime;
+    }
+
+    public String formatGoalTime() {
+        if (goalTime == null) return "-";
+        return goalTime.toString();
     }
 
     // Testing functions
@@ -141,6 +154,10 @@ public class Routine implements Serializable {
 
     public LocalDateTime getCurrentTime() {
         return currentTime;
+    }
+
+    public @Nullable Integer getGoalTime() {
+        return goalTime;
     }
 
 }
