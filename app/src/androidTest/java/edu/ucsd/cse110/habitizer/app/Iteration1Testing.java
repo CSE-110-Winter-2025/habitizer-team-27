@@ -2,9 +2,12 @@ package edu.ucsd.cse110.habitizer.app;
 
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.matcher.ViewMatchers.hasSibling;
+import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.CoreMatchers.allOf;
+
+import android.widget.CheckBox;
 
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -62,11 +65,14 @@ public class Iteration1Testing {
                 .check(ViewAssertions.matches(ViewMatchers.isDisplayed()));
 
         // Tap the "Shower" step.
-        Espresso.onView(ViewMatchers.withText("Shower"))
-                .perform(ViewActions.click());
+        Espresso.onView(allOf(
+                isAssignableFrom(CheckBox.class),
+                hasSibling(withText("Shower"))
+        )).perform(click());
+
 //
 //        // Verify that the text "1m" is displayed (indicating the step was completed).
-//        Espresso.onView(ViewMatchers.withText("1m"))
-//                .check(ViewAssertions.matches(ViewMatchers.isDisplayed()));
+         Espresso.onView(ViewMatchers.withText("1m"))
+              .check(ViewAssertions.matches(ViewMatchers.isDisplayed()));
     }
 }

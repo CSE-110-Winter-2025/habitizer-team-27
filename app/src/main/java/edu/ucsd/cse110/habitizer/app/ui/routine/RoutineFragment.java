@@ -203,9 +203,10 @@ public class RoutineFragment extends Fragment {
 
         // Control button states
         binding.endRoutineButton.setEnabled(isActive);
-        binding.stopTimerButton.setEnabled(isTimerRunning);
+        binding.stopTimerButton.setEnabled(isActive);
         binding.fastForwardButton.setEnabled(isActive);
         binding.homeButton.setEnabled(!isActive);
+        binding.addTaskButton.setEnabled(isActive);
 
         // Update task list times
         taskAdapter.notifyDataSetChanged();
