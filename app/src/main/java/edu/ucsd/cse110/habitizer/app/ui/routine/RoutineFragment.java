@@ -4,6 +4,7 @@ package edu.ucsd.cse110.habitizer.app.ui.routine;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,12 +17,14 @@ import androidx.lifecycle.ViewModelProvider;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.databinding.FragmentRoutineScreenBinding;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.SetRoutineTimeDialogFragment;
+import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 
@@ -32,6 +35,7 @@ public class RoutineFragment extends Fragment {
 
     private static final String ARG_ROUTINE_ID = "routine_id";
     private Routine currentRoutine;
+    private InMemoryDataSource dataSource;
 
     private Handler timerHandler = new Handler(Looper.getMainLooper());
     private Runnable timerRunnable;
@@ -90,11 +94,13 @@ public class RoutineFragment extends Fragment {
 
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
-        taskAdapter = new ArrayAdapter<Task>(
+        this.taskAdapter = new TaskAdapter(
                 requireContext(),
                 R.layout.task_page,
-                R.id.task_name,
-                new ArrayList<>()
+                currentRoutine.getTasks(),
+                currentRoutine,
+                dataSource,
+                RoutineFragment::testClick
         );
         taskListView.setAdapter(taskAdapter);
 
@@ -116,6 +122,7 @@ public class RoutineFragment extends Fragment {
         });
 
         binding.expectedTime.setOnClickListener(v -> {
+            Log.d("Test", "test logs");
             SetRoutineTimeDialogFragment dialog = SetRoutineTimeDialogFragment.newInstance(this::updateRoutineGoalDisplay);
             dialog.show(getParentFragmentManager(), "SetTimeDialog");
         });
@@ -162,6 +169,10 @@ public class RoutineFragment extends Fragment {
         return binding.getRoot();
     }
 
+    private static void testClick(Integer integer) {
+        Log.d("Hello", "hello");
+    }
+
     private void addTaskToRoutine(String taskName) {
         if (taskName == null || taskName.trim().isEmpty()) return;
 
@@ -203,6 +214,7 @@ public class RoutineFragment extends Fragment {
         // Update task list times
         taskAdapter.notifyDataSetChanged();
     }
+
 
     @Override
     public void onDestroyView() {

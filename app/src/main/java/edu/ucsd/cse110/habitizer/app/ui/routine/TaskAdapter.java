@@ -11,6 +11,7 @@ import android.widget.CheckBox;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.util.Consumer;
 
 import java.util.List;
 
@@ -26,12 +27,20 @@ import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
     private final InMemoryDataSource dataSource;
+    Consumer<Integer> onNameClick;
 
-    public TaskAdapter(Context context, int resource, List<Task> tasks, Routine routine, InMemoryDataSource dataSource) {
+    public TaskAdapter(Context context,
+                       int resource,
+                       List<Task> tasks,
+                       Routine routine,
+                       InMemoryDataSource dataSource,
+                       Consumer<Integer> onNameClick) {
         super(context, resource, tasks);  // Pass resource to super
         this.routine = routine;
         this.dataSource = dataSource;
+        this.onNameClick = onNameClick;
     }
+
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
@@ -40,16 +49,22 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         TaskPageBinding binding;
         if (convertView != null) {
             binding = TaskPageBinding.bind(convertView);
+
+            binding.taskName.setOnClickListener(v -> {
+                Log.d("Hello", "Hello");
+            });
         } else {
             var layoutInflater = LayoutInflater.from(getContext());
             binding = TaskPageBinding.inflate(layoutInflater, parent, false);
+
+
         }
 
 //        TextView taskName = convertView.findViewById(R.id.task_name);
 //        CheckBox checkBox = convertView.findViewById(R.id.check_task);
 //        TextView taskTime = convertView.findViewById(R.id.task_time);
 
-        if (task != null) {
+       //  if (task != null) {
             binding.taskName.setText(task.getTaskName());
             binding.checkTask.setChecked(task.isCompleted());
             // Modified time display logic
@@ -72,13 +87,15 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             });
 
             binding.taskName.setOnClickListener(v -> {
-                Log.d("Hello", "Hello");
+                Log.d("Test", "log test");
+                var id = task.getTaskId();
+                onNameClick.accept(id);
             });
 
             if (routine.autoCompleteRoutine()) {
                 dataSource.putRoutine(routine); // Ensure data persistence
             }
-        }
+      //   }
 
         return binding.getRoot();
     }
