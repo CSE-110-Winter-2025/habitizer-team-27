@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -21,10 +22,11 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
     private final InMemoryDataSource dataSource;
 
+    // ViewHolder pattern for better performance
     static class ViewHolder {
         TextView taskName;
+        CheckBox checkBox;
         TextView taskTime;
-        View taskItem;
     }
 
     public TaskAdapter(Context context, int resource, List<Task> tasks,
@@ -37,15 +39,20 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-        ViewHolder holder;
+        // Validate position first
+        if (position < 0 || position >= getCount()) {
+            return convertView != null ? convertView :
+                    LayoutInflater.from(getContext()).inflate(R.layout.task_page, parent, false);
+        }
 
+        ViewHolder holder;
         if (convertView == null) {
             convertView = LayoutInflater.from(getContext())
                     .inflate(R.layout.task_page, parent, false);
             holder = new ViewHolder();
             holder.taskName = convertView.findViewById(R.id.task_name);
+            holder.checkBox = convertView.findViewById(R.id.check_task);
             holder.taskTime = convertView.findViewById(R.id.task_time);
-            holder.taskItem = convertView.findViewById(R.id.task_item); // Critical ID match
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -54,15 +61,25 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         Task task = getItem(position);
         if (task == null) return convertView;
 
-        // Update UI components
-        holder.taskName.setText(task.getTaskName());
-        updateTimeDisplay(holder.taskTime, task);
+        // Clear previous listener to prevent recycling issues
+        holder.checkBox.setOnCheckedChangeListener(null);
 
-        // Set click listener properly
-        holder.taskItem.setOnClickListener(v -> {
-            Log.d("TaskAdapter", "Clicked on task: " + task.getTaskName());
-            if (!task.isCompleted()) {
-                handleTaskCompletion(task, holder);
+        // Bind data to views
+        holder.taskName.setText(task.getTaskName());
+        holder.checkBox.setChecked(task.isCompleted());
+        updateTimeDisplay(holder.taskTime, task);
+        holder.checkBox.setEnabled(!task.isCheckedOff());
+
+        // Set position tag for correct item identification
+        holder.checkBox.setTag(position);
+
+        // Checkbox click handler
+        holder.checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            int pos = (int) buttonView.getTag();
+            Task currentTask = getItem(pos);
+
+            if (currentTask != null && isChecked && !currentTask.isCheckedOff()) {
+                handleTaskCompletion(currentTask, holder);
             }
         });
 
@@ -70,19 +87,28 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     }
 
     private void handleTaskCompletion(Task task, ViewHolder holder) {
-        // Update model first
+        // Disable checkbox immediately
+        holder.checkBox.setEnabled(false);
+
+        // Update business logic
         routine.completeTask(task.getTaskName());
+
+        // Update data source
         dataSource.putRoutine(routine);
 
-        // Then update UI
+        // Handle auto-complete
+        if (routine.autoCompleteRoutine()) {
+            dataSource.putRoutine(routine);
+        }
+
+        // Update UI components
         updateTimeDisplay(holder.taskTime, task);
-        notifyDataSetChanged(); // Refresh the list
+        notifyDataSetChanged();
 
         Log.d("TaskCompletion",
                 "Completed: " + task.getTaskName() +
                         " | Duration: " + formatTime(task.getDuration()));
     }
-
 
     private void updateTimeDisplay(TextView taskTime, Task task) {
         taskTime.setText(task.isCompleted() ?
@@ -92,7 +118,4 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     private String formatTime(long minutes) {
         return minutes > 0 ? String.format("%dm", minutes) : "";
     }
-
 }
-
-
