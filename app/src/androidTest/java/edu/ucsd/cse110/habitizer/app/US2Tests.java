@@ -97,7 +97,7 @@ public class US2Tests {
 
     }
 
-    // skip tasks and able to end routine
+    // skip tasks and able to end routine.
     @Test
     public void skipTask(){
         onView(allOf(
