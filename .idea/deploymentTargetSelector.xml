@@ -13,11 +13,7 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="SkipTest">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-
-      <SelectionState runConfigName="SkipTest">
+      <SelectionState runConfigName="RoutineTests">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

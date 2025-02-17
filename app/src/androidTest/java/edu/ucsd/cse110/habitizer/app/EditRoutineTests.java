@@ -100,7 +100,7 @@ public class EditRoutineTests {
     public void lastTask() {
 
         Espresso.onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning Routine"))
+                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
         Espresso.onView(withId(R.id.add_task_button))

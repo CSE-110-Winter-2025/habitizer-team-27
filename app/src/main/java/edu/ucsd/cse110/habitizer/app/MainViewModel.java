@@ -26,6 +26,8 @@ public class MainViewModel extends ViewModel {
     public MainViewModel(TaskRepository taskRepository, RoutineRepository routineRepository) {
         this.taskRepository = taskRepository;
         this.routineRepository = routineRepository;
+
+        // Create observable subjects
     }
 
     public TaskRepository getTaskRepository() {

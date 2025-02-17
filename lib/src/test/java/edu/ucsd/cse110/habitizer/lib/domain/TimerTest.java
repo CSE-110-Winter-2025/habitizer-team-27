@@ -75,15 +75,4 @@ public class TimerTest {
         assertEquals(rTimer.getCurrentMinutes(time2), 30);
         assertNull(rTimer.getEndTime());
     }
-
-    // Tests fast forward function
-//    @Test
-//    public void testFastForward() {
-//        RoutineTimer rTimer = new RoutineTimer();
-//        TaskTimer tTimer = new TaskTimer();
-//
-//        // Timer is stopped,
-//        rTimer.start(time1);
-//        rTimer.fastForward();
-//    }
 }

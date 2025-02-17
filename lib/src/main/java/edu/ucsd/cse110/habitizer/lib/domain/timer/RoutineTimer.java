@@ -4,18 +4,30 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 public class RoutineTimer extends Timer {
-    protected LocalDateTime currentTime;
 
+    @Override
+    public void start(LocalDateTime start) {
+        super.start(start);
+        this.endTime = null;
+    }
+
+    public void end(LocalDateTime end) {
+        super.end(end);
+    }
+
+    public boolean isActive() {
+        return super.isRunning();
+    }
     /**
      * Gets final elapsed time of routine once completed
      * @return total number of minutes since routine started, rounded UP
      */
     @Override
     public int getElapsedMinutes() {
-        if (startTime == null || endTime == null) return 0;
+        if (getStartTime() == null) return 0;
+        if (getEndTime() == null) return 0;
 
-        // calculation includes any fast forward clicks (each adds 30s)
-        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
+        long durationSeconds = Duration.between(getStartTime(), getEndTime()).toSeconds();
         return (int) Math.ceil(durationSeconds / 60.0);
     }
 
@@ -25,12 +37,24 @@ public class RoutineTimer extends Timer {
      * @return total number of minutes since routine started, rounded DOWN
      */
     public int getCurrentMinutes(LocalDateTime curTime) {
-        if (startTime == null) return 0;
-        this.currentTime = curTime;
+        if (getStartTime() == null) return 0;
 
-        // calculation includes any fast forward clicks (each adds 30s)
-        long durationSeconds = Duration.between(startTime, currentTime).toSeconds();
+        LocalDateTime effectiveEnd = getEndTime() != null ? getEndTime() : curTime;
+        long durationSeconds = Duration.between(getStartTime(), effectiveEnd).toSeconds();
         return (int) Math.floor(durationSeconds / 60.0);
+    }
+
+    // Helper method for UI updates
+    public int getLiveMinutes(boolean isStopped, LocalDateTime currentTime) {
+        if (!isActive()) {
+            return getElapsedMinutes();
+        } else {
+            if (isStopped) {
+                return getCurrentMinutes(currentTime);
+            } else {
+                return getCurrentMinutes(LocalDateTime.now());
+            }
+        }
     }
 
 
