@@ -57,6 +57,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             // checkBox.setOnCheckedChangeListener(null);
             checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 task.setCheckedOff(isChecked);
+                checkBox.setEnabled(false);
                 notifyDataSetChanged();
 
                 taskTime.setText(formatTime(task.getDuration()));

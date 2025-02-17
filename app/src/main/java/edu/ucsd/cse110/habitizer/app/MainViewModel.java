@@ -37,5 +37,4 @@ public class MainViewModel extends ViewModel {
     public RoutineRepository getRoutineRepository() {
         return routineRepository;
     }
-
 }

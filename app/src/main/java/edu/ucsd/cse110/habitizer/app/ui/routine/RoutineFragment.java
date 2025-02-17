@@ -4,30 +4,26 @@ package edu.ucsd.cse110.habitizer.app.ui.routine;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ListView;
-import android.widget.TextView;
 
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.databinding.FragmentRoutineScreenBinding;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
+import edu.ucsd.cse110.habitizer.app.ui.dialog.SetRoutineTimeDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
-import edu.ucsd.cse110.observables.Subject;
 
 public class RoutineFragment extends Fragment {
     private MainViewModel activityModel;
@@ -112,10 +108,16 @@ public class RoutineFragment extends Fragment {
                 });
 
         binding.routineNameTask.setText(currentRoutine.getRoutineName());
+        updateRoutineGoalDisplay(currentRoutine.getGoalTime());
 
         binding.addTaskButton.setOnClickListener(v -> {
             CreateTaskDialogFragment dialog = CreateTaskDialogFragment.newInstance(this::addTaskToRoutine);
             dialog.show(getParentFragmentManager(), "CreateTaskDialog");
+        });
+
+        binding.expectedTime.setOnClickListener(v -> {
+            SetRoutineTimeDialogFragment dialog = SetRoutineTimeDialogFragment.newInstance(this::updateRoutineGoalDisplay);
+            dialog.show(getParentFragmentManager(), "SetTimeDialog");
         });
 
         binding.endRoutineButton.setOnClickListener(v -> {
@@ -175,6 +177,16 @@ public class RoutineFragment extends Fragment {
 
     }
 
+    private void updateRoutineGoalDisplay(@Nullable Integer newTime) {
+        currentRoutine.updateGoalTime(newTime);
+        @Nullable Integer goalTime = currentRoutine.getGoalTime();
+        if (goalTime == null) {
+            binding.expectedTime.setText("-");
+        } else {
+            binding.expectedTime.setText(String.format("%d%s", goalTime, "m"));
+        }
+    }
+
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
         // if (minutes == 0) binding.actualTime.setText("-");
@@ -191,7 +203,6 @@ public class RoutineFragment extends Fragment {
         // Update task list times
         taskAdapter.notifyDataSetChanged();
     }
-
 
     @Override
     public void onDestroyView() {
