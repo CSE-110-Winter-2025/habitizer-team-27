@@ -89,6 +89,12 @@ public class RoutineFragment extends Fragment {
         initTimerUpdates();
         isTimerRunning = true;
 
+        // Clear "completed" statuses of all tasks
+        for (Task task : currentRoutine.getTasks()) {
+            task.setDurationAndComplete(0);
+            task.setCheckedOff(false);
+        }
+
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
         taskAdapter = new TaskAdapter(
@@ -191,8 +197,8 @@ public class RoutineFragment extends Fragment {
 
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
-        if (minutes == 0) binding.actualTime.setText("-");
-        else  binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+        // if (minutes == 0) binding.actualTime.setText("-");
+        binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
         boolean isActive = currentRoutine.isActive();
 
