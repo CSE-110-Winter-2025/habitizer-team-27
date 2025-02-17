@@ -43,7 +43,8 @@ public class InMemoryDataSource {
             new Task(101, "Prepare dinner", false),
             new Task(102, "Eat dinner", false),
             new Task(103, "Wash dishes", false),
-            new Task(104, "Homework", false)
+            new Task(104, "Pack bag", false),
+            new Task(105, "Homework", false)
     );
 
     public final static List<Routine> DEFAULT_ROUTINES = List.of(
