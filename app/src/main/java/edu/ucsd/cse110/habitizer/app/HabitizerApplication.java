@@ -32,4 +32,8 @@ public class HabitizerApplication extends Application {
     public RoutineRepository getRoutineRepository() {
         return routineRepository;
     }
+
+    public InMemoryDataSource getDataSource() {
+        return dataSource;
+    }
 }
