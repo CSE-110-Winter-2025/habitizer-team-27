@@ -48,6 +48,16 @@ public class Routine implements Serializable {
             routineTimer.end(currentTime);
         }
         routineTimer.end(endTime);
+
+        markSkippedTasks();
+    }
+
+    private void markSkippedTasks() {
+        for (Task task : tasks) {
+            if (!task.isCompleted()) {
+                task.setSkipped(true);
+            }
+        }
     }
 
     // Get the time for the routine
@@ -91,13 +101,18 @@ public class Routine implements Serializable {
 
     // Auto completes routine when everything is checked off
     public boolean autoCompleteRoutine() {
-        for(int i = 0; i < tasks.size(); i++){
-            if(!tasks.get(i).isCheckedOff()){
-                return false;
+        boolean allCompleted = true;
+        for (Task task : tasks) {
+            if (!task.isCheckedOff()) {
+                allCompleted = false;
+                task.setSkipped(true);
             }
         }
-        endRoutine(LocalDateTime.now());
-        return true;
+
+        if (allCompleted) {
+            endRoutine(LocalDateTime.now());
+        }
+        return allCompleted;
     }
 
     public void updateGoalTime(@Nullable Integer goalTime) {
