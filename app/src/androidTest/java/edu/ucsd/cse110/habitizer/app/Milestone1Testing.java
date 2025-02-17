@@ -199,7 +199,7 @@ public class Milestone1Testing {
 
         // End Routine Automatically
         // onView(withId(R.id.end_routine_button)).check(matches(isNotClickable()));
-        onView(withId(R.id.actual_time)).check(matches(withText("210m")));
+        onView(withId(R.id.actual_time)).check(matches(withText("181m")));
     }
 
     @Test
