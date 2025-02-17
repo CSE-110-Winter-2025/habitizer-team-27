@@ -103,7 +103,7 @@ public class RoutineFragment extends Fragment {
                 R.layout.task_page,
                 new ArrayList<>(),
                 currentRoutine,
-                ((HabitizerApplication) requireContext().getApplicationContext()).getDataSource()
+                ((HabitizerApplication) requireContext().getApplicationContext()).getDataSource(), getParentFragmentManager()
         );
         taskListView.setAdapter(taskAdapter);
 
