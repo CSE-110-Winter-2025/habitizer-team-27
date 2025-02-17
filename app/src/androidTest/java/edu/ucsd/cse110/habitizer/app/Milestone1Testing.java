@@ -90,12 +90,15 @@ public class Milestone1Testing {
         for (int i = 0; i < timeTaken * 2; i++) {
             onView(withId(R.id.fast_forward_button)).perform(click());
         }
+        Espresso.onIdle();
 
         onData(anything())
                 .inAdapterView(withId(R.id.routine_list))
                 .atPosition(position)
                 .onChildView(withId(R.id.check_task))
                 .perform(click());
+        Espresso.onIdle();
+
         onData(anything())
                 .inAdapterView(withId(R.id.routine_list))
                 .atPosition(position)
@@ -212,6 +215,7 @@ public class Milestone1Testing {
 
         // Add new item
         onView(withId(R.id.add_task_button)).perform(click());
+        Espresso.onIdle();
         onView(withId(R.id.task_name_edit_text)).perform(typeText("Brush Teeth"), closeSoftKeyboard());
         onView(withText("OK")).perform(click());
 
