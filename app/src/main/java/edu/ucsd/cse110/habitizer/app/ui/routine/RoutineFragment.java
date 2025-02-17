@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
+import edu.ucsd.cse110.habitizer.app.HabitizerApplication;
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.databinding.FragmentRoutineScreenBinding;
@@ -90,11 +91,12 @@ public class RoutineFragment extends Fragment {
 
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
-        taskAdapter = new ArrayAdapter<Task>(
+        taskAdapter = new TaskAdapter(
                 requireContext(),
                 R.layout.task_page,
-                R.id.task_name,
-                new ArrayList<>()
+                new ArrayList<>(),
+                currentRoutine,
+                ((HabitizerApplication) requireContext().getApplicationContext()).getDataSource(), getParentFragmentManager()
         );
         taskListView.setAdapter(taskAdapter);
 
@@ -189,16 +191,22 @@ public class RoutineFragment extends Fragment {
 
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
-        // if (minutes == 0) binding.actualTime.setText("-");
-        binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+        if (minutes == 0) binding.actualTime.setText("-");
+        else  binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
         boolean isActive = currentRoutine.isActive();
 
+        if (!currentRoutine.isActive()) {
+            binding.endRoutineButton.setText("Routine Ended");
+            binding.endRoutineButton.setEnabled(false);
+        }
+
         // Control button states
         binding.endRoutineButton.setEnabled(isActive);
-        binding.stopTimerButton.setEnabled(isTimerRunning);
+        binding.stopTimerButton.setEnabled(isActive);
         binding.fastForwardButton.setEnabled(isActive);
         binding.homeButton.setEnabled(!isActive);
+        binding.addTaskButton.setEnabled(isActive);
 
         // Update task list times
         taskAdapter.notifyDataSetChanged();
