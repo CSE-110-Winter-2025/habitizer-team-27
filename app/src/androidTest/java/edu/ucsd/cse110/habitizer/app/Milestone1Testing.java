@@ -188,10 +188,10 @@ public class Milestone1Testing {
         checkTaskCompleted(60.0, "60m", 2);
 
         // #4: Wash dishes after 15 minutes
-        checkTaskCompleted(30.0, "15m", 3);
+        checkTaskCompleted(15.0, "15m", 3);
 
         // #5: Pack Bag after 15 minutes
-        checkTaskCompleted(30.0, "15m", 4);
+        checkTaskCompleted(15.0, "15m", 4);
 
         // #6: Do homework after 60 minutes
         checkTaskCompleted(60.0, "60m", 5);
