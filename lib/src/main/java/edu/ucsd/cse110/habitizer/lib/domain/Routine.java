@@ -37,6 +37,7 @@ public class Routine implements Serializable {
         // Start the timer of the task automatically
         taskTimer.start(startTime);
         currentTime = startTime;
+        timerStopped = false;
     }
 
     // End the routine

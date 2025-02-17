@@ -89,6 +89,13 @@ public class RoutineFragment extends Fragment {
         initTimerUpdates();
         isTimerRunning = true;
 
+        // Clear "completed" statuses of all tasks
+        for (Task task : currentRoutine.getTasks()) {
+            task.reset();
+        }
+
+        // Reset both timers
+
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
         taskAdapter = new TaskAdapter(
@@ -158,6 +165,7 @@ public class RoutineFragment extends Fragment {
             // If routine completed via FF, update state
             if (currentRoutine.autoCompleteRoutine()) {
                 binding.endRoutineButton.setEnabled(false);
+                isTimerRunning = false;
             }
         });
 
@@ -192,7 +200,7 @@ public class RoutineFragment extends Fragment {
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
         if (minutes == 0) binding.actualTime.setText("-");
-        else  binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+        else binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
         boolean isActive = currentRoutine.isActive();
 
@@ -203,10 +211,13 @@ public class RoutineFragment extends Fragment {
 
         // Control button states
         binding.endRoutineButton.setEnabled(isActive);
-        binding.stopTimerButton.setEnabled(isActive);
+        if (!isActive) {
+            binding.stopTimerButton.setEnabled(false);
+        } else {
+            binding.stopTimerButton.setEnabled(isTimerRunning);
+        }
         binding.fastForwardButton.setEnabled(isActive);
         binding.homeButton.setEnabled(!isActive);
-        binding.addTaskButton.setEnabled(isActive);
 
         // Update task list times
         taskAdapter.notifyDataSetChanged();
