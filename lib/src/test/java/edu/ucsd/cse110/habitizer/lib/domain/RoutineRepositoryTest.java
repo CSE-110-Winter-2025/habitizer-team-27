@@ -16,7 +16,7 @@ public class RoutineRepositoryTest {
 
     @Before
     public void setUp() {
-        dataSource = new InMemoryDataSource(); // 直接创建 InMemoryDataSource 实例
+        dataSource = new InMemoryDataSource();
         routineRepository = new RoutineRepository(dataSource);
     }
 

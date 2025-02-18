@@ -49,7 +49,7 @@ public class RoutineTest {
         assertTrue(task.isCompleted());
     }
 
-    @Test(expected = IllegalArgumentException.class)  // JUnit 4: 替换 assertThrows
+    @Test(expected = IllegalArgumentException.class)
     public void testCompleteTask_NotFound() {
         routine.startRoutine(startTime);
         routine.completeTask("Nonexistent Task");
