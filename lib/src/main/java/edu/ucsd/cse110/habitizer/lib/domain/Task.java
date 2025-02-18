@@ -9,15 +9,15 @@ import java.time.LocalDateTime;
 import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
 
 public class Task implements Serializable {
-    private  @Nullable Integer id;
-    private  String taskName;
+    private @Nullable Integer id;
+    private String taskName;
     private boolean isCompleted = false;
 
     private boolean isCheckedOff;
 
     private boolean isSkipped = false;
 
-    private int duration = 0;
+    private long duration = 0;
 
     public Task(@Nullable Integer id, String taskName, boolean isCheckedOff) {
         this.id = id;
@@ -43,12 +43,23 @@ public class Task implements Serializable {
         this.isCheckedOff = false;
     }
 
+    public void setCompleted(boolean completed) {
+        this.isCompleted = completed;
+    }
 
-    public int getDuration() {
+    public void setCheckedOff(boolean checkedOff) {
+        this.isCheckedOff = checkedOff;
+    }
+
+    public void setDuration(long duration) {
+        this.duration = duration;
+    }
+
+    public long getDuration() {
         return duration;
     }
 
-    public void setDurationAndComplete(int duration) {
+    public void setDurationAndComplete(long duration) {
         this.duration = duration;
         this.isCompleted = true;
         this.isCheckedOff = true;
@@ -58,13 +69,6 @@ public class Task implements Serializable {
     // Returns if task is checked off
     public boolean isCheckedOff() {
         return isCheckedOff;
-    }
-
-    // Sets the Check
-    public void setCheckedOff(boolean checkedOff) {
-        this.isCheckedOff = checkedOff;
-        this.isCompleted = checkedOff;
-        this.isSkipped = !checkedOff;
     }
 
     // Getters
@@ -77,7 +81,9 @@ public class Task implements Serializable {
         return taskName;
     }
 
-    public Integer getTaskId() { return id; }
+    public Integer getTaskId() {
+        return id;
+    }
 
     public boolean isCompleted() {
         return isCompleted;
@@ -90,5 +96,4 @@ public class Task implements Serializable {
     public boolean isSkipped() {
         return isSkipped;
     }
-
 }
