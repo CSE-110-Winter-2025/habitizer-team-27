@@ -14,6 +14,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // Enable Room schema export function
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += mapOf(
+                    "room.schemaLocation" to "$projectDir/schemas",
+                    "room.incremental" to "true"
+                )
+            }
+        }
     }
 
     buildTypes {
@@ -46,6 +56,18 @@ dependencies {
     implementation(project(":lib"))
     implementation(project(":observables"))
     implementation(project(":observables"))
+
+    // ThreeTen Android Backport for handling Java 8 date/time
+    implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
+    
+    // Room database
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    annotationProcessor("androidx.room:room-compiler:$roomVersion")
+    // Optional - Kotlin extensions and coroutines support
+    implementation("androidx.room:room-ktx:$roomVersion")
+    // Optional - Testing support
+    testImplementation("androidx.room:room-testing:$roomVersion")
 
     testImplementation(libs.junit4)
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
