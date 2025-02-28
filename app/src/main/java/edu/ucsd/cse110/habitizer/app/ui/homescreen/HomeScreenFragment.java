@@ -5,6 +5,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ListView;
 
 import androidx.annotation.Nullable;
@@ -13,6 +14,7 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
 
 import edu.ucsd.cse110.habitizer.app.R;
+import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateRoutineDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.routine.RoutineFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
@@ -68,6 +70,12 @@ public class HomeScreenFragment extends Fragment {
                 }
         );
         listView.setAdapter(adapter);
+
+        // Set up the Add Routine button
+        Button addRoutineButton = view.findViewById(R.id.add_routine_button);
+        addRoutineButton.setOnClickListener(v -> {
+            showCreateRoutineDialog();
+        });
 
         // Remove previous observer if it exists when fragment is recreated
         if (routineObserver != null) {
@@ -128,6 +136,37 @@ public class HomeScreenFragment extends Fragment {
         Log.d(TAG, "Registered new observer");
 
         return view;
+    }
+    
+    private void showCreateRoutineDialog() {
+        CreateRoutineDialogFragment dialog = CreateRoutineDialogFragment.newInstance(routineName -> {
+            // Create a new routine with the given name
+            Log.d(TAG, "Creating new routine with name: " + routineName);
+            
+            // Generate a unique ID for the new routine
+            int newRoutineId = generateUniqueRoutineId();
+            
+            // Create the routine object
+            Routine newRoutine = new Routine(newRoutineId, routineName);
+            
+            // Add the routine to the repository
+            activityModel.getRoutineRepository().save(newRoutine);
+            
+            Log.d(TAG, "New routine created with ID: " + newRoutineId);
+        });
+        
+        dialog.show(getParentFragmentManager(), "CreateRoutineDialog");
+    }
+    
+    private int generateUniqueRoutineId() {
+        // Find the highest routine ID and add 1
+        int maxId = 0;
+        for (Routine routine : routines) {
+            if (routine.getRoutineId() > maxId) {
+                maxId = routine.getRoutineId();
+            }
+        }
+        return maxId + 1;
     }
     
     @Override
