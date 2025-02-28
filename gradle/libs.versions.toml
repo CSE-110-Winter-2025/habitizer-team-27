@@ -18,6 +18,7 @@ junit5 = "5.11.3"
 media3Common = "1.5.1"
 firebaseInstallations = "18.0.0"
 junitJupiter = "5.8.1"
+playServicesMlkitSubjectSegmentation = "16.0.0-beta1"
 
 [libraries]
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "androidxActivity" }
@@ -36,6 +37,7 @@ android-material = { group = "com.google.android.material", name = "material", v
 androidx-media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3Common" }
 firebase-installations = { group = "com.google.firebase", name = "firebase-installations", version.ref = "firebaseInstallations" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiter" }
+play-services-mlkit-subject-segmentation = { group = "com.google.android.gms", name = "play-services-mlkit-subject-segmentation", version.ref = "playServicesMlkitSubjectSegmentation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
