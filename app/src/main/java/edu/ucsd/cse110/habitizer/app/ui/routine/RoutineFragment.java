@@ -1,9 +1,9 @@
-
 package edu.ucsd.cse110.habitizer.app.ui.routine;
 
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import edu.ucsd.cse110.habitizer.app.HabitizerApplication;
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
 import edu.ucsd.cse110.habitizer.app.R;
+import edu.ucsd.cse110.habitizer.app.data.LegacyLogicAdapter;
+import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
 import edu.ucsd.cse110.habitizer.app.databinding.FragmentRoutineScreenBinding;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.SetRoutineTimeDialogFragment;
@@ -30,6 +32,7 @@ public class RoutineFragment extends Fragment {
     private MainViewModel activityModel;
     private FragmentRoutineScreenBinding binding;
     private ArrayAdapter<Task> taskAdapter;
+    private HabitizerRepository repository;
 
     private static final String ARG_ROUTINE_ID = "routine_id";
     private Routine currentRoutine;
@@ -38,6 +41,9 @@ public class RoutineFragment extends Fragment {
     private Runnable timerRunnable;
     private boolean isTimerRunning = true;
     private static final int UPDATE_INTERVAL_MS = 1000;
+
+    // Add a flag to prevent recursive updates
+    private boolean isUpdatingFromObserver = false;
 
     public RoutineFragment() {
         // required empty public constructor
@@ -68,56 +74,138 @@ public class RoutineFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d("RoutineFragment", "onCreate called");
 
         var modelOwner = requireActivity();
         var modelFactory = ViewModelProvider.Factory.from(MainViewModel.initializer);
         var modelProvider = new ViewModelProvider(modelOwner, modelFactory);
         this.activityModel = modelProvider.get(MainViewModel.class);
+        
+        // Get repository instance
+        this.repository = HabitizerApplication.getRepository();
 
         int routineId = getArguments().getInt(ARG_ROUTINE_ID);
         isTimerRunning = true;
+        Log.d("RoutineFragment", "Routine ID from arguments: " + routineId);
 
         // Get routine
         this.currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
+        Log.d("RoutineFragment", "Current routine: " + (currentRoutine != null ? currentRoutine.getRoutineName() : "null"));
+        if (currentRoutine != null) {
+            Log.d("RoutineFragment", "Task count: " + currentRoutine.getTasks().size());
+        }
     }
 
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        Log.d("RoutineFragment", "onCreateView called");
         binding = FragmentRoutineScreenBinding.inflate(inflater, container, false);
+        Log.d("RoutineFragment", "Binding inflated");
 
         initTimerUpdates();
         isTimerRunning = true;
 
+        if (currentRoutine == null) {
+            Log.e("RoutineFragment", "Current routine is null in onCreateView! Trying to recover...");
+            
+            // Try to get the routine ID from arguments again
+            int routineId = getArguments().getInt(ARG_ROUTINE_ID, 0);
+            Log.d("RoutineFragment", "Attempting to recover with routine ID: " + routineId);
+            
+            // Try to get the routine again
+            currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
+            
+            if (currentRoutine == null) {
+                Log.e("RoutineFragment", "Recovery failed, still null. Using default routine.");
+                // Create a temporary routine as a fallback
+                currentRoutine = new Routine(routineId, "Routine " + routineId);
+                
+                // Try to save this temporary routine so it exists in the repository
+                activityModel.getRoutineRepository().save(currentRoutine);
+            } else {
+                Log.d("RoutineFragment", "Recovery successful, got routine: " + currentRoutine.getRoutineName());
+            }
+        }
+
+        Log.d("RoutineFragment", "Setting up routine with name: " + currentRoutine.getRoutineName());
+        Log.d("RoutineFragment", "Current routine has " + currentRoutine.getTasks().size() + " tasks");
+        
         // Clear "completed" statuses of all tasks
         for (Task task : currentRoutine.getTasks()) {
             task.reset();
         }
 
-        // Reset both timers
-
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
+        if (taskListView == null) {
+            Log.e("RoutineFragment", "taskListView is null! Layout issue?");
+        } else {
+            Log.d("RoutineFragment", "ListView found with ID: " + taskListView.getId());
+        }
+        
+        Log.d("RoutineFragment", "Setting up task adapter");
+        
+        ArrayList<Task> initialTasks = new ArrayList<>(currentRoutine.getTasks());
+        Log.d("RoutineFragment", "Initial tasks count for adapter: " + initialTasks.size());
+        
         taskAdapter = new TaskAdapter(
                 requireContext(),
                 R.layout.task_page,
-                new ArrayList<>(),
+                initialTasks,
                 currentRoutine,
-                ((HabitizerApplication) requireContext().getApplicationContext()).getDataSource(), getParentFragmentManager()
+                LegacyLogicAdapter.getCompatInstance(), 
+                getParentFragmentManager()
         );
         taskListView.setAdapter(taskAdapter);
+        Log.d("RoutineFragment", "Task adapter set on ListView");
 
-        // Observe task data
-        activityModel.getRoutineRepository().find(currentRoutine.getRoutineId())
-                .observe(routine -> {
-                    taskAdapter.clear();
-                    assert routine != null;
-                    taskAdapter.addAll(routine.getTasks());
-                    taskAdapter.notifyDataSetChanged();
-                });
-
+        // Set routine name and goal time display
         binding.routineNameTask.setText(currentRoutine.getRoutineName());
         updateRoutineGoalDisplay(currentRoutine.getGoalTime());
+
+        // Observe task data
+        Log.d("RoutineFragment", "Setting up task observer");
+        var subject = activityModel.getRoutineRepository().find(currentRoutine.getRoutineId());
+        subject.observe(routine -> {
+            // Skip if we're already updating or if routine is null
+            if (isUpdatingFromObserver || routine == null) {
+                if (routine == null) {
+                    Log.e("RoutineFragment", "Routine from observer is null!");
+                }
+                return;
+            }
+            
+            // Set flag to prevent recursive updates
+            isUpdatingFromObserver = true;
+            
+            try {
+                Log.d("RoutineFragment", "Routine observer triggered");
+                Log.d("RoutineFragment", "Task count in observer: " + routine.getTasks().size());
+                
+                // Only update if the data has actually changed
+                if (!routinesEqual(currentRoutine, routine)) {
+                    // Update the current routine reference
+                    currentRoutine = routine;
+                    
+                    // Update adapter with new tasks
+                    taskAdapter.clear();
+                    taskAdapter.addAll(routine.getTasks());
+                    taskAdapter.notifyDataSetChanged();
+                    
+                    // Also update the UI elements that show routine details
+                    binding.routineNameTask.setText(routine.getRoutineName());
+                    updateRoutineGoalDisplay(routine.getGoalTime());
+                    
+                    Log.d("RoutineFragment", "UI updated with " + routine.getTasks().size() + " tasks");
+                } else {
+                    Log.d("RoutineFragment", "Skipping update - routine data hasn't changed");
+                }
+            } finally {
+                // Clear flag when done
+                isUpdatingFromObserver = false;
+            }
+        });
 
         binding.addTaskButton.setOnClickListener(v -> {
             CreateTaskDialogFragment dialog = CreateTaskDialogFragment.newInstance(this::addTaskToRoutine);
@@ -172,19 +260,47 @@ public class RoutineFragment extends Fragment {
         return binding.getRoot();
     }
 
+    @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        Log.d("RoutineFragment", "onViewCreated called");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d("RoutineFragment", "onResume called");
+    }
+
     private void addTaskToRoutine(String taskName) {
         if (taskName == null || taskName.trim().isEmpty()) return;
 
-        // Create task with auto-increment ID
-        int newTaskId = currentRoutine.getTasks().size() + 1;
+        // Create task with auto-increment ID based on timestamp for uniqueness
+        int newTaskId = (int)(System.currentTimeMillis() % 100000);
         Task newTask = new Task(newTaskId, taskName, false);
+        Log.d("RoutineFragment", "Creating new task with ID: " + newTaskId + ", name: " + taskName);
 
-        // Add to current routine
+        // Add to current routine first (local update)
         currentRoutine.addTask(newTask);
+        
+        // Update adapter immediately for responsive UI
+        taskAdapter.clear();
+        taskAdapter.addAll(currentRoutine.getTasks());
+        taskAdapter.notifyDataSetChanged();
+        Log.d("RoutineFragment", "Task adapter updated with " + currentRoutine.getTasks().size() + " tasks including new task");
 
-        // Update repository
-        activityModel.getRoutineRepository().save(currentRoutine);
-
+        // Then update repositories if not in an observer update
+        if (!isUpdatingFromObserver) {
+            Log.d("RoutineFragment", "Saving task and routine to repositories");
+            // First add the task to the task repository to ensure it exists
+            repository.addTask(newTask);
+            
+            // Then update the routine with the new task
+            repository.updateRoutine(currentRoutine);
+            
+            // Also update the legacy repository for compatibility
+            activityModel.getRoutineRepository().save(currentRoutine);
+        }
     }
 
     private void updateRoutineGoalDisplay(@Nullable Integer newTime) {
@@ -194,6 +310,12 @@ public class RoutineFragment extends Fragment {
             binding.expectedTime.setText("-");
         } else {
             binding.expectedTime.setText(String.format("%d%s", goalTime, "m"));
+        }
+        
+        // Only update Room database if not already in an observer update
+        if (!isUpdatingFromObserver) {
+            Log.d("RoutineFragment", "Updating routine in repository with goal time: " + goalTime);
+            repository.updateRoutine(currentRoutine);
         }
     }
 
@@ -229,5 +351,18 @@ public class RoutineFragment extends Fragment {
         timerHandler.removeCallbacks(timerRunnable);
     }
 
-
+    // Helper method to compare routines
+    private boolean routinesEqual(Routine r1, Routine r2) {
+        if (r1 == r2) return true;
+        if (r1 == null || r2 == null) return false;
+        
+        // Compare basic properties
+        if (r1.getRoutineId() != r2.getRoutineId()) return false;
+        if (!r1.getRoutineName().equals(r2.getRoutineName())) return false;
+        
+        // Compare task lists (basic check)
+        if (r1.getTasks().size() != r2.getTasks().size()) return false;
+        
+        return true; // Consider equal for update purposes
+    }
 }

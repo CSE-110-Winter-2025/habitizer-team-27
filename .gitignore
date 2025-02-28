@@ -14,3 +14,16 @@
 .cxx
 local.properties
 .idea
+
+# Ignore all .class files
+*.class
+
+# Ignore bin directories which contain compiled code
+**/bin/
+
+# Ignore build directories
+**/build/
+
+# Ignore Clean and Rebuild files
+Clean
+Rebuild
