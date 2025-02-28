@@ -57,8 +57,6 @@ dependencies {
     implementation(project(":observables"))
     implementation(project(":observables"))
 
-    // Add Gson for JSON serialization/deserialization
-    implementation("com.google.code.gson:gson:2.10.1")
     // ThreeTen Android Backport for handling Java 8 date/time
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
     
