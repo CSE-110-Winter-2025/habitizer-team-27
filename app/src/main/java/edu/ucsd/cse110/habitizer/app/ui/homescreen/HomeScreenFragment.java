@@ -74,7 +74,7 @@ public class HomeScreenFragment extends Fragment {
         // Set up the Add Routine button
         Button addRoutineButton = view.findViewById(R.id.add_routine_button);
         addRoutineButton.setOnClickListener(v -> {
-            showCreateRoutineDialog();
+            createNewRoutine("New Routine");
         });
 
         // Remove previous observer if it exists when fragment is recreated
@@ -138,24 +138,20 @@ public class HomeScreenFragment extends Fragment {
         return view;
     }
     
-    private void showCreateRoutineDialog() {
-        CreateRoutineDialogFragment dialog = CreateRoutineDialogFragment.newInstance(routineName -> {
-            // Create a new routine with the given name
-            Log.d(TAG, "Creating new routine with name: " + routineName);
-            
-            // Generate a unique ID for the new routine
-            int newRoutineId = generateUniqueRoutineId();
-            
-            // Create the routine object
-            Routine newRoutine = new Routine(newRoutineId, routineName);
-            
-            // Add the routine to the repository
-            activityModel.getRoutineRepository().save(newRoutine);
-            
-            Log.d(TAG, "New routine created with ID: " + newRoutineId);
-        });
+    private void createNewRoutine(String routineName) {
+        // Create a new routine with the given name
+        Log.d(TAG, "Creating new routine with name: " + routineName);
         
-        dialog.show(getParentFragmentManager(), "CreateRoutineDialog");
+        // Generate a unique ID for the new routine
+        int newRoutineId = generateUniqueRoutineId();
+        
+        // Create the routine object
+        Routine newRoutine = new Routine(newRoutineId, routineName);
+        
+        // Add the routine to the repository
+        activityModel.getRoutineRepository().save(newRoutine);
+        
+        Log.d(TAG, "New routine created with ID: " + newRoutineId);
     }
     
     private int generateUniqueRoutineId() {
