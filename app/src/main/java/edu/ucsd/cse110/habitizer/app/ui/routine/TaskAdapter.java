@@ -13,11 +13,12 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 
 import java.util.List;
+import java.util.Collection;
 
 import edu.ucsd.cse110.habitizer.app.R;
+import edu.ucsd.cse110.habitizer.app.data.LegacyLogicAdapter;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.RenameTaskDialogFragment;
-import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
@@ -26,7 +27,7 @@ import androidx.fragment.app.FragmentManager;
 
 public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
-    private final InMemoryDataSource dataSource;
+    private final LegacyLogicAdapter dataSource;
     private final FragmentManager fragmentManager;
 
     // ViewHolder pattern for better performance
@@ -40,18 +41,32 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     }
 
     public TaskAdapter(Context context, int resource, List<Task> tasks,
-                       Routine routine, InMemoryDataSource dataSource, @Nullable FragmentManager fragmentManager) {
+                       Routine routine, LegacyLogicAdapter dataSource, @Nullable FragmentManager fragmentManager) {
         super(context, resource, tasks);
         this.routine = routine;
         this.dataSource = dataSource;
         this.fragmentManager = fragmentManager;
+        Log.d("TaskAdapter", "TaskAdapter created for routine: " + 
+                (routine != null ? routine.getRoutineName() : "null") + 
+                " with " + (tasks != null ? tasks.size() : 0) + " tasks");
+        if (tasks != null && !tasks.isEmpty()) {
+            for (int i = 0; i < tasks.size(); i++) {
+                Task task = tasks.get(i);
+                Log.d("TaskAdapter", "Initial task " + i + ": " + 
+                        (task != null ? task.getTaskName() : "null"));
+            }
+        }
     }
 
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+        Log.d("TaskAdapter", "getView called for position: " + position + 
+                " out of " + getCount() + " tasks");
+        
         // Validate position first
         if (position < 0 || position >= getCount()) {
+            Log.e("TaskAdapter", "Invalid position: " + position + ", count: " + getCount());
             return convertView != null ? convertView :
                     LayoutInflater.from(getContext()).inflate(R.layout.task_page, parent, false);
         }
@@ -71,7 +86,13 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         }
 
         Task task = getItem(position);
-        if (task == null) return convertView;
+        if (task == null) {
+            Log.e("TaskAdapter", "Task at position " + position + " is null");
+            return convertView;
+        }
+        
+        Log.d("TaskAdapter", "Binding task at position " + position + ": " + task.getTaskName() + 
+                ", completed: " + task.isCompleted());
 
         // Clear previous listener to prevent recycling issues
         holder.checkBox.setOnCheckedChangeListener(null);
@@ -142,5 +163,25 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
     private String formatTime(long minutes) {
         return minutes > 0 ? String.format("%dm", minutes) : "";
+    }
+
+    @Override
+    public void clear() {
+        Log.d("TaskAdapter", "Clearing all tasks from adapter");
+        super.clear();
+    }
+
+    @Override
+    public void addAll(Collection<? extends Task> collection) {
+        Log.d("TaskAdapter", "Adding " + (collection != null ? collection.size() : 0) + " tasks to adapter");
+        if (collection != null && !collection.isEmpty()) {
+            int i = 0;
+            for (Task task : collection) {
+                Log.d("TaskAdapter", "Task " + i + ": " + 
+                        (task != null ? task.getTaskName() : "null"));
+                i++;
+            }
+        }
+        super.addAll(collection);
     }
 }

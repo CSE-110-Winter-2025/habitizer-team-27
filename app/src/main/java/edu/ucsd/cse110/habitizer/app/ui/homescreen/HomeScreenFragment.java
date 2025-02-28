@@ -1,6 +1,7 @@
 package edu.ucsd.cse110.habitizer.app.ui.homescreen;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,12 +19,18 @@ import edu.ucsd.cse110.habitizer.app.MainViewModel;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import edu.ucsd.cse110.observables.Observer;
 
 
 public class HomeScreenFragment extends Fragment {
+    private static final String TAG = "HomeScreenFragment";
     private final List<Routine> routines = new ArrayList<>();
     private MainViewModel activityModel;
+    private Observer<List<Routine>> routineObserver;
+    private boolean isFirstLoad = true;
 
     public HomeScreenFragment() {
         // Required empty public constructor
@@ -42,12 +49,6 @@ public class HomeScreenFragment extends Fragment {
         var modelFactory = ViewModelProvider.Factory.from(MainViewModel.initializer);
         var modelProvider = new ViewModelProvider(modelOwner, modelFactory);
         this.activityModel = modelProvider.get(MainViewModel.class);
-
-        // Initialize repository if empty
-        if(activityModel.getRoutineRepository().count() == 0) {
-            activityModel.getRoutineRepository().save(new Routine(0, "Morning Routine"));
-            activityModel.getRoutineRepository().save(new Routine(1, "Evening Routine"));
-        }
     }
 
     @Override
@@ -68,23 +69,88 @@ public class HomeScreenFragment extends Fragment {
         );
         listView.setAdapter(adapter);
 
-        // Observe changes to the list of routines
-        activityModel.getRoutineRepository().findAll().observe(routines -> {
-            this.routines.clear();
-            assert routines != null;
-            this.routines.addAll(routines);
-            adapter.notifyDataSetChanged();
-        });
+        // Remove previous observer if it exists when fragment is recreated
+        if (routineObserver != null) {
+            activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
+            Log.d(TAG, "Removed previous observer");
+        }
 
+        // Create and register a new observer
+        routineObserver = routines -> {
+            Log.d(TAG, "Observer triggered with " + (routines != null ? routines.size() : 0) + " routines");
+            
+            // Log existing routines in the list
+            Log.d(TAG, "Current routines in list before update: " + this.routines.size());
+            for (int i = 0; i < this.routines.size(); i++) {
+                Routine r = this.routines.get(i);
+                Log.d(TAG, "  " + i + ": " + r.getRoutineId() + " - " + r.getRoutineName());
+            }
+            
+            // Clear the list first
+            this.routines.clear();
+            
+            // Check if routines is not null
+            if (routines != null) {
+                // Log incoming routines
+                Log.d(TAG, "Incoming routines:");
+                for (int i = 0; i < routines.size(); i++) {
+                    Routine r = routines.get(i);
+                    Log.d(TAG, "  " + i + ": " + r.getRoutineId() + " - " + r.getRoutineName());
+                }
+                
+                // De-duplicate routines by ID before adding to our list
+                Map<Integer, Routine> uniqueRoutineMap = new HashMap<>();
+                for (Routine r : routines) {
+                    // Only keep the first occurrence of each routine ID
+                    if (!uniqueRoutineMap.containsKey(r.getRoutineId())) {
+                        uniqueRoutineMap.put(r.getRoutineId(), r);
+                    } else {
+                        Log.d(TAG, "Skipping duplicate routine: " + r.getRoutineId() + " - " + r.getRoutineName());
+                    }
+                }
+                
+                // Add the unique routines to our list
+                this.routines.addAll(uniqueRoutineMap.values());
+                Log.d(TAG, "Added " + this.routines.size() + " unique routines (removed " + 
+                      (routines.size() - this.routines.size()) + " duplicates)");
+            }
+            
+            // Update the adapter
+            adapter.notifyDataSetChanged();
+            
+            // Log final state
+            Log.d(TAG, "Updated routines list now has " + this.routines.size() + " routines");
+            isFirstLoad = false;
+        };
+        
+        // Observe changes to the list of routines
+        activityModel.getRoutineRepository().findAll().observe(routineObserver);
+        Log.d(TAG, "Registered new observer");
 
         return view;
     }
+    
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Remove observer when fragment is destroyed
+        if (routineObserver != null) {
+            activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
+            Log.d(TAG, "Removed observer in onDestroyView");
+        }
+    }
 
     private void navigateToRoutine(int routineId) {
+        Log.d(TAG, "Navigating to routine with ID: " + routineId);
+        Routine routine = activityModel.getRoutineRepository().getRoutine(routineId);
+        Log.d(TAG, "Routine found: " + (routine != null ? routine.getRoutineName() : "null") + 
+              " with " + (routine != null ? routine.getTasks().size() : 0) + " tasks");
 
         FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
         transaction.replace(R.id.fragment_container, RoutineFragment.newInstance(routineId));
         transaction.addToBackStack(null);
         transaction.commit();
+        
+        Log.d(TAG, "FragmentTransaction committed");
     }
-    }
+}
