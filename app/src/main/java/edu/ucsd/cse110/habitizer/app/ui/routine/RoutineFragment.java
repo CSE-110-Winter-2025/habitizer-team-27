@@ -332,9 +332,15 @@ public class RoutineFragment extends Fragment {
         // Add to current routine first (local update)
         currentRoutine.addTask(newTask);
         
-        // Do NOT mark as manually started or auto-start the routine when just adding tasks
-        // Let the user explicitly start the routine via the End Routine button
-        // IMPORTANT: Removed the auto-start logic here
+        // When adding a task, mark the routine as manually started and start the timer
+        manuallyStarted = true;
+        isTimerRunning = true;
+        
+        // Start the routine if it's not already active
+        if (!currentRoutine.isActive()) {
+            currentRoutine.startRoutine(LocalDateTime.now());
+            Log.d("RoutineFragment", "Starting routine after adding task");
+        }
         
         // Update adapter immediately for responsive UI
         taskAdapter.clear();
