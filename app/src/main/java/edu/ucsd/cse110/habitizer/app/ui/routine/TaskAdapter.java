@@ -24,6 +24,7 @@ import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentActivity;
 
 public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
@@ -101,7 +102,13 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         holder.taskName.setText(task.getTaskName());
         holder.checkBox.setChecked(task.isCompleted());
         updateTimeDisplay(holder.taskTime, task);
-        holder.checkBox.setEnabled(!task.isCheckedOff());
+        
+        // Disable checkbox if task is completed or if routine is not active (has ended)
+        boolean routineIsActive = routine.isActive();
+        holder.checkBox.setEnabled(!task.isCheckedOff() && routineIsActive);
+        
+        // Also disable rename button if routine is not active
+        holder.renameButton.setEnabled(routineIsActive);
 
         // Set position tag for correct item identification
         holder.checkBox.setTag(position);
@@ -111,15 +118,22 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             int pos = (int) buttonView.getTag();
             Task currentTask = getItem(pos);
 
-            if (currentTask != null && isChecked && !currentTask.isCheckedOff()) {
+            // Only allow checking if routine is active and task is not already checked
+            if (currentTask != null && isChecked && !currentTask.isCheckedOff() && routineIsActive) {
                 handleTaskCompletion(currentTask, holder);
+            } else if (!routineIsActive) {
+                // If routine is ended, reset checkbox to previous state
+                buttonView.setChecked(currentTask != null && currentTask.isCompleted());
             }
         });
 
         holder.renameButton.setOnClickListener(v -> {
-            RenameTaskDialogFragment dialog = RenameTaskDialogFragment.newInstance(newName ->
-                    renameTask(task, newName));
-            dialog.show(fragmentManager, "RenameTaskDialog");
+            // Only allow renaming if routine is active
+            if (routineIsActive) {
+                RenameTaskDialogFragment dialog = RenameTaskDialogFragment.newInstance(newName ->
+                        renameTask(task, newName));
+                dialog.show(fragmentManager, "RenameTaskDialog");
+            }
         });
 
         return convertView;
@@ -136,8 +150,22 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         dataSource.putRoutine(routine);
 
         // Handle auto-complete
-        if (routine.autoCompleteRoutine()) {
+        boolean allTasksCompleted = routine.autoCompleteRoutine();
+        if (allTasksCompleted) {
             dataSource.putRoutine(routine);
+            
+            // Find the RoutineFragment that contains this adapter
+            if (getContext() instanceof FragmentActivity) {
+                FragmentActivity activity = (FragmentActivity) getContext();
+                RoutineFragment fragment = (RoutineFragment) activity
+                    .getSupportFragmentManager()
+                    .findFragmentById(R.id.fragment_container);
+                
+                if (fragment != null) {
+                    // Update the UI to reflect that the routine is ended
+                    fragment.updateUIForEndedRoutine();
+                }
+            }
         }
 
         // Update UI components
@@ -146,7 +174,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
         Log.d("TaskCompletion",
                 "Completed: " + task.getTaskName() +
-                        " | Duration: " + formatTime(task.getDuration()));
+                        " | Duration: " + formatTime(task.getDuration()) +
+                        " | All Tasks Completed: " + allTasksCompleted);
     }
 
     private void renameTask(Task task, String newName) {

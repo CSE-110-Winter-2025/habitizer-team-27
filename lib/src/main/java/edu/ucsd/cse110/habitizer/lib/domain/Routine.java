@@ -51,6 +51,11 @@ public class Routine implements Serializable {
         }
 
         markSkippedTasks();
+        
+        // If the timer is still running for some reason, force it to end
+        if (routineTimer.isRunning()) {
+            routineTimer.end(endTime);
+        }
     }
 
     private void markSkippedTasks() {
@@ -106,14 +111,21 @@ public class Routine implements Serializable {
         for (Task task : tasks) {
             if (!task.isCheckedOff()) {
                 allCompleted = false;
-                task.setSkipped(true);
             }
         }
 
-        if (allCompleted) {
+        if (allCompleted && tasks.size() > 0) {
+            // End the routine when all tasks are completed
             endRoutine(LocalDateTime.now());
+            
+            // Mark any unchecked tasks as skipped (though there shouldn't be any)
+            for (Task task : tasks) {
+                if (!task.isCompleted()) {
+                    task.setSkipped(true);
+                }
+            }
         }
-        return allCompleted;
+        return allCompleted && tasks.size() > 0;
     }
 
     public void updateGoalTime(@Nullable Integer goalTime) {

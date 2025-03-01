@@ -423,4 +423,34 @@ public class RoutineFragment extends Fragment {
         
         return true; // Consider equal for update purposes
     }
+
+    /**
+     * Update the UI to reflect that the routine has ended
+     * Called when the routine is automatically completed due to all tasks being checked
+     */
+    public void updateUIForEndedRoutine() {
+        if (binding == null) return;
+        
+        Log.d("RoutineFragment", "Updating UI for automatically ended routine");
+        
+        // Set the routine as ended
+        isTimerRunning = false;
+        manuallyStarted = false;
+        
+        // Update UI elements
+        binding.endRoutineButton.setText("Routine Ended");
+        binding.endRoutineButton.setEnabled(false);
+        binding.stopTimerButton.setEnabled(false);
+        binding.fastForwardButton.setEnabled(false);
+        binding.homeButton.setEnabled(true);
+        
+        // Force update the time display
+        updateTimeDisplay();
+        
+        // Save the routine state to ensure the end time is preserved
+        if (!isUpdatingFromObserver) {
+            repository.updateRoutine(currentRoutine);
+            activityModel.getRoutineRepository().save(currentRoutine);
+        }
+    }
 }
