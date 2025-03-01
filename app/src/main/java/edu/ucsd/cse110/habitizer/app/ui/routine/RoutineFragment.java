@@ -93,14 +93,15 @@ public class RoutineFragment extends Fragment {
         // Get routine
         this.currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
         Log.d("RoutineFragment", "Current routine: " + (currentRoutine != null ? currentRoutine.getRoutineName() : "null"));
-        if (currentRoutine != null) {
-            Log.d("RoutineFragment", "Task count: " + currentRoutine.getTasks().size());
-            // If the routine has tasks, consider it already started
-            if (!currentRoutine.getTasks().isEmpty()) {
-                // For existing routines with tasks, mark as started so End Routine works with one click
-                currentRoutine.startRoutine(LocalDateTime.now());
-                manuallyStarted = true; // Mark as already started for routines with existing tasks
-            }
+        
+        // Check if the routine is active (was started from the home page)
+        if (currentRoutine != null && currentRoutine.isActive() && !currentRoutine.getTasks().isEmpty()) {
+            Log.d("RoutineFragment", "Routine is active and has tasks, marking as manually started");
+            // If the routine was started from home page and has tasks, mark it as manually started
+            manuallyStarted = true;
+        } else {
+            Log.d("RoutineFragment", "Routine is not active or empty, not marking as manually started");
+            manuallyStarted = false;
         }
     }
 
@@ -331,15 +332,9 @@ public class RoutineFragment extends Fragment {
         // Add to current routine first (local update)
         currentRoutine.addTask(newTask);
         
-        // Mark as manually started when adding tasks
-        manuallyStarted = true;
-        
-        // If this was the first task, ensure the routine is properly activated
-        if (wasEmpty) {
-            isTimerRunning = true;
-            currentRoutine.startRoutine(LocalDateTime.now());
-            Log.d("RoutineFragment", "First task added - activating routine");
-        }
+        // Do NOT mark as manually started or auto-start the routine when just adding tasks
+        // Let the user explicitly start the routine via the End Routine button
+        // IMPORTANT: Removed the auto-start logic here
         
         // Update adapter immediately for responsive UI
         taskAdapter.clear();
@@ -393,48 +388,46 @@ public class RoutineFragment extends Fragment {
 
         boolean hasTasks = !currentRoutine.getTasks().isEmpty();
         
-        // Make sure routineIsActive is set correctly when it has tasks
-        if (hasTasks) {
-            if (!currentRoutine.isActive() && !binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
-                // If it has tasks but isn't active, and hasn't been explicitly ended,
-                // activate it - especially important for transitions from empty to having tasks
+        // Only auto-activate the routine if we've manually started it AND it has tasks
+        // This preserves the user's control over when the routine starts
+        if (hasTasks && manuallyStarted && !currentRoutine.isActive()) {
+            // If it has tasks but isn't active, activate it unless explicitly ended
+            if (!binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
                 currentRoutine.startRoutine(LocalDateTime.now());
-                Log.d("RoutineFragment", "Activating routine that has tasks but wasn't active");
             }
         }
         
         boolean routineIsActive = currentRoutine.isActive();
         Log.d("RoutineFragment", "UpdateTimeDisplay - hasTasks: " + hasTasks + ", isActive: " + routineIsActive + ", manuallyStarted: " + manuallyStarted + ", time: " + minutes + "m");
 
-        // Logic for setting button text and state:
+        // Modified button logic:
         // 1. Empty routine: "End Routine" text, always disabled
-        // 2. Routine with tasks that isn't manually started: "End Routine" text, enabled (to start routine)
+        // 2. Routine with tasks that isn't manually started: "End Routine" text, disabled (user must start from home page)
         // 3. Routine with tasks that is manually started: "End Routine" text, enabled (to end routine)
         // 4. Routine that was ended: "Routine Ended" text, disabled
 
-        if (!hasTasks) {
-            // Case 1: Empty routine - always use "End Routine" text and disabled
-            binding.endRoutineButton.setText("End Routine");
-            binding.endRoutineButton.setEnabled(false);
-            binding.stopTimerButton.setEnabled(false);
-            binding.fastForwardButton.setEnabled(false);
-            binding.homeButton.setEnabled(true);
-        } else if (binding.endRoutineButton.getText().toString().equals("Routine Ended") || !routineIsActive) {
-            // Case 4: Routine was explicitly ended by user or is inactive with tasks
+        if (binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
+            // Case 4: Routine was explicitly ended - maintain the ended state
             binding.endRoutineButton.setText("Routine Ended");
             binding.endRoutineButton.setEnabled(false);
             binding.stopTimerButton.setEnabled(false);
             binding.fastForwardButton.setEnabled(false);
             binding.homeButton.setEnabled(true);
+        } else if (!hasTasks || !manuallyStarted) {
+            // Cases 1 & 2: Empty routine OR routine with tasks that isn't manually started
+            // Keep text as "End Routine" and DISABLE the button
+            binding.endRoutineButton.setText("End Routine");
+            binding.endRoutineButton.setEnabled(false);
+            binding.stopTimerButton.setEnabled(false);
+            binding.fastForwardButton.setEnabled(false);
+            binding.homeButton.setEnabled(true);
         } else {
-            // Cases 2 & 3: Routine with tasks - enable "End Routine" button
-            // We're simplifying by making End Routine always enabled when there are tasks
-            // and the routine hasn't been explicitly ended
+            // Case 3: Routine with tasks that is manually started - enable "End Routine" to end it
             binding.endRoutineButton.setText("End Routine");
             binding.endRoutineButton.setEnabled(true);
-            binding.stopTimerButton.setEnabled(manuallyStarted && isTimerRunning);
-            binding.fastForwardButton.setEnabled(manuallyStarted);
-            binding.homeButton.setEnabled(!manuallyStarted);
+            binding.stopTimerButton.setEnabled(isTimerRunning);
+            binding.fastForwardButton.setEnabled(true);
+            binding.homeButton.setEnabled(false);
         }
 
         // Update task list times
