@@ -48,6 +48,10 @@ public class Task implements Serializable {
         return duration;
     }
 
+    public void setDuration(int duration) {
+        this.duration = duration;
+    }
+
     public void setDurationAndComplete(int duration) {
         this.duration = duration;
         this.isCompleted = true;
@@ -81,6 +85,10 @@ public class Task implements Serializable {
 
     public boolean isCompleted() {
         return isCompleted;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.isCompleted = completed;
     }
 
     public void setSkipped(boolean skipped) {
