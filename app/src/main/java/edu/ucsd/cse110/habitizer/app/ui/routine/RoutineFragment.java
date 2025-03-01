@@ -332,14 +332,23 @@ public class RoutineFragment extends Fragment {
         // Add to current routine first (local update)
         currentRoutine.addTask(newTask);
         
-        // When adding a task, mark the routine as manually started and start the timer
-        manuallyStarted = true;
-        isTimerRunning = true;
+        // Check if the routine has already been ended
+        boolean routineEnded = binding.endRoutineButton.getText().toString().equals("Routine Ended");
         
-        // Start the routine if it's not already active
-        if (!currentRoutine.isActive()) {
-            currentRoutine.startRoutine(LocalDateTime.now());
-            Log.d("RoutineFragment", "Starting routine after adding task");
+        if (!routineEnded) {
+            // Only auto-start the routine if it hasn't been ended yet
+            manuallyStarted = true;
+            isTimerRunning = true;
+            
+            // Start the routine if it's not already active
+            if (!currentRoutine.isActive()) {
+                currentRoutine.startRoutine(LocalDateTime.now());
+                Log.d("RoutineFragment", "Starting routine after adding task");
+            }
+        } else {
+            // For tasks added after routine has ended, they should be disabled
+            // Keep the routine in ended state - don't restart it
+            Log.d("RoutineFragment", "Adding task to ended routine - not restarting timer");
         }
         
         // Update adapter immediately for responsive UI
