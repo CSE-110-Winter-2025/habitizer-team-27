@@ -1,6 +1,8 @@
 package edu.ucsd.cse110.habitizer.app.ui.homescreen;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -33,6 +35,9 @@ public class HomeScreenFragment extends Fragment {
     private MainViewModel activityModel;
     private Observer<List<Routine>> routineObserver;
     private boolean isFirstLoad = true;
+    private HomeAdapter adapter;
+    private static final int REFRESH_DELAY = 1000; // 1 second
+    private Handler refreshHandler = new Handler(Looper.getMainLooper());
 
     public HomeScreenFragment() {
         // Required empty public constructor
@@ -58,19 +63,24 @@ public class HomeScreenFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_home_page, container, false);
 
         ListView listView = view.findViewById(R.id.card_list);
-        HomeAdapter adapter = new HomeAdapter(
+        adapter = new HomeAdapter(
                 requireContext(),
                 routines,
                 routineId -> {
-                    // Save routine state to repository before navigation
+                    // Get the routine from the repository
                     Routine routine = activityModel.getRoutineRepository().getRoutine(routineId);
                     
                     // Only start the routine timer if it has tasks
+                    // We won't even call startRoutine for empty routines
                     if (routine != null && !routine.getTasks().isEmpty()) {
+                        Log.d(TAG, "Starting routine with tasks: " + routine.getRoutineName());
                         routine.startRoutine(LocalDateTime.now());
                         activityModel.getRoutineRepository().save(routine);
+                    } else if (routine != null) {
+                        Log.d(TAG, "Not starting empty routine: " + routine.getRoutineName());
                     }
                     
+                    // Navigate to the routine screen regardless
                     navigateToRoutine(routineId);
                 }
         );
@@ -133,6 +143,13 @@ public class HomeScreenFragment extends Fragment {
             
             // Log final state
             Log.d(TAG, "Updated routines list now has " + this.routines.size() + " routines");
+            
+            // If this is the first load and we don't have both default routines, schedule a refresh
+            if (isFirstLoad && (this.routines.size() < 2)) {
+                Log.d(TAG, "First load detected with only " + this.routines.size() + " routines. Scheduling refresh...");
+                scheduleRefresh();
+            }
+            
             isFirstLoad = false;
         };
         
@@ -192,5 +209,29 @@ public class HomeScreenFragment extends Fragment {
         transaction.commit();
         
         Log.d(TAG, "FragmentTransaction committed");
+    }
+
+    /**
+     * Schedule a refresh of the data after a delay
+     */
+    private void scheduleRefresh() {
+        refreshHandler.postDelayed(() -> {
+            Log.d(TAG, "Refreshing routine data...");
+            // Force a refresh of the data by re-observing
+            if (routineObserver != null) {
+                activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
+                activityModel.getRoutineRepository().findAll().observe(routineObserver);
+            }
+        }, REFRESH_DELAY);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // If we only have one routine, try refreshing the data
+        if (routines.size() < 2) {
+            Log.d(TAG, "onResume: Only " + routines.size() + " routines found. Refreshing data...");
+            scheduleRefresh();
+        }
     }
 }
