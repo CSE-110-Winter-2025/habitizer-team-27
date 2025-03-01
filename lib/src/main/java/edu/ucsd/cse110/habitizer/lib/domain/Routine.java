@@ -46,8 +46,9 @@ public class Routine implements Serializable {
         // our adjusted time
         if (timerStopped) {
             routineTimer.end(currentTime);
+        } else {
+            routineTimer.end(endTime);
         }
-        routineTimer.end(endTime);
 
         markSkippedTasks();
     }

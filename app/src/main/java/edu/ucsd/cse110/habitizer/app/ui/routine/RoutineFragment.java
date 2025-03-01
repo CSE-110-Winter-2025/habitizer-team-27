@@ -45,6 +45,8 @@ public class RoutineFragment extends Fragment {
     // Add a flag to prevent recursive updates
     private boolean isUpdatingFromObserver = false;
 
+    private boolean manuallyStarted = false;
+
     public RoutineFragment() {
         // required empty public constructor
     }
@@ -93,6 +95,12 @@ public class RoutineFragment extends Fragment {
         Log.d("RoutineFragment", "Current routine: " + (currentRoutine != null ? currentRoutine.getRoutineName() : "null"));
         if (currentRoutine != null) {
             Log.d("RoutineFragment", "Task count: " + currentRoutine.getTasks().size());
+            // If the routine has tasks and is active, mark it as manually started
+            if (!currentRoutine.getTasks().isEmpty()) {
+                // Ensure the routine is active when it has tasks
+                currentRoutine.startRoutine(LocalDateTime.now());
+                manuallyStarted = true;
+            }
         }
     }
 
@@ -221,9 +229,20 @@ public class RoutineFragment extends Fragment {
         binding.endRoutineButton.setOnClickListener(v -> {
             isTimerRunning = false;
             currentRoutine.endRoutine(LocalDateTime.now());
-            updateTimeDisplay();
+            manuallyStarted = false;  // Reset the manually started flag when ending
+            
+            // Explicitly set the button text to "Routine Ended" when ending the routine
+            binding.endRoutineButton.setText("Routine Ended");
             binding.endRoutineButton.setEnabled(false);
             binding.stopTimerButton.setEnabled(false);
+            
+            // Save the routine state to make sure the end time is preserved
+            if (!isUpdatingFromObserver) {
+                repository.updateRoutine(currentRoutine);
+                activityModel.getRoutineRepository().save(currentRoutine);
+            }
+            
+            updateTimeDisplay();
         });
 
         binding.stopTimerButton.setOnClickListener(v -> {
@@ -276,6 +295,9 @@ public class RoutineFragment extends Fragment {
     private void addTaskToRoutine(String taskName) {
         if (taskName == null || taskName.trim().isEmpty()) return;
 
+        // Check if this is the first task being added
+        boolean wasEmpty = currentRoutine.getTasks().isEmpty();
+
         // Create task with auto-increment ID based on timestamp for uniqueness
         int newTaskId = (int)(System.currentTimeMillis() % 100000);
         Task newTask = new Task(newTaskId, taskName, false);
@@ -302,6 +324,9 @@ public class RoutineFragment extends Fragment {
             // Also update the legacy repository for compatibility
             activityModel.getRoutineRepository().save(currentRoutine);
         }
+
+        // Manually call updateTimeDisplay to ensure button states are updated
+        updateTimeDisplay();
     }
 
     private void updateRoutineGoalDisplay(@Nullable Integer newTime) {
@@ -325,24 +350,54 @@ public class RoutineFragment extends Fragment {
         if (minutes == 0) binding.actualTime.setText("-");
         else binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
-        boolean isActive = currentRoutine.isActive();
         boolean hasTasks = !currentRoutine.getTasks().isEmpty();
+        
+        // Make sure routineIsActive is set correctly
+        if (hasTasks && !currentRoutine.isActive()) {
+            // If it has tasks but isn't active, activate it unless explicitly ended
+            if (!binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
+                currentRoutine.startRoutine(LocalDateTime.now());
+            }
+        }
+        
+        boolean routineIsActive = currentRoutine.isActive();
+        Log.d("RoutineFragment", "UpdateTimeDisplay - hasTasks: " + hasTasks + ", isActive: " + routineIsActive + ", manuallyStarted: " + manuallyStarted + ", time: " + minutes + "m");
 
-        if (!currentRoutine.isActive()) {
+        // Logic for setting button text and state:
+        // 1. Empty routine: Always "End Routine" text, always disabled
+        // 2. Routine with tasks that isn't manually started: "End Routine" text, disabled
+        // 3. Routine with tasks that is manually started: "End Routine" text, enabled
+        // 4. Routine that was ended by user: "Routine Ended" text, disabled
+
+        if (!hasTasks) {
+            // Case 1: Empty routine - always use "End Routine" text and disabled
+            binding.endRoutineButton.setText("End Routine");
+            binding.endRoutineButton.setEnabled(false);
+            binding.stopTimerButton.setEnabled(false);
+            binding.fastForwardButton.setEnabled(false);
+            binding.homeButton.setEnabled(true);
+        } else if (binding.endRoutineButton.getText().toString().equals("Routine Ended") || !routineIsActive) {
+            // Case 4: Routine was explicitly ended by user or is inactive with tasks
             binding.endRoutineButton.setText("Routine Ended");
             binding.endRoutineButton.setEnabled(false);
-        }
-
-        // Control button states
-        // Only enable end routine and timer controls if the routine has tasks
-        binding.endRoutineButton.setEnabled(isActive && hasTasks);
-        if (!isActive) {
             binding.stopTimerButton.setEnabled(false);
+            binding.fastForwardButton.setEnabled(false);
+            binding.homeButton.setEnabled(true);
+        } else if (!manuallyStarted) {
+            // Case 2: Routine with tasks that wasn't manually started
+            binding.endRoutineButton.setText("End Routine");
+            binding.endRoutineButton.setEnabled(false);
+            binding.stopTimerButton.setEnabled(false);
+            binding.fastForwardButton.setEnabled(false);
+            binding.homeButton.setEnabled(true);
         } else {
-            binding.stopTimerButton.setEnabled(isTimerRunning && hasTasks);
+            // Case 3: Routine with tasks that was manually started
+            binding.endRoutineButton.setText("End Routine");
+            binding.endRoutineButton.setEnabled(true);
+            binding.stopTimerButton.setEnabled(isTimerRunning);
+            binding.fastForwardButton.setEnabled(true);
+            binding.homeButton.setEnabled(false);
         }
-        binding.fastForwardButton.setEnabled(isActive && hasTasks);
-        binding.homeButton.setEnabled(!isActive || !hasTasks);
 
         // Update task list times
         taskAdapter.notifyDataSetChanged();
