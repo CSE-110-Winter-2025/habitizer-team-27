@@ -103,6 +103,7 @@ public class RoutineFragment extends Fragment {
         binding = FragmentRoutineScreenBinding.inflate(inflater, container, false);
         Log.d("RoutineFragment", "Binding inflated");
 
+        // Initialize timer updates but only start the timer if there are tasks
         initTimerUpdates();
         isTimerRunning = true;
 
@@ -325,6 +326,7 @@ public class RoutineFragment extends Fragment {
         else binding.actualTime.setText(String.format("%d%s", minutes, "m"));
 
         boolean isActive = currentRoutine.isActive();
+        boolean hasTasks = !currentRoutine.getTasks().isEmpty();
 
         if (!currentRoutine.isActive()) {
             binding.endRoutineButton.setText("Routine Ended");
@@ -332,14 +334,15 @@ public class RoutineFragment extends Fragment {
         }
 
         // Control button states
-        binding.endRoutineButton.setEnabled(isActive);
+        // Only enable end routine and timer controls if the routine has tasks
+        binding.endRoutineButton.setEnabled(isActive && hasTasks);
         if (!isActive) {
             binding.stopTimerButton.setEnabled(false);
         } else {
-            binding.stopTimerButton.setEnabled(isTimerRunning);
+            binding.stopTimerButton.setEnabled(isTimerRunning && hasTasks);
         }
-        binding.fastForwardButton.setEnabled(isActive);
-        binding.homeButton.setEnabled(!isActive);
+        binding.fastForwardButton.setEnabled(isActive && hasTasks);
+        binding.homeButton.setEnabled(!isActive || !hasTasks);
 
         // Update task list times
         taskAdapter.notifyDataSetChanged();

@@ -64,8 +64,13 @@ public class HomeScreenFragment extends Fragment {
                 routineId -> {
                     // Save routine state to repository before navigation
                     Routine routine = activityModel.getRoutineRepository().getRoutine(routineId);
-                    routine.startRoutine(LocalDateTime.now());
-                    activityModel.getRoutineRepository().save(routine);
+                    
+                    // Only start the routine timer if it has tasks
+                    if (routine != null && !routine.getTasks().isEmpty()) {
+                        routine.startRoutine(LocalDateTime.now());
+                        activityModel.getRoutineRepository().save(routine);
+                    }
+                    
                     navigateToRoutine(routineId);
                 }
         );
