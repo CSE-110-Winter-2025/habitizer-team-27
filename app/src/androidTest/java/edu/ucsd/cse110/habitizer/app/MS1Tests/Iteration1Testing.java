@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.habitizer.app;
+package edu.ucsd.cse110.habitizer.app.MS1Tests;
 
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.matcher.ViewMatchers.hasSibling;
@@ -12,13 +12,16 @@ import android.widget.CheckBox;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.espresso.Espresso;
-import androidx.test.espresso.action.ViewActions;
 import androidx.test.espresso.assertion.ViewAssertions;
 import androidx.test.espresso.matcher.ViewMatchers;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import edu.ucsd.cse110.habitizer.app.MainActivity;
+import edu.ucsd.cse110.habitizer.app.R;
 
 @RunWith(AndroidJUnit4.class)
 public class Iteration1Testing {
@@ -39,8 +42,8 @@ public class Iteration1Testing {
     @Test
     public void testStartRoutine() {
         // Tap the button labeled "Start Morning Routine"
-        Espresso.onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        Espresso.onView(CoreMatchers.allOf(
+                ViewMatchers.withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
         // Verify that a routine step (e.g., "Shower") is now visible on screen.

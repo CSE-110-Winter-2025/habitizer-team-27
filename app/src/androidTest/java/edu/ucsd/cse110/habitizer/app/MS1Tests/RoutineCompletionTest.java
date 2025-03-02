@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.habitizer.app;
+package edu.ucsd.cse110.habitizer.app.MS1Tests;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
@@ -13,12 +13,17 @@ import static org.hamcrest.CoreMatchers.containsString;
 
 import android.widget.CheckBox;
 
+import androidx.test.espresso.matcher.ViewMatchers;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import edu.ucsd.cse110.habitizer.app.MainActivity;
+import edu.ucsd.cse110.habitizer.app.R;
 
 @RunWith(AndroidJUnit4.class)
 public class RoutineCompletionTest {
@@ -31,8 +36,8 @@ public class RoutineCompletionTest {
     @Test
     public void testCompleteAllTasks() {
         // Start morning routine
-        onView(allOf(
-                withId(R.id.start_routine_button),
+        onView(CoreMatchers.allOf(
+                ViewMatchers.withId(R.id.start_routine_button),
                 hasSibling(withText("Evening"))
         )).perform(click());
 

@@ -1,13 +1,11 @@
-package edu.ucsd.cse110.habitizer.app;
+package edu.ucsd.cse110.habitizer.app.MS1Tests;
 
 import androidx.test.espresso.Espresso;
-import androidx.test.espresso.matcher.BoundedMatcher;
+import androidx.test.espresso.matcher.ViewMatchers;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
-import androidx.test.platform.app.InstrumentationRegistry;
 
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
+import org.hamcrest.CoreMatchers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,15 +18,13 @@ import static androidx.test.espresso.action.ViewActions.typeText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.hasSibling;
 import static androidx.test.espresso.matcher.ViewMatchers.isChecked;
-import static androidx.test.espresso.matcher.ViewMatchers.isNotClickable;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.Matchers.anything;
 
-import android.app.Instrumentation;
-import android.view.View;
-import android.view.ViewGroup;
+import edu.ucsd.cse110.habitizer.app.MainActivity;
+import edu.ucsd.cse110.habitizer.app.R;
 
 @RunWith(AndroidJUnit4.class)
 public class Milestone1Testing {
@@ -46,8 +42,8 @@ public class Milestone1Testing {
     public void testStartRoutine() {
         //on the home screen there is a ListView of routines (routine_list.xml)
         //with a "start routine" button (R.id.start_routine_button)
-        Espresso.onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        Espresso.onView(CoreMatchers.allOf(
+                ViewMatchers.withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
         //verify that the routine screen is shown

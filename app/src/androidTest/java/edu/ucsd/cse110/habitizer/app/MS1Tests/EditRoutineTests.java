@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.habitizer.app;
+package edu.ucsd.cse110.habitizer.app.MS1Tests;
 
 import static androidx.test.espresso.Espresso.onData;
 import static androidx.test.espresso.action.ViewActions.click;
@@ -17,13 +17,17 @@ import static org.junit.Assert.assertTrue;
 
 import androidx.test.espresso.Espresso;
 
+import androidx.test.espresso.matcher.ViewMatchers;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import edu.ucsd.cse110.habitizer.app.MainActivity;
+import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 
@@ -99,8 +103,8 @@ public class EditRoutineTests {
     @Test
     public void lastTask() {
 
-        Espresso.onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        Espresso.onView(CoreMatchers.allOf(
+                ViewMatchers.withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
         Espresso.onView(withId(R.id.add_task_button))
