@@ -114,7 +114,7 @@ public class AddRoutineTests {
 
         // Check that new routine exists in database
         List<Routine> routines = repository.getRoutines().getValue();
-        var currentRoutine = routines.getLast();
+        var currentRoutine = routines.get(routines.size() - 1);
         assertEquals(currentRoutine.getRoutineName(), "New Routine");
 
         // Check that new routine has no tasks
