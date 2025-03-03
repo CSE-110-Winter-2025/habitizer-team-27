@@ -59,8 +59,9 @@ public class AddRoutineTests {
         // This will only work if the database is the default??
         onData(anything())
                 .inAdapterView(withId(R.id.card_list))
-                .atPosition(3)
-                .perform(scrollTo());
+                .atPosition(2)
+                .onChildView(withId(R.id.routine_name))
+                .check(matches(withText("New Routine")));
     }
 
 }
