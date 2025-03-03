@@ -11,11 +11,8 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-<<<<<<< HEAD
 
 @Suppress("UnstableApiUsage")
-=======
->>>>>>> f710fb1 (Merge)
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -24,12 +21,7 @@ dependencyResolutionManagement {
     }
 }
 
-<<<<<<< HEAD
 rootProject.name = "Habitizer"
 include(":app")
 include(":lib")
 include(":observables")
-=======
-rootProject.name = "Habitizer-Test"
-include(":app")
->>>>>>> f710fb1 (Merge)

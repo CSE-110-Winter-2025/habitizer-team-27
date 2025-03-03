@@ -1,7 +1,3 @@
 <resources>
-<<<<<<< HEAD
     <string name="app_name">Habitizer</string>
-=======
-    <string name="app_name">Habitizer-Test</string>
->>>>>>> f710fb1 (Merge)
 </resources>

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Refer to the Gradle documentation for more information on version catalogs:
 # https://docs.gradle.org/current/userguide/version_catalogs.html
 
@@ -44,23 +43,4 @@ play-services-mlkit-subject-segmentation = { group = "com.google.android.gms", n
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 android-junit5 = { id = "de.mannodermaus.android-junit5", version.ref = "androidJUnit5" }
-=======
-[versions]
-agp = "8.8.2"
-junit = "4.13.2"
-junitVersion = "1.2.1"
-espressoCore = "3.6.1"
-appcompat = "1.7.0"
-material = "1.12.0"
-
-[libraries]
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-
-[plugins]
-android-application = { id = "com.android.application", version.ref = "agp" }
->>>>>>> f710fb1 (Merge)
 

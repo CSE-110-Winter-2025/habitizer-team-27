@@ -3,28 +3,18 @@ plugins {
 }
 
 android {
-<<<<<<< HEAD
     namespace = "edu.ucsd.cse110.habitizer.app"
     compileSdk = 35
 
     defaultConfig {
         applicationId = "edu.ucsd.cse110.habitizer.app"
         minSdk = 34
-=======
-    namespace = "edu.ucsd.cse110.secards.habitizer_test"
-    compileSdk = 35
-
-    defaultConfig {
-        applicationId = "edu.ucsd.cse110.secards.habitizer_test"
-        minSdk = 31
->>>>>>> f710fb1 (Merge)
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-<<<<<<< HEAD
-        
+
         // Enable Room schema export function
         javaCompileOptions {
             annotationProcessorOptions {
@@ -34,8 +24,6 @@ android {
                 )
             }
         }
-=======
->>>>>>> f710fb1 (Merge)
     }
 
     buildTypes {
@@ -48,7 +36,6 @@ android {
         }
     }
     compileOptions {
-<<<<<<< HEAD
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -58,16 +45,10 @@ android {
         viewBinding = true
     }
 
-=======
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
->>>>>>> f710fb1 (Merge)
 }
 
 dependencies {
 
-<<<<<<< HEAD
     implementation(libs.android.material)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity)
@@ -78,7 +59,7 @@ dependencies {
 
     // ThreeTen Android Backport for handling Java 8 date/time
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
-    
+
     // Room database
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
@@ -102,11 +83,3 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.ext.espresso.core)
 }
-=======
-    implementation(libs.appcompat)
-    implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core)
-}
->>>>>>> f710fb1 (Merge)
