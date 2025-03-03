@@ -9,6 +9,7 @@ import edu.ucsd.cse110.habitizer.lib.domain.timer.Timer;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Routine implements Serializable {
@@ -144,6 +145,22 @@ public class Routine implements Serializable {
         else {
             currentTime = currentTime.plusSeconds(30);
         }
+    }
+
+    public void moveTaskUp(Task task) {
+        if (tasks.size() == 1 || tasks.indexOf(task) == 0) {
+            return;
+        }
+        int i = tasks.indexOf(task);
+        Collections.swap(tasks, i, i-1);
+    }
+
+    public void moveTaskDown(Task task) {
+        if(tasks.size() == 1 || tasks.indexOf(task) == tasks.size()-1) {
+            return;
+        }
+        int i = tasks.indexOf(task);
+        Collections.swap(tasks, i, i+1);
     }
 
     public void advanceTime(int seconds) {
