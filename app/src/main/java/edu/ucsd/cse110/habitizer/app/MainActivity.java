@@ -20,6 +20,8 @@ import edu.ucsd.cse110.habitizer.lib.domain.TaskRepository;
 import java.util.List;
 import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
+import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.habitizer.app.HabitizerApplication;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -51,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
      * Verify routines are loaded and show home screen
      */
     private void verifyRoutinesLoaded() {
+        Log.d(TAG, "Starting verification of loaded routines");
+        
         // Check if routines are loaded
         List<Routine> routines = repository.getRoutines().getValue();
         if (routines != null) {
@@ -74,15 +78,27 @@ public class MainActivity extends AppCompatActivity {
                     // Delay slightly to ensure UI is ready
                     handler.postDelayed(this::refreshHomeScreen, 300);
                 }
-            } else {
-                Log.d(TAG, "Not both default routines found yet. Checking again shortly.");
-                // Schedule check in a second
+            } else if (routines.size() > 0) {
+                // At least we found some routines - show them while we wait for others
+                Log.d(TAG, "Found " + routines.size() + " routines but not both defaults. Showing what we have.");
+                if (!isShowingRoutine) {
+                    handler.postDelayed(this::refreshHomeScreen, 300);
+                }
+                // And keep checking
+                Log.d(TAG, "Will check again for all default routines shortly");
                 handler.postDelayed(this::verifyRoutinesLoaded, 1000);
+            } else {
+                Log.d(TAG, "No routines found, will check again shortly");
+                // Schedule check in a second
+                forceRefreshRoutines();
+                handler.postDelayed(this::verifyRoutinesLoaded, 1500);
             }
         } else {
-            Log.d(TAG, "No routines found initially, will check again shortly");
+            Log.d(TAG, "No routines list available yet (null value), will check again shortly");
+            // Try to force a refresh
+            forceRefreshRoutines();
             // Schedule check in a second
-            handler.postDelayed(this::verifyRoutinesLoaded, 1000);
+            handler.postDelayed(this::verifyRoutinesLoaded, 1500);
         }
     }
     
@@ -121,5 +137,78 @@ public class MainActivity extends AppCompatActivity {
             showHomeScreen();
         }
         isShowingRoutine = !isShowingRoutine;
+    }
+
+    /**
+     * Force a refresh of the routines from the repository
+     */
+    private void forceRefreshRoutines() {
+        Log.d(TAG, "Forcing refresh of routines from repository");
+        try {
+            // Try to force refresh routines
+            HabitizerRepository repo = HabitizerRepository.getInstance(this);
+            repo.refreshRoutines();
+            
+            // Also access the Application instance to ensure initialization is complete
+            HabitizerApplication app = (HabitizerApplication) getApplication();
+            
+            // Let's add default routines if none exist
+            if (repository.getRoutines().getValue() == null || 
+                repository.getRoutines().getValue().isEmpty()) {
+                Log.d(TAG, "No routines found during force refresh, triggering default routine creation");
+                
+                // Create default routines directly if none exist
+                handler.postDelayed(() -> {
+                    Log.d(TAG, "Adding default routines as emergency measure");
+                    addDefaultRoutines();
+                }, 800);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error during force refresh", e);
+        }
+    }
+
+    /**
+     * Emergency method to add default routines directly if repository initialization failed
+     */
+    private void addDefaultRoutines() {
+        try {
+            List<Routine> existingRoutines = repository.getRoutines().getValue();
+            if (existingRoutines == null || existingRoutines.isEmpty()) {
+                Log.d(TAG, "Creating emergency default routines");
+                
+                // Create Morning routine
+                Routine morningRoutine = new Routine(0, "Morning");
+                morningRoutine.addTask(new Task(0, "Shower", false));
+                morningRoutine.addTask(new Task(1, "Brush teeth", false));
+                morningRoutine.addTask(new Task(2, "Dress", false));
+                morningRoutine.addTask(new Task(3, "Make coffee", false));
+                morningRoutine.addTask(new Task(4, "Make lunch", false));
+                repository.addRoutine(morningRoutine);
+                
+                // Create Evening routine
+                Routine eveningRoutine = new Routine(1, "Evening");
+                eveningRoutine.addTask(new Task(100, "Charge devices", false));
+                eveningRoutine.addTask(new Task(101, "Prepare dinner", false));
+                eveningRoutine.addTask(new Task(102, "Eat dinner", false));
+                eveningRoutine.addTask(new Task(103, "Wash dishes", false));
+                repository.addRoutine(eveningRoutine);
+                
+                Log.d(TAG, "Emergency default routines created");
+                
+                // Refresh home screen after a delay
+                handler.postDelayed(this::refreshHomeScreen, 500);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating emergency default routines", e);
+        }
+    }
+
+    /**
+     * Public method to allow fragments to force routine refresh
+     */
+    public void forceRefreshRoutinesPublic() {
+        Log.d(TAG, "Public force refresh called from fragment");
+        forceRefreshRoutines();
     }
 }

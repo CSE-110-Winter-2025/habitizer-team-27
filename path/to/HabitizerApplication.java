@@ -158,7 +158,6 @@ public class HabitizerApplication extends Application {
 
             }).subscribeOn(Schedulers.io()).subscribe(() -> {
                 Log.d(TAG, "Default data initialization complete");
-                Log.d(TAG, "About to call verifyRoutinesLoaded from addDefaultTasksAndRoutines");
                 verifyRoutinesLoaded();
             }, throwable -> {
                 Log.e(TAG, "Error initializing default data", throwable);
@@ -245,7 +244,6 @@ public class HabitizerApplication extends Application {
                 }
             }).subscribeOn(Schedulers.io()).subscribe(() -> {
                 Log.d(TAG, "Default routines initialization complete");
-                Log.d(TAG, "About to call verifyRoutinesLoaded from addDefaultRoutines");
                 verifyRoutinesLoaded();
             }, throwable -> {
                 Log.e(TAG, "Error initializing default routines", throwable);
@@ -256,11 +254,9 @@ public class HabitizerApplication extends Application {
     private void verifyRoutinesLoaded() {
         Executors.newSingleThreadExecutor().execute(() -> {
             Log.d(TAG, "Verifying routines loaded...");
-            Log.d(TAG, "verifyRoutinesLoaded: Calling routineRepository.getAllRoutines()");
             routineRepository.getAllRoutines()
                     .subscribeOn(Schedulers.io())
                     .subscribe(routines -> {
-                        Log.d(TAG, "verifyRoutinesLoaded: Callback received");
                         Log.d(TAG, "Verification: Found " + routines.size() + " routines after initialization");
                         int morningRoutineCount = 0;
                         int eveningRoutineCount = 0;

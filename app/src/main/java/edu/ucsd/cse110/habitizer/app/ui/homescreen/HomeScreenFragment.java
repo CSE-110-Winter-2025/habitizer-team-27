@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
 
+import edu.ucsd.cse110.habitizer.app.MainActivity;
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateRoutineDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.routine.RoutineFragment;
@@ -62,8 +63,9 @@ public class HomeScreenFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        Log.d(TAG, "onCreateView called - initializing HomeScreenFragment UI");
         View view = inflater.inflate(R.layout.fragment_home_page, container, false);
-
+        
         ListView listView = view.findViewById(R.id.card_list);
         adapter = new HomeAdapter(
                 requireContext(),
@@ -71,7 +73,7 @@ public class HomeScreenFragment extends Fragment {
                 routineId -> {
                     // Get the routine from the repository
                     Routine routine = activityModel.getRoutineRepository().getRoutine(routineId);
-                    
+        
                     // Only start the routine timer if it has tasks
                     // We won't even call startRoutine for empty routines
                     if (routine != null && !routine.getTasks().isEmpty()) {
@@ -87,7 +89,8 @@ public class HomeScreenFragment extends Fragment {
                 }
         );
         listView.setAdapter(adapter);
-
+        Log.d(TAG, "ListView adapter set with " + routines.size() + " initial routines");
+        
         // Set up the Add Routine button
         Button addRoutineButton = view.findViewById(R.id.add_routine_button);
         addRoutineButton.setOnClickListener(v -> {
@@ -103,7 +106,7 @@ public class HomeScreenFragment extends Fragment {
         // Create and register a new observer
         routineObserver = routines -> {
             Log.d(TAG, "Observer triggered with " + (routines != null ? routines.size() : 0) + " routines");
-            
+                  
             // Log existing routines in the list
             Log.d(TAG, "Current routines in list before update: " + this.routines.size());
             for (int i = 0; i < this.routines.size(); i++) {
@@ -120,7 +123,8 @@ public class HomeScreenFragment extends Fragment {
                 Log.d(TAG, "Incoming routines:");
                 for (int i = 0; i < routines.size(); i++) {
                     Routine r = routines.get(i);
-                    Log.d(TAG, "  " + i + ": " + r.getRoutineId() + " - " + r.getRoutineName());
+                    Log.d(TAG, "  " + i + ": " + r.getRoutineId() + " - " + r.getRoutineName() + 
+                          " with " + r.getTasks().size() + " tasks");
                 }
                 
                 // De-duplicate routines by ID before adding to our list
@@ -138,10 +142,21 @@ public class HomeScreenFragment extends Fragment {
                 this.routines.addAll(uniqueRoutineMap.values());
                 Log.d(TAG, "Added " + this.routines.size() + " unique routines (removed " + 
                       (routines.size() - this.routines.size()) + " duplicates)");
+                
+                // Force UI update on main thread
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    // Update the adapter
+                    adapter.notifyDataSetChanged();
+                    Log.d(TAG, "IMPORTANT: Adapter notified of data change with " + this.routines.size() + " routines");
+                });
+            } else {
+                Log.e(TAG, "CRITICAL ERROR: Received null routine list from repository!");
+                // Force a refresh from MainActivity
+                if (getActivity() instanceof MainActivity) {
+                    Log.d(TAG, "Requesting force refresh from MainActivity");
+                    ((MainActivity) getActivity()).forceRefreshRoutinesPublic();
+                }
             }
-            
-            // Update the adapter
-            adapter.notifyDataSetChanged();
             
             // Log final state
             Log.d(TAG, "Updated routines list now has " + this.routines.size() + " routines");
@@ -160,7 +175,7 @@ public class HomeScreenFragment extends Fragment {
         // Observe changes to the list of routines
         activityModel.getRoutineRepository().findAll().observe(routineObserver);
         Log.d(TAG, "Registered new observer");
-
+        
         return view;
     }
     

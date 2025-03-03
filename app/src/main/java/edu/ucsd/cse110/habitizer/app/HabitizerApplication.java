@@ -130,6 +130,8 @@ public class HabitizerApplication extends Application {
     private class HabitizerRoutineRepository extends RoutineRepository {
         private final int repositoryId;
         private boolean isCleaned = false;
+        // Add lock for synchronization
+        private final Object routinesLock = new Object();
         
         public HabitizerRoutineRepository() {
             super(new InMemoryDataSource()); // This won't be used
@@ -207,76 +209,144 @@ public class HabitizerApplication extends Application {
         
         @Override
         public Subject<List<Routine>> findAll() {
-            Log.d(TAG, "RoutineRepository #" + repositoryId + ": findAll() called, hasObservers=" + allRoutinesSubject.hasObservers());
-            
-            // Only observe the repository once, no matter how many times findAll() is called
-            if (repositoryRoutineObserver == null) {
-                int observerId = observerCount.incrementAndGet();
-                Log.d(TAG, "RoutineRepository #" + repositoryId + ": Creating shared routine observer #" + observerId);
+            synchronized (routinesLock) {
+                Log.d(TAG, "RoutineRepository #" + repositoryId + ": findAll() called, hasObservers=" + allRoutinesSubject.hasObservers());
                 
-                repositoryRoutineObserver = routineList -> {
-                    Log.d(TAG, "Shared routine observer #" + observerId + " triggered with " + 
-                          (routineList != null ? routineList.size() : 0) + " routines, has " + 
-                          allRoutinesSubject.getObservers().size() + " subscribers");
+                // Only observe the repository once, no matter how many times findAll() is called
+                if (repositoryRoutineObserver == null) {
+                    int observerId = observerCount.incrementAndGet();
+                    Log.d(TAG, "RoutineRepository #" + repositoryId + ": Creating shared routine observer #" + observerId);
                     
-                    if (routineList != null) {
-                        // Check for duplicates in the incoming list
+                    repositoryRoutineObserver = routineList -> {
+                        synchronized (routinesLock) {
+                            Log.d(TAG, "Shared routine observer #" + observerId + " triggered with " + 
+                                  (routineList != null ? routineList.size() : 0) + " routines, has " + 
+                                  allRoutinesSubject.getObservers().size() + " subscribers");
+                            
+                            if (routineList != null) {
+                                // Check for duplicates in the incoming list
+                                Map<Integer, Routine> uniqueRoutineMap = new HashMap<>();
+                                for (Routine r : routineList) {
+                                    uniqueRoutineMap.put(r.getRoutineId(), r);
+                                }
+                                
+                                List<Routine> deduplicatedList = new ArrayList<>(uniqueRoutineMap.values());
+                                
+                                if (deduplicatedList.size() < routineList.size()) {
+                                    Log.w(TAG, "Found and removed " + (routineList.size() - deduplicatedList.size()) + 
+                                          " duplicate routines in repository data");
+                                }
+                                
+                                // Create a copy to avoid reference issues
+                                List<Routine> copyList = new ArrayList<>(deduplicatedList);
+                                Log.d(TAG, "Setting " + copyList.size() + " routines on allRoutinesSubject");
+                                allRoutinesSubject.setValue(copyList);
+                            } else {
+                                Log.d(TAG, "Setting empty list on allRoutinesSubject (null value received)");
+                                allRoutinesSubject.setValue(new ArrayList<>());
+                            }
+                        }
+                    };
+                    
+                    // Initialize with current values
+                    List<Routine> currentRoutines = repository.getRoutines().getValue();
+                    if (currentRoutines != null) {
+                        // Check for duplicates in the initial list
                         Map<Integer, Routine> uniqueRoutineMap = new HashMap<>();
-                        for (Routine r : routineList) {
+                        for (Routine r : currentRoutines) {
                             uniqueRoutineMap.put(r.getRoutineId(), r);
                         }
                         
                         List<Routine> deduplicatedList = new ArrayList<>(uniqueRoutineMap.values());
                         
-                        if (deduplicatedList.size() < routineList.size()) {
-                            Log.w(TAG, "Found and removed " + (routineList.size() - deduplicatedList.size()) + 
-                                  " duplicate routines in repository data");
+                        if (deduplicatedList.size() < currentRoutines.size()) {
+                            Log.w(TAG, "Found and removed " + (currentRoutines.size() - deduplicatedList.size()) + 
+                                  " duplicate routines in initial data");
                         }
                         
                         // Create a copy to avoid reference issues
-                        Log.d(TAG, "Setting " + deduplicatedList.size() + " routines on allRoutinesSubject");
-                        allRoutinesSubject.setValue(deduplicatedList);
+                        List<Routine> copyList = new ArrayList<>(deduplicatedList);
+                        Log.d(TAG, "Initially setting " + copyList.size() + " routines on allRoutinesSubject");
+                        allRoutinesSubject.setValue(copyList);
                     } else {
-                        Log.d(TAG, "Setting empty list on allRoutinesSubject (null value received)");
+                        Log.d(TAG, "Initially setting 0 routines on allRoutinesSubject");
                         allRoutinesSubject.setValue(new ArrayList<>());
                     }
-                };
-                
-                // Initialize with current values
-                List<Routine> currentRoutines = repository.getRoutines().getValue();
-                if (currentRoutines != null) {
-                    // Check for duplicates in the initial list
-                    Map<Integer, Routine> uniqueRoutineMap = new HashMap<>();
-                    for (Routine r : currentRoutines) {
-                        uniqueRoutineMap.put(r.getRoutineId(), r);
-                    }
                     
-                    List<Routine> deduplicatedList = new ArrayList<>(uniqueRoutineMap.values());
-                    
-                    if (deduplicatedList.size() < currentRoutines.size()) {
-                        Log.w(TAG, "Found and removed " + (currentRoutines.size() - deduplicatedList.size()) + 
-                              " duplicate routines in initial repository data");
-                    }
-                    
-                    Log.d(TAG, "Initially setting " + deduplicatedList.size() + " routines on allRoutinesSubject");
-                    allRoutinesSubject.setValue(deduplicatedList);
+                    // Subscribe the observer to the repository
+                    repository.getRoutines().observe(repositoryRoutineObserver);
                 }
                 
-                // Start observing repository
-                repository.getRoutines().observe(repositoryRoutineObserver);
+                return allRoutinesSubject;
             }
-            
-            return allRoutinesSubject;
         }
         
         @Override
         public void save(Routine routine) {
-            Log.d(TAG, "RoutineRepository #" + repositoryId + ": Saving routine " + 
-                  (routine != null ? routine.getRoutineName() : "null"));
-            if (routine.getRoutineId() != null && getRoutine(routine.getRoutineId()) != null) {
-                repository.updateRoutine(routine);
-            } else {
-                repository.addRoutine(routine);
+            synchronized (routinesLock) {
+                Log.d(TAG, "RoutineRepository #" + repositoryId + ": Saving routine " + 
+                      (routine != null ? routine.getRoutineName() : "null"));
+                      
+                // Add retry logic with explicit transaction
+                int maxRetries = 3;
+                for (int attempt = 0; attempt < maxRetries; attempt++) {
+                    try {
+                        if (routine.getRoutineId() == 0) {
+                            // For new routines, avoid ID conflicts by explicitly setting a unique ID
+                            // Get existing routines to find max ID
+                            List<Routine> existingRoutines = repository.getRoutines().getValue();
+                            int maxId = 0;
+                            if (existingRoutines != null) {
+                                for (Routine r : existingRoutines) {
+                                    if (r.getRoutineId() > maxId) {
+                                        maxId = r.getRoutineId();
+                                    }
+                                }
+                            }
+                            // Create a new routine with the new ID since Routine doesn't have a setter
+                            Routine newRoutine = new Routine(maxId + 1, routine.getRoutineName());
+                            // Copy over tasks
+                            for (Task task : routine.getTasks()) {
+                                newRoutine.addTask(task);
+                            }
+                            routine = newRoutine;
+                            Log.d(TAG, "Generated new routine ID: " + routine.getRoutineId());
+                        }
+                        
+                        // Add or update routine atomically
+                        repository.addRoutine(routine);
+                        
+                        // Wait a moment to ensure persistence on Windows
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            Log.e(TAG, "Sleep interrupted during routine save", e);
+                        }
+                        
+                        Log.d(TAG, "Successfully saved routine " + routine.getRoutineName() + " with ID " + routine.getRoutineId());
+                        break; // Success, exit loop
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error saving routine (attempt " + (attempt + 1) + "/" + maxRetries + ")", e);
+                        if (attempt == maxRetries - 1) {
+                            Log.e(TAG, "Failed to save routine after " + maxRetries + " attempts");
+                        } else {
+                            try {
+                                Thread.sleep(50); // Wait before retry
+                            } catch (InterruptedException ie) {
+                                Log.e(TAG, "Sleep interrupted", ie);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        public void cleanUp() {
+            synchronized (routinesLock) {
+                if (!isCleaned) {
+                    Log.d(TAG, "RoutineRepository #" + repositoryId + ": cleanUp() called");
+                    isCleaned = true;
+                }
             }
         }
     }
@@ -297,6 +367,17 @@ public class HabitizerApplication extends Application {
         Executor executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
             try {
+                Log.d(TAG, "Starting default data initialization with platform-specific optimizations");
+                Log.d(TAG, "Running on platform: " + System.getProperty("os.name"));
+                
+                // Ensure we have a clean start by waiting for repository to load
+                try {
+                    Thread.sleep(300); // Increase wait time to ensure repository is ready
+                    Log.d(TAG, "Initial wait completed, proceeding with routine initialization");
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep interrupted", e);
+                }
+
                 // Get existing routines
                 List<Routine> existingRoutines = repository.getRoutines().getValue();
                 Log.d(TAG, "Checking existing routines during initialization");
@@ -306,7 +387,7 @@ public class HabitizerApplication extends Application {
                         Log.d(TAG, "  Existing Routine: " + r.getRoutineName() + " (ID: " + r.getRoutineId() + ")");
                     }
                 } else {
-                    Log.d(TAG, "No existing routines found in database initially");
+                    Log.d(TAG, "***WARNING: Existing routines is NULL - this indicates a repository initialization problem");
                 }
 
                 // Map to track which default routines we need to create
@@ -326,117 +407,187 @@ public class HabitizerApplication extends Application {
                     }
                 }
 
+                // On Windows, add extra check with a short delay to ensure routines are properly loaded
+                String osName = System.getProperty("os.name", "unknown").toLowerCase();
+                Log.d(TAG, "Detailed OS information: " + osName);
+                
+                // Add delay for all platforms to ensure DB is ready
+                try {
+                    Log.d(TAG, "Waiting to ensure database is ready...");
+                    Thread.sleep(500);
+                    // Refresh routine list after delay
+                    existingRoutines = repository.getRoutines().getValue();
+                    if (existingRoutines != null) {
+                        Log.d(TAG, "After delay: Found " + existingRoutines.size() + " routines");
+                        for (Routine r : existingRoutines) {
+                            String routineName = r.getRoutineName();
+                            if ("Morning".equals(routineName) || "Evening".equals(routineName)) {
+                                routinesExist.put(routineName, true);
+                                Log.d(TAG, "  After delay: Found routine: " + routineName);
+                            }
+                        }
+                    } else {
+                        Log.d(TAG, "***WARNING: Routines list is still NULL after delay");
+                    }
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep interrupted during verification", e);
+                }
+
                 // Detect if we're running in test mode by checking the package name
                 boolean isTestMode = getPackageName().contains("test");
 
                 // In test mode, always ensure routines are recreated
                 if (isTestMode) {
-                    Log.d(TAG, "Running in test mode. Ensuring test routines are available.");
+                    Log.d(TAG, "Test mode detected, forcing routine recreation");
                     routinesExist.put("Morning", false);
                     routinesExist.put("Evening", false);
                 }
 
-                // First add all default tasks to the database if we need to create any routines
-                if (!routinesExist.get("Morning") || !routinesExist.get("Evening")) {
-                    Log.d(TAG, "Need to create default routines. Checking tasks...");
-                    // Add morning tasks if morning routine doesn't exist
+                Log.d(TAG, "Need to create Morning routine: " + !routinesExist.get("Morning"));
+                Log.d(TAG, "Need to create Evening routine: " + !routinesExist.get("Evening"));
+
+                // Create missing routines with synchronized access
+                synchronized (routineRepository) {
                     if (!routinesExist.get("Morning")) {
-                        Log.d(TAG, "Morning routine is missing, adding morning tasks");
+                        // Create morning routine with default ID
+                        Routine morningRoutine = new Routine(0, "Morning");
+
+                        // Add tasks to the routine
+                        Log.d(TAG, "Adding tasks to Morning routine");
                         for (Task task : DEFAULT_MORNING_TASKS) {
-                            repository.addTask(task);
-                            Log.d(TAG, "Added morning task: " + task.getTaskName() + " with ID: " + task.getTaskId());
+                            morningRoutine.addTask(task);
                         }
+
+                        // Log task count
+                        Log.d(TAG, "Morning routine has " + morningRoutine.getTasks().size() + " tasks");
+
+                        // Add the morning routine
+                        Log.d(TAG, "Adding morning routine with ID: " + morningRoutine.getRoutineId());
+                        
+                        // Add with retry logic
+                        boolean morningSuccess = false;
+                        for (int attempt = 1; attempt <= 3; attempt++) {
+                            try {
+                                repository.addRoutine(morningRoutine);
+                                Log.d(TAG, "Morning routine added successfully on attempt " + attempt);
+                                morningSuccess = true;
+                                break;
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error adding morning routine (attempt " + attempt + "/3)", e);
+                                if (attempt < 3) {
+                                    try {
+                                        Thread.sleep(100);
+                                    } catch (InterruptedException ie) {
+                                        Log.e(TAG, "Sleep interrupted", ie);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!morningSuccess) {
+                            Log.e(TAG, "CRITICAL ERROR: Failed to add Morning routine after multiple attempts");
+                        }
+
+                        // Wait a bit to ensure the routine is fully saved
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            Log.e(TAG, "Sleep interrupted", e);
+                        }
+                    } else {
+                        Log.d(TAG, "Morning routine already exists, skipping creation.");
                     }
 
-                    // Add evening tasks if evening routine doesn't exist
                     if (!routinesExist.get("Evening")) {
-                        Log.d(TAG, "Evening routine is missing, adding evening tasks");
+                        // Create evening routine with default ID
+                        Routine eveningRoutine = new Routine(1, "Evening");
+
+                        // Add tasks to the routine
+                        Log.d(TAG, "Adding tasks to Evening routine");
                         for (Task task : DEFAULT_EVENING_TASKS) {
-                            repository.addTask(task);
-                            Log.d(TAG, "Added evening task: " + task.getTaskName() + " with ID: " + task.getTaskId());
+                            eveningRoutine.addTask(task);
                         }
+
+                        // Log task count
+                        Log.d(TAG, "Evening routine has " + eveningRoutine.getTasks().size() + " tasks");
+
+                        // Add the evening routine
+                        Log.d(TAG, "Adding evening routine with ID: " + eveningRoutine.getRoutineId());
+                        
+                        // Add with retry logic
+                        boolean eveningSuccess = false;
+                        for (int attempt = 1; attempt <= 3; attempt++) {
+                            try {
+                                repository.addRoutine(eveningRoutine);
+                                Log.d(TAG, "Evening routine added successfully on attempt " + attempt);
+                                eveningSuccess = true;
+                                break;
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error adding evening routine (attempt " + attempt + "/3)", e);
+                                if (attempt < 3) {
+                                    try {
+                                        Thread.sleep(100);
+                                    } catch (InterruptedException ie) {
+                                        Log.e(TAG, "Sleep interrupted", ie);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (!eveningSuccess) {
+                            Log.e(TAG, "CRITICAL ERROR: Failed to add Evening routine after multiple attempts");
+                        }
+
+                        // Wait a bit to ensure the routine is fully saved
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            Log.e(TAG, "Sleep interrupted", e);
+                        }
+                    } else {
+                        Log.d(TAG, "Evening routine already exists, skipping creation.");
                     }
-
-                    // Wait a bit longer for tasks to be added
-                    try {
-                        Log.d(TAG, "Waiting for task additions to complete...");
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        Log.e(TAG, "Sleep interrupted", e);
-                    }
-                } else {
-                    Log.d(TAG, "Default routines exist, no need to add tasks.");
-                }
-
-
-                // Create and add Morning routine if it doesn't exist
-                if (!routinesExist.get("Morning")) {
-                    // Create morning routine with default ID
-                    Routine morningRoutine = new Routine(0, "Morning");
-
-                    // Add tasks to the routine
-                    Log.d(TAG, "Adding tasks to Morning routine");
-                    for (Task task : DEFAULT_MORNING_TASKS) {
-                        morningRoutine.addTask(task);
-                    }
-
-                    // Log task count
-                    Log.d(TAG, "Morning routine has " + morningRoutine.getTasks().size() + " tasks");
-
-                    // Add the morning routine
-                    Log.d(TAG, "Adding morning routine with ID: " + morningRoutine.getRoutineId());
-                    repository.addRoutine(morningRoutine);
-
-                    // Wait a bit to ensure the routine is fully saved
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        Log.e(TAG, "Sleep interrupted", e);
-                    }
-                } else {
-                    Log.d(TAG, "Morning routine already exists, skipping creation.");
-                }
-
-                // Create and add Evening routine if it doesn't exist
-                if (!routinesExist.get("Evening")) {
-                    // Create evening routine with default ID
-                    Routine eveningRoutine = new Routine(1, "Evening");
-
-                    // Add tasks to the routine
-                    Log.d(TAG, "Adding tasks to Evening routine");
-                    for (Task task : DEFAULT_EVENING_TASKS) {
-                        eveningRoutine.addTask(task);
-                    }
-
-                    // Log task count
-                    Log.d(TAG, "Evening routine has " + eveningRoutine.getTasks().size() + " tasks");
-
-                    // Add the evening routine
-                    Log.d(TAG, "Adding evening routine with ID: " + eveningRoutine.getRoutineId());
-                    repository.addRoutine(eveningRoutine);
-
-                    // Wait a bit to ensure the routine is fully saved
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        Log.e(TAG, "Sleep interrupted", e);
-                    }
-                } else {
-                    Log.d(TAG, "Evening routine already exists, skipping creation.");
                 }
 
                 Log.d(TAG, "Default data initialization complete");
 
+                // Force refresh from repository to ensure routines are loaded
+                repository.refreshRoutines();
+                
                 // Double check that routines were added
-                List<Routine> checkRoutines = repository.getRoutines().getValue();
-                if (checkRoutines != null) {
-                    Log.d(TAG, "Verification: Found " + checkRoutines.size() + " routines after initialization");
-                    for (Routine r : checkRoutines) {
-                        Log.d(TAG, "  Routine ID: " + r.getRoutineId() + ", Name: " + r.getRoutineName() +
-                                ", Tasks: " + r.getTasks().size());
+                try {
+                    Thread.sleep(1000); // Wait longer to ensure repository refresh completes
+                    List<Routine> checkRoutines = repository.getRoutines().getValue();
+                    if (checkRoutines != null) {
+                        Log.d(TAG, "FINAL Verification: Found " + checkRoutines.size() + " routines after initialization");
+                        for (Routine r : checkRoutines) {
+                            Log.d(TAG, "  Routine ID: " + r.getRoutineId() + ", Name: " + r.getRoutineName() +
+                                    ", Tasks: " + r.getTasks().size());
+                        }
+                        
+                        // Check specifically for Morning and Evening routines
+                        boolean foundMorning = false;
+                        boolean foundEvening = false;
+                        for (Routine r : checkRoutines) {
+                            if ("Morning".equals(r.getRoutineName())) foundMorning = true;
+                            if ("Evening".equals(r.getRoutineName())) foundEvening = true;
+                        }
+                        
+                        if (!foundMorning) {
+                            Log.e(TAG, "CRITICAL ERROR: Morning routine is missing after initialization");
+                        }
+                        if (!foundEvening) {
+                            Log.e(TAG, "CRITICAL ERROR: Evening routine is missing after initialization");
+                        }
+                        
+                        if (foundMorning && foundEvening) {
+                            Log.d(TAG, "SUCCESS: Both Morning and Evening routines found after initialization");
+                        }
+                    } else {
+                        Log.e(TAG, "CRITICAL ERROR: Verification failed - No routines found after initialization");
                     }
-                } else {
-                    Log.e(TAG, "Verification failed: No routines found after initialization");
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep interrupted during verification", e);
                 }
 
             } catch (Exception e) {
@@ -468,6 +619,113 @@ public class HabitizerApplication extends Application {
         // Initialize default data if needed
         initializeDefaultDataIfNeeded();
         
+        // Clean up any duplicate routines after initialization
+        cleanupDuplicateRoutines();
+        
         Log.d(TAG, "Application initialized with Room database");
+    }
+
+    /**
+     * Cleans up any duplicate routines that may have been created during initialization.
+     * This helps ensure consistent behavior across platforms.
+     */
+    private void cleanupDuplicateRoutines() {
+        Executor executor = Executors.newSingleThreadExecutor();
+        executor.execute(() -> {
+            try {
+                // Wait for initialization to complete
+                try {
+                    Thread.sleep(1500);
+                    Log.d(TAG, "Starting duplicate routine cleanup after initialization wait");
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep interrupted", e);
+                }
+                
+                List<Routine> routines = repository.getRoutines().getValue();
+                
+                if (routines == null || routines.isEmpty()) {
+                    Log.e(TAG, "CRITICAL ERROR: No routines found during cleanup - skipping cleanup to avoid data loss");
+                    return;
+                }
+                
+                Log.d(TAG, "Found " + routines.size() + " routines to check for duplicates");
+                
+                // Map to store unique routines by name
+                Map<String, Routine> uniqueRoutinesByName = new HashMap<>();
+                List<Routine> duplicatesToRemove = new ArrayList<>();
+                
+                // First pass - identify duplicates and keep routines with most tasks
+                for (Routine routine : routines) {
+                    String name = routine.getRoutineName();
+                    if (uniqueRoutinesByName.containsKey(name)) {
+                        Routine existing = uniqueRoutinesByName.get(name);
+                        // Keep the routine with the most tasks
+                        if (routine.getTasks().size() > existing.getTasks().size()) {
+                            duplicatesToRemove.add(existing);
+                            uniqueRoutinesByName.put(name, routine);
+                            Log.d(TAG, "Replacing routine " + name + " with ID " + existing.getRoutineId() + 
+                                  " with one that has more tasks (ID: " + routine.getRoutineId() + ")");
+                        } else {
+                            duplicatesToRemove.add(routine);
+                            Log.d(TAG, "Marking duplicate routine " + name + " with ID " + routine.getRoutineId() + " for removal");
+                        }
+                    } else {
+                        uniqueRoutinesByName.put(name, routine);
+                        Log.d(TAG, "Keeping unique routine " + name + " with ID " + routine.getRoutineId());
+                    }
+                }
+                
+                // Safety check - ensure we're not removing all routines
+                if (duplicatesToRemove.size() >= routines.size()) {
+                    Log.e(TAG, "SAFETY VIOLATION: Attempted to remove all routines during cleanup! Aborting duplicate cleanup.");
+                    return;
+                }
+                
+                // Log what we're keeping
+                Log.d(TAG, "After cleanup, will keep " + uniqueRoutinesByName.size() + " unique routines:");
+                for (Routine r : uniqueRoutinesByName.values()) {
+                    Log.d(TAG, "  Keeping: " + r.getRoutineName() + " (ID: " + r.getRoutineId() + 
+                          ") with " + r.getTasks().size() + " tasks");
+                }
+                
+                // Remove duplicates only if we found some and we're still keeping some routines
+                if (!duplicatesToRemove.isEmpty() && uniqueRoutinesByName.size() > 0) {
+                    Log.d(TAG, "Cleaning up " + duplicatesToRemove.size() + " duplicate routines");
+                    
+                    // Instead of updating/removing, we'll just update the repository with our filtered list
+                    List<Routine> cleanedRoutines = new ArrayList<>(uniqueRoutinesByName.values());
+                    
+                    // Force update repository with cleaned list
+                    try {
+                        // Update repository with cleaned list
+                        repository.setRoutines(cleanedRoutines);
+                        Log.d(TAG, "Successfully updated repository with " + cleanedRoutines.size() + " cleaned routines");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error updating repository with cleaned routines", e);
+                    }
+                    
+                    // Final verification
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, "Sleep interrupted", e);
+                    }
+                    
+                    List<Routine> finalRoutines = repository.getRoutines().getValue();
+                    if (finalRoutines != null) {
+                        Log.d(TAG, "After cleanup: " + finalRoutines.size() + " routines remain");
+                        for (Routine r : finalRoutines) {
+                            Log.d(TAG, "  Routine: " + r.getRoutineName() + " (ID: " + r.getRoutineId() + 
+                                  ") with " + r.getTasks().size() + " tasks");
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "No duplicate routines found during cleanup, or no routines would remain after cleanup");
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error during duplicate routine cleanup", e);
+            }
+        });
     }
 }
