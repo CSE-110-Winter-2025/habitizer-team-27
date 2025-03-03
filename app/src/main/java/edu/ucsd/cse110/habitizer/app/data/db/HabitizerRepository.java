@@ -67,6 +67,14 @@ public class HabitizerRepository {
     }
     
     /**
+     * Get the database instance
+     * @return The AppDatabase instance
+     */
+    public AppDatabase getDatabase() {
+        return database;
+    }
+    
+    /**
      * Reset the repository instance (for testing)
      * This will also reset the database instance
      */
@@ -110,8 +118,8 @@ public class HabitizerRepository {
                 }
                 Log.d(TAG, "Loaded " + tasks.size() + " tasks from database");
                 
-                // Load routines and tasks
-                List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasks();
+                // Load routines and tasks using our ordered query
+                List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasksOrdered();
                 List<Routine> routines = new ArrayList<>();
                 
                 // Check for duplicate routines in the database query result
@@ -463,34 +471,35 @@ public class HabitizerRepository {
     }
     
     /**
-     * Force refresh the routines from the database.
-     * This is useful when routines have been added but aren't showing up in the UI.
+     * Refresh routines data from database
      */
     public void refreshRoutines() {
-        Log.d(TAG, "Force refreshing routines from database");
         executor.execute(() -> {
             try {
-                // Fetch all routines from database
-                List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasks();
+                // Load routines and tasks using ordered query
+                List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasksOrdered();
                 List<Routine> routines = new ArrayList<>();
                 
-                // Convert to domain objects
-                for (RoutineWithTasks rwt : routinesWithTasks) {
-                    Routine routine = rwt.toRoutine();
-                    routines.add(routine);
-                    Log.d(TAG, "Refreshed routine: " + routine.getRoutineName() + " with " + 
-                          routine.getTasks().size() + " tasks");
+                // Check for duplicate routines in the database query result
+                Map<Integer, Routine> uniqueRoutineMap = new HashMap<>();
+                for (RoutineWithTasks routineWithTasks : routinesWithTasks) {
+                    Routine routine = routineWithTasks.toRoutine();
+                    uniqueRoutineMap.put(routine.getRoutineId(), routine);
                 }
                 
-                // Update the subject and LiveData
+                routines.addAll(uniqueRoutineMap.values());
+                
+                if (uniqueRoutineMap.size() < routinesWithTasks.size()) {
+                    Log.w(TAG, "Found and removed " + (routinesWithTasks.size() - uniqueRoutineMap.size()) + 
+                           " duplicate routines during refresh");
+                }
+                
+                // Update observables on main thread
+                final List<Routine> finalRoutines = routines;
                 mainHandler.post(() -> {
-                    // Update LiveData (for Android components)
-                    routinesLiveData.setValue(routines);
-                    
-                    // Update Subject (for reactive components)
-                    routinesSubject.setValue(routines);
-                    
-                    Log.d(TAG, "Routine refresh complete, published " + routines.size() + " routines");
+                    routinesSubject.setValue(finalRoutines);
+                    routinesLiveData.setValue(finalRoutines);
+                    Log.d(TAG, "Routines refreshed with " + finalRoutines.size() + " routines");
                 });
             } catch (Exception e) {
                 Log.e(TAG, "Error refreshing routines", e);

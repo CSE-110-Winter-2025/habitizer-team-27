@@ -4,15 +4,23 @@ import androidx.room.Embedded;
 import androidx.room.Junction;
 import androidx.room.Relation;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import android.util.Log;
 
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
+import edu.ucsd.cse110.habitizer.lib.domain.Task;
 
 /**
  * Composite data class containing a routine and all its tasks
  */
 public class RoutineWithTasks {
+    private static final String TAG = "RoutineWithTasks";
+    
     @Embedded
     public RoutineEntity routine;
     
@@ -23,7 +31,8 @@ public class RoutineWithTasks {
             value = RoutineTaskCrossRef.class,
             parentColumn = "routine_id",
             entityColumn = "task_id"
-        )
+        ),
+        entity = TaskEntity.class
     )
     public List<TaskEntity> tasks;
     
@@ -37,14 +46,39 @@ public class RoutineWithTasks {
         // Clear any existing tasks because we'll add the tasks retrieved from the database
         domainRoutine.getTasks().clear();
         
-        // Add all tasks to the routine
-        if (tasks != null) {
-            // Add tasks in order
-            tasks.stream()
-                .map(TaskEntity::toTask)
-                .forEach(domainRoutine::addTask);
+        // Process tasks if we have any
+        if (tasks != null && !tasks.isEmpty()) {
+            Log.d(TAG, "Processing " + tasks.size() + " tasks for routine: " + routine.getRoutineName());
+            
+            try {
+                // Convert tasks to domain objects
+                List<Task> domainTasks = new ArrayList<>();
+                for (TaskEntity taskEntity : tasks) {
+                    Task task = taskEntity.toTask();
+                    domainTasks.add(task);
+                    Log.d(TAG, "Converted task: " + task.getTaskName() + " (ID: " + task.getTaskId() + ") for routine " + routine.getRoutineName());
+                }
+                
+                // Add all tasks to the routine
+                for (Task task : domainTasks) {
+                    domainRoutine.addTask(task);
+                }
+                
+                Log.d(TAG, "Successfully added " + domainTasks.size() + " tasks to routine " + routine.getRoutineName());
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing tasks for routine " + routine.getRoutineName(), e);
+                
+                // Fallback to simple conversion if there's an error
+                for (TaskEntity taskEntity : tasks) {
+                    domainRoutine.addTask(taskEntity.toTask());
+                }
+            }
+        } else {
+            Log.w(TAG, "No tasks found for routine: " + routine.getRoutineName());
         }
         
+        // Log the result
+        Log.d(TAG, "Routine " + routine.getRoutineName() + " converted with " + domainRoutine.getTasks().size() + " tasks");
         return domainRoutine;
     }
 } 

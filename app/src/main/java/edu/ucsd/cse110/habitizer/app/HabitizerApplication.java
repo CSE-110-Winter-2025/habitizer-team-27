@@ -12,7 +12,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
 import java.util.HashMap;
 
+import edu.ucsd.cse110.habitizer.app.data.db.AppDatabase;
 import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
+import edu.ucsd.cse110.habitizer.app.data.db.RoutineEntity;
+import edu.ucsd.cse110.habitizer.app.data.db.RoutineTaskCrossRef;
+import edu.ucsd.cse110.habitizer.app.data.db.TaskEntity;
 import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
@@ -727,5 +731,267 @@ public class HabitizerApplication extends Application {
                 Log.e(TAG, "Error during duplicate routine cleanup", e);
             }
         });
+    }
+
+    /**
+     * Verify that routines are loaded correctly with all their tasks
+     */
+    private void verifyRoutinesLoaded() {
+        Executor executor = Executors.newSingleThreadExecutor();
+        executor.execute(() -> {
+            Log.d(TAG, "Verifying routines and tasks are properly loaded...");
+            try {
+                // First refresh routines to ensure we have the latest data
+                repository.refreshRoutines();
+                
+                // Wait for refresh to complete
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep interrupted during verification", e);
+                }
+                
+                // Check task associations directly in the database
+                verifyAndFixTaskAssociationsInDatabase();
+                
+                // Wait for database operations to complete
+                try {
+                    Thread.sleep(800);
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep interrupted during verification", e);
+                }
+                
+                // Refresh again after fixing
+                repository.refreshRoutines();
+                
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep interrupted during verification", e);
+                }
+                
+                // Get all routines from the repository using the findAll method
+                Subject<List<Routine>> routinesSubject = routineRepository.findAll();
+                List<Routine> routines = routinesSubject.getValue();
+                
+                if (routines == null || routines.isEmpty()) {
+                    Log.e(TAG, "No routines found in repository! This is unexpected.");
+                    return;
+                }
+
+                Log.d(TAG, "Found " + routines.size() + " routines in repository");
+                
+                // Check each routine for tasks
+                for (Routine routine : routines) {
+                    String routineName = routine.getRoutineName();
+                    List<Task> tasks = routine.getTasks();
+                    
+                    Log.d(TAG, "Routine '" + routineName + "' has " + tasks.size() + " tasks");
+                    
+                    if (tasks.isEmpty()) {
+                        Log.e(TAG, "ERROR: Routine '" + routineName + "' has no tasks! This indicates a loading issue.");
+                        
+                        // If Morning or Evening routine is missing tasks, let's fix it
+                        if ("Morning".equals(routineName) || "Evening".equals(routineName)) {
+                            Log.d(TAG, "Attempting to fix missing tasks for " + routineName + " routine");
+                            fixRoutineWithDefaultTasks(routine);
+                        }
+                    } else {
+                        // Log all tasks for this routine
+                        for (Task task : tasks) {
+                            Log.d(TAG, "  - Task: " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
+                        }
+                    }
+                }
+                
+                Log.d(TAG, "Routine verification complete");
+            } catch (Exception e) {
+                Log.e(TAG, "Error during routine verification", e);
+            }
+        });
+    }
+    
+    /**
+     * Verify and fix task associations directly in the database
+     */
+    private void verifyAndFixTaskAssociationsInDatabase() {
+        try {
+            Log.d(TAG, "Checking and fixing task associations directly in the database");
+            
+            // Get a reference to the database
+            AppDatabase db = repository.getDatabase();
+            
+            // Check how many associations exist in the cross-reference table
+            List<RoutineTaskCrossRef> crossRefs = db.routineDao().getAllTaskRelationshipsOrdered();
+            Log.d(TAG, "Found " + (crossRefs != null ? crossRefs.size() : 0) + " task-routine associations in database");
+            
+            // Get routines
+            List<RoutineEntity> routineEntities = db.routineDao().findAll();
+            if (routineEntities == null || routineEntities.isEmpty()) {
+                Log.e(TAG, "No routines found in database");
+                return;
+            }
+            Log.d(TAG, "Found " + routineEntities.size() + " routines in database");
+            
+            // Check for Morning and Evening routines
+            RoutineEntity morningRoutine = null;
+            RoutineEntity eveningRoutine = null;
+            
+            for (RoutineEntity routine : routineEntities) {
+                if ("Morning".equals(routine.getRoutineName())) {
+                    morningRoutine = routine;
+                    Log.d(TAG, "Found Morning routine in database with ID: " + routine.getId());
+                } else if ("Evening".equals(routine.getRoutineName())) {
+                    eveningRoutine = routine;
+                    Log.d(TAG, "Found Evening routine in database with ID: " + routine.getId());
+                }
+            }
+            
+            // Get all tasks
+            List<TaskEntity> allTasks = db.taskDao().findAll();
+            if (allTasks == null || allTasks.isEmpty()) {
+                Log.d(TAG, "No tasks found in database. Creating default tasks...");
+                
+                // Create default tasks
+                List<TaskEntity> tasksToAdd = new ArrayList<>();
+                
+                // Add default morning tasks
+                for (Task task : DEFAULT_MORNING_TASKS) {
+                    TaskEntity taskEntity = TaskEntity.fromTask(task);
+                    tasksToAdd.add(taskEntity);
+                }
+                
+                // Add default evening tasks
+                for (Task task : DEFAULT_EVENING_TASKS) {
+                    TaskEntity taskEntity = TaskEntity.fromTask(task);
+                    tasksToAdd.add(taskEntity);
+                }
+                
+                // Insert tasks into database
+                db.taskDao().insertAll(tasksToAdd);
+                Log.d(TAG, "Added " + tasksToAdd.size() + " default tasks to database");
+                
+                // Refresh the task list
+                allTasks = db.taskDao().findAll();
+            }
+            
+            Log.d(TAG, "Found " + allTasks.size() + " tasks in database");
+            
+            // Maps to store tasks by name for quick lookup
+            Map<String, TaskEntity> tasksByName = new HashMap<>();
+            for (TaskEntity task : allTasks) {
+                tasksByName.put(task.getTaskName(), task);
+            }
+            
+            // Fix Morning routine if needed
+            if (morningRoutine != null) {
+                // Check if Morning routine has associations
+                List<RoutineTaskCrossRef> morningRefs = db.routineDao().getTaskPositions(morningRoutine.getId());
+                if (morningRefs == null || morningRefs.isEmpty()) {
+                    Log.d(TAG, "Morning routine has no task associations. Adding default tasks...");
+                    
+                    // Delete any existing associations to be safe
+                    db.routineDao().deleteRoutineTaskCrossRefs(morningRoutine.getId());
+                    
+                    // Add associations for default morning tasks
+                    for (int i = 0; i < DEFAULT_MORNING_TASKS.size(); i++) {
+                        Task task = DEFAULT_MORNING_TASKS.get(i);
+                        TaskEntity taskEntity = tasksByName.get(task.getTaskName());
+                        
+                        if (taskEntity != null) {
+                            RoutineTaskCrossRef crossRef = new RoutineTaskCrossRef(
+                                morningRoutine.getId(),
+                                taskEntity.getId(),
+                                i
+                            );
+                            db.routineDao().insertRoutineTaskCrossRef(crossRef);
+                            Log.d(TAG, "Added association between Morning routine and task: " + taskEntity.getTaskName());
+                        } else {
+                            Log.e(TAG, "Could not find task entity for: " + task.getTaskName());
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "Morning routine already has " + morningRefs.size() + " task associations");
+                }
+            }
+            
+            // Fix Evening routine if needed
+            if (eveningRoutine != null) {
+                // Check if Evening routine has associations
+                List<RoutineTaskCrossRef> eveningRefs = db.routineDao().getTaskPositions(eveningRoutine.getId());
+                if (eveningRefs == null || eveningRefs.isEmpty()) {
+                    Log.d(TAG, "Evening routine has no task associations. Adding default tasks...");
+                    
+                    // Delete any existing associations to be safe
+                    db.routineDao().deleteRoutineTaskCrossRefs(eveningRoutine.getId());
+                    
+                    // Add associations for default evening tasks
+                    for (int i = 0; i < DEFAULT_EVENING_TASKS.size(); i++) {
+                        Task task = DEFAULT_EVENING_TASKS.get(i);
+                        TaskEntity taskEntity = tasksByName.get(task.getTaskName());
+                        
+                        if (taskEntity != null) {
+                            RoutineTaskCrossRef crossRef = new RoutineTaskCrossRef(
+                                eveningRoutine.getId(),
+                                taskEntity.getId(),
+                                i
+                            );
+                            db.routineDao().insertRoutineTaskCrossRef(crossRef);
+                            Log.d(TAG, "Added association between Evening routine and task: " + taskEntity.getTaskName());
+                        } else {
+                            Log.e(TAG, "Could not find task entity for: " + task.getTaskName());
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "Evening routine already has " + eveningRefs.size() + " task associations");
+                }
+            }
+            
+            Log.d(TAG, "Task association verification and fixing complete");
+        } catch (Exception e) {
+            Log.e(TAG, "Error verifying and fixing task associations", e);
+        }
+    }
+    
+    /**
+     * Fix a routine by adding default tasks to it
+     * @param routine The routine to fix
+     */
+    private void fixRoutineWithDefaultTasks(Routine routine) {
+        try {
+            String routineName = routine.getRoutineName();
+            Log.d(TAG, "Fixing routine: " + routineName);
+            
+            // Add appropriate tasks based on routine name
+            if ("Morning".equals(routineName)) {
+                // Add default morning tasks
+                for (Task task : DEFAULT_MORNING_TASKS) {
+                    routine.addTask(task);
+                }
+                Log.d(TAG, "Added " + DEFAULT_MORNING_TASKS.size() + " default tasks to Morning routine");
+            } else if ("Evening".equals(routineName)) {
+                // Add default evening tasks
+                for (Task task : DEFAULT_EVENING_TASKS) {
+                    routine.addTask(task);
+                }
+                Log.d(TAG, "Added " + DEFAULT_EVENING_TASKS.size() + " default tasks to Evening routine");
+            }
+            
+            // Update the routine in the repository to persist the changes
+            repository.updateRoutine(routine);
+            Log.d(TAG, "Updated " + routineName + " routine with default tasks in repository");
+            
+            // Wait for a moment to ensure the update is processed
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Sleep interrupted", e);
+            }
+            
+            // Refresh routines to ensure changes are visible
+            repository.refreshRoutines();
+        } catch (Exception e) {
+            Log.e(TAG, "Error fixing routine with default tasks", e);
+        }
     }
 }
