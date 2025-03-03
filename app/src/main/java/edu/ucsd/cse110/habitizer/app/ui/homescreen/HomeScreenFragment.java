@@ -37,6 +37,8 @@ public class HomeScreenFragment extends Fragment {
     private boolean isFirstLoad = true;
     private HomeAdapter adapter;
     private static final int REFRESH_DELAY = 1000; // 1 second
+    private static final int MAX_REFRESH_ATTEMPTS = 3; // Maximum number of refresh attempts
+    private int refreshAttempts = 0; // Counter for refresh attempts
     private Handler refreshHandler = new Handler(Looper.getMainLooper());
 
     public HomeScreenFragment() {
@@ -144,10 +146,12 @@ public class HomeScreenFragment extends Fragment {
             // Log final state
             Log.d(TAG, "Updated routines list now has " + this.routines.size() + " routines");
             
-            // If this is the first load and we don't have both default routines, schedule a refresh
-            if (isFirstLoad && (this.routines.size() < 2)) {
-                Log.d(TAG, "First load detected with only " + this.routines.size() + " routines. Scheduling refresh...");
+            // If this is the first load and we don't have both default routines (Morning and Evening), schedule a refresh
+            if (isFirstLoad && (this.routines.size() < 2 || !hasDefaultRoutines())) {
+                Log.d(TAG, "First load detected with " + this.routines.size() + " routines, but missing default routines. Scheduling refresh...");
                 scheduleRefresh();
+            } else {
+                refreshAttempts = 0; // Reset refresh attempts when we have all routines
             }
             
             isFirstLoad = false;
@@ -215,14 +219,43 @@ public class HomeScreenFragment extends Fragment {
      * Schedule a refresh of the data after a delay
      */
     private void scheduleRefresh() {
-        refreshHandler.postDelayed(() -> {
-            Log.d(TAG, "Refreshing routine data...");
-            // Force a refresh of the data by re-observing
-            if (routineObserver != null) {
-                activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
-                activityModel.getRoutineRepository().findAll().observe(routineObserver);
+        if (refreshAttempts < MAX_REFRESH_ATTEMPTS) {
+            refreshAttempts++;
+            Log.d(TAG, "Scheduling refresh attempt " + refreshAttempts + "/" + MAX_REFRESH_ATTEMPTS);
+            refreshHandler.postDelayed(() -> {
+                Log.d(TAG, "Refreshing routines list (attempt " + refreshAttempts + ")");
+                // Force a refresh of the data by re-observing
+                if (routineObserver != null) {
+                    activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
+                    activityModel.getRoutineRepository().findAll().observe(routineObserver);
+                }
+            }, REFRESH_DELAY * refreshAttempts); // Increase delay based on attempt number
+        } else {
+            Log.d(TAG, "Maximum refresh attempts reached. Giving up.");
+        }
+    }
+    
+    /**
+     * Check if both default routines (Morning and Evening) are present
+     */
+    private boolean hasDefaultRoutines() {
+        boolean hasMorning = false;
+        boolean hasEvening = false;
+        
+        for (Routine routine : routines) {
+            String name = routine.getRoutineName();
+            if ("Morning".equals(name)) {
+                hasMorning = true;
+            } else if ("Evening".equals(name)) {
+                hasEvening = true;
             }
-        }, REFRESH_DELAY);
+            
+            if (hasMorning && hasEvening) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     @Override

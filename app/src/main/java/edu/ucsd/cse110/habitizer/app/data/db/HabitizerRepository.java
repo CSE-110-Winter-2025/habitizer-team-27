@@ -67,6 +67,19 @@ public class HabitizerRepository {
     }
     
     /**
+     * Reset the repository instance (for testing)
+     * This will also reset the database instance
+     */
+    public static void resetInstance() {
+        Log.d(TAG, "Resetting repository instance");
+        synchronized (HabitizerRepository.class) {
+            INSTANCE = null;
+            // Also reset the database
+            AppDatabase.resetInstance();
+        }
+    }
+    
+    /**
      * Private constructor
      * @param context Application context
      */
