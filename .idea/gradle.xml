@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+<<<<<<< HEAD
   <component name="GradleMigrationSettings" migrationVersion="1" />
+=======
+>>>>>>> f710fb1 (Merge)
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
@@ -11,8 +14,11 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
+<<<<<<< HEAD
             <option value="$PROJECT_DIR$/lib" />
             <option value="$PROJECT_DIR$/observables" />
+=======
+>>>>>>> f710fb1 (Merge)
           </set>
         </option>
         <option name="resolveExternalAnnotations" value="false" />
