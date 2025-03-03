@@ -297,52 +297,25 @@ public class HabitizerApplication extends Application {
         Executor executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
             try {
-                // Get existing routines
+                // First check if we already have routines - only initialize if we don't have any
                 List<Routine> existingRoutines = repository.getRoutines().getValue();
                 
-                // Map to track which default routines we need to create
-                Map<String, Boolean> routinesExist = new HashMap<>();
-                routinesExist.put("Morning", false);
-                routinesExist.put("Evening", false);
-                
-                // Check which default routines already exist
-                if (existingRoutines != null && !existingRoutines.isEmpty()) {
-                    Log.d(TAG, "Found " + existingRoutines.size() + " existing routines");
-                    for (Routine r : existingRoutines) {
-                        String routineName = r.getRoutineName();
-                        if ("Morning".equals(routineName) || "Evening".equals(routineName)) {
-                            routinesExist.put(routineName, true);
-                            Log.d(TAG, "  Existing routine: " + routineName + " (ID: " + r.getRoutineId() + ")");
-                        }
-                    }
-                }
-                
-                // Detect if we're running in test mode by checking the package name
-                boolean isTestMode = getPackageName().contains("test");
-                
-                // In test mode, always ensure routines are recreated
-                if (isTestMode) {
-                    Log.d(TAG, "Running in test mode. Ensuring test routines are available.");
-                    routinesExist.put("Morning", false);
-                    routinesExist.put("Evening", false);
-                }
-                
-                // First add all default tasks to the database if we need to create any routines
-                if (!routinesExist.get("Morning") || !routinesExist.get("Evening")) {
-                    // Add morning tasks if morning routine doesn't exist
-                    if (!routinesExist.get("Morning")) {
-                        for (Task task : DEFAULT_MORNING_TASKS) {
-                            repository.addTask(task);
-                            Log.d(TAG, "Added morning task: " + task.getTaskName() + " with ID: " + task.getTaskId());
-                        }
+                if (existingRoutines == null || existingRoutines.isEmpty()) {
+                    Log.d(TAG, "No routines found - initializing default data");
+                    
+                    // Create the routines with default IDs
+                    Routine morningRoutine = new Routine(0, "Morning");
+                    Routine eveningRoutine = new Routine(1, "Evening");
+                    
+                    // First add all tasks to the database
+                    for (Task task : DEFAULT_MORNING_TASKS) {
+                        repository.addTask(task);
+                        Log.d(TAG, "Added morning task: " + task.getTaskName() + " with ID: " + task.getTaskId());
                     }
                     
-                    // Add evening tasks if evening routine doesn't exist
-                    if (!routinesExist.get("Evening")) {
-                        for (Task task : DEFAULT_EVENING_TASKS) {
-                            repository.addTask(task);
-                            Log.d(TAG, "Added evening task: " + task.getTaskName() + " with ID: " + task.getTaskId());
-                        }
+                    for (Task task : DEFAULT_EVENING_TASKS) {
+                        repository.addTask(task);
+                        Log.d(TAG, "Added evening task: " + task.getTaskName() + " with ID: " + task.getTaskId());
                     }
                     
                     // Wait a bit longer for tasks to be added
@@ -352,72 +325,62 @@ public class HabitizerApplication extends Application {
                     } catch (InterruptedException e) {
                         Log.e(TAG, "Sleep interrupted", e);
                     }
-                }
-                
-                // Create and add Morning routine if it doesn't exist
-                if (!routinesExist.get("Morning")) {
-                    // Create morning routine with default ID
-                    Routine morningRoutine = new Routine(0, "Morning");
                     
-                    // Add tasks to the routine
+                    // Now add tasks to the routines
                     for (Task task : DEFAULT_MORNING_TASKS) {
                         morningRoutine.addTask(task);
                     }
                     
-                    // Log task count
-                    Log.d(TAG, "Morning routine has " + morningRoutine.getTasks().size() + " tasks");
-                    
-                    // Add the morning routine
-                    Log.d(TAG, "Adding morning routine with ID: " + morningRoutine.getRoutineId());
-                    repository.addRoutine(morningRoutine);
-                    
-                    // Wait a bit to ensure the routine is fully saved
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        Log.e(TAG, "Sleep interrupted", e);
-                    }
-                }
-                
-                // Create and add Evening routine if it doesn't exist
-                if (!routinesExist.get("Evening")) {
-                    // Create evening routine with default ID
-                    Routine eveningRoutine = new Routine(1, "Evening");
-                    
-                    // Add tasks to the routine
                     for (Task task : DEFAULT_EVENING_TASKS) {
                         eveningRoutine.addTask(task);
                     }
                     
-                    // Log task count
+                    // Log task counts
+                    Log.d(TAG, "Morning routine has " + morningRoutine.getTasks().size() + " tasks");
                     Log.d(TAG, "Evening routine has " + eveningRoutine.getTasks().size() + " tasks");
                     
-                    // Add the evening routine
-                    Log.d(TAG, "Adding evening routine with ID: " + eveningRoutine.getRoutineId());
-                    repository.addRoutine(eveningRoutine);
+                    // Make sure we add the morning routine first
+                    Log.d(TAG, "Adding morning routine with ID: " + morningRoutine.getRoutineId());
+                    repository.addRoutine(morningRoutine);
                     
-                    // Wait a bit to ensure the routine is fully saved
+                    // Wait a bit to ensure the first routine is fully saved
                     try {
                         Thread.sleep(500);
                     } catch (InterruptedException e) {
                         Log.e(TAG, "Sleep interrupted", e);
                     }
-                }
-                
-                Log.d(TAG, "Default data initialization complete");
-                
-                // Double check that routines were added
-                List<Routine> checkRoutines = repository.getRoutines().getValue();
-                if (checkRoutines != null) {
-                    Log.d(TAG, "Verification: Found " + checkRoutines.size() + " routines after initialization");
-                    for (Routine r : checkRoutines) {
-                        Log.d(TAG, "  Routine ID: " + r.getRoutineId() + ", Name: " + r.getRoutineName() + 
-                              ", Tasks: " + r.getTasks().size());
+                    
+                    // Then add the evening routine
+                    Log.d(TAG, "Adding evening routine with ID: " + eveningRoutine.getRoutineId());
+                    repository.addRoutine(eveningRoutine);
+                    
+                    // Wait to make sure both routines are saved
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, "Sleep interrupted", e);
+                    }
+                    
+                    Log.d(TAG, "Default data initialization complete");
+                    
+                    // Double check that routines were added
+                    List<Routine> checkRoutines = repository.getRoutines().getValue();
+                    if (checkRoutines != null) {
+                        Log.d(TAG, "Verification: Found " + checkRoutines.size() + " routines after initialization");
+                        for (Routine r : checkRoutines) {
+                            Log.d(TAG, "  Routine ID: " + r.getRoutineId() + ", Name: " + r.getRoutineName() + 
+                                  ", Tasks: " + r.getTasks().size());
+                        }
+                    } else {
+                        Log.e(TAG, "Verification failed: No routines found after initialization");
                     }
                 } else {
-                    Log.e(TAG, "Verification failed: No routines found after initialization");
+                    Log.d(TAG, "Found " + existingRoutines.size() + " existing routines - skipping initialization");
+                    for (Routine r : existingRoutines) {
+                        Log.d(TAG, "  Existing routine: ID: " + r.getRoutineId() + ", Name: " + r.getRoutineName() + 
+                              ", Tasks: " + r.getTasks().size());
+                    }
                 }
-                
             } catch (Exception e) {
                 Log.e(TAG, "Error initializing default data", e);
             }
