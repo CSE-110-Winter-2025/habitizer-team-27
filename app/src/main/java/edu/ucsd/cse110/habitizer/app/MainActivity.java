@@ -58,11 +58,26 @@ public class MainActivity extends AppCompatActivity {
             for (Routine r : routines) {
                 Log.d(TAG, "  Routine: " + r.getRoutineName() + " (ID: " + r.getRoutineId() + ")");
             }
-            
-            // Refresh home screen in case routines were loaded after initial display
-            if (!isShowingRoutine && routines.size() > 0) {
-                // Delay slightly to ensure UI is ready
-                handler.postDelayed(this::refreshHomeScreen, 300);
+
+            // Check if both Morning and Evening routines are present
+            boolean hasMorning = false;
+            boolean hasEvening = false;
+            for (Routine r : routines) {
+                if ("Morning".equals(r.getRoutineName())) hasMorning = true;
+                if ("Evening".equals(r.getRoutineName())) hasEvening = true;
+            }
+
+            if (hasMorning && hasEvening) {
+                Log.d(TAG, "Both Morning and Evening routines found. Refreshing home screen.");
+                // Refresh home screen in case routines were loaded after initial display
+                if (!isShowingRoutine) {
+                    // Delay slightly to ensure UI is ready
+                    handler.postDelayed(this::refreshHomeScreen, 300);
+                }
+            } else {
+                Log.d(TAG, "Not both default routines found yet. Checking again shortly.");
+                // Schedule check in a second
+                handler.postDelayed(this::verifyRoutinesLoaded, 1000);
             }
         } else {
             Log.d(TAG, "No routines found initially, will check again shortly");
