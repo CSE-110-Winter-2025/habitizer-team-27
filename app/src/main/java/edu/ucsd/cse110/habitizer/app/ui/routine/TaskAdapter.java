@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Collection;
 
@@ -24,7 +25,6 @@ import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentActivity;
 
 public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
@@ -36,7 +36,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         TextView taskName;
         CheckBox checkBox;
         TextView taskTime;
-
+        ImageButton moveUpButton;
+        ImageButton moveDownButton;
         ImageButton renameButton;
 
     }
@@ -47,13 +48,13 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         this.routine = routine;
         this.dataSource = dataSource;
         this.fragmentManager = fragmentManager;
-        Log.d("TaskAdapter", "TaskAdapter created for routine: " + 
-                (routine != null ? routine.getRoutineName() : "null") + 
+        Log.d("TaskAdapter", "TaskAdapter created for routine: " +
+                (routine != null ? routine.getRoutineName() : "null") +
                 " with " + (tasks != null ? tasks.size() : 0) + " tasks");
         if (tasks != null && !tasks.isEmpty()) {
             for (int i = 0; i < tasks.size(); i++) {
                 Task task = tasks.get(i);
-                Log.d("TaskAdapter", "Initial task " + i + ": " + 
+                Log.d("TaskAdapter", "Initial task " + i + ": " +
                         (task != null ? task.getTaskName() : "null"));
             }
         }
@@ -62,9 +63,9 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-        Log.d("TaskAdapter", "getView called for position: " + position + 
+        Log.d("TaskAdapter", "getView called for position: " + position +
                 " out of " + getCount() + " tasks");
-        
+
         // Validate position first
         if (position < 0 || position >= getCount()) {
             Log.e("TaskAdapter", "Invalid position: " + position + ", count: " + getCount());
@@ -81,6 +82,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             holder.checkBox = convertView.findViewById(R.id.check_task);
             holder.taskTime = convertView.findViewById(R.id.task_time);
             holder.renameButton = convertView.findViewById(R.id.rename_button);
+            holder.moveUpButton = convertView.findViewById(R.id.move_up_button);
+            holder.moveDownButton = convertView.findViewById(R.id.move_down_button);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -91,8 +94,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             Log.e("TaskAdapter", "Task at position " + position + " is null");
             return convertView;
         }
-        
-        Log.d("TaskAdapter", "Binding task at position " + position + ": " + task.getTaskName() + 
+
+        Log.d("TaskAdapter", "Binding task at position " + position + ": " + task.getTaskName() +
                 ", completed: " + task.isCompleted());
 
         // Clear previous listener to prevent recycling issues
@@ -102,13 +105,9 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         holder.taskName.setText(task.getTaskName());
         holder.checkBox.setChecked(task.isCompleted());
         updateTimeDisplay(holder.taskTime, task);
-        
-        // Disable checkbox if task is completed or if routine is not active (has ended)
-        boolean routineIsActive = routine.isActive();
-        holder.checkBox.setEnabled(!task.isCheckedOff() && routineIsActive);
-        
-        // Also disable rename button if routine is not active
-        holder.renameButton.setEnabled(routineIsActive);
+        holder.checkBox.setEnabled(!task.isCheckedOff());
+        holder.moveUpButton.setTag(position);
+        holder.moveDownButton.setTag(position);
 
         // Set position tag for correct item identification
         holder.checkBox.setTag(position);
@@ -118,21 +117,43 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             int pos = (int) buttonView.getTag();
             Task currentTask = getItem(pos);
 
-            // Only allow checking if routine is active and task is not already checked
-            if (currentTask != null && isChecked && !currentTask.isCheckedOff() && routineIsActive) {
+            if (currentTask != null && isChecked && !currentTask.isCheckedOff()) {
                 handleTaskCompletion(currentTask, holder);
-            } else if (!routineIsActive) {
-                // If routine is ended, reset checkbox to previous state
-                buttonView.setChecked(currentTask != null && currentTask.isCompleted());
             }
         });
 
         holder.renameButton.setOnClickListener(v -> {
-            // Only allow renaming if routine is active
-            if (routineIsActive) {
-                RenameTaskDialogFragment dialog = RenameTaskDialogFragment.newInstance(newName ->
-                        renameTask(task, newName));
-                dialog.show(fragmentManager, "RenameTaskDialog");
+            RenameTaskDialogFragment dialog = RenameTaskDialogFragment.newInstance(newName ->
+                    renameTask(task, newName));
+            dialog.show(fragmentManager, "RenameTaskDialog");
+        });
+
+        holder.moveUpButton.setOnClickListener((buttonView) -> {
+            Object tag = buttonView.getTag();
+            if (tag == null) {
+                Log.e("TaskAdapter", "moveUpButton tag is null");
+                return;
+            }
+
+            int pos = (int) tag;
+            Task currentTask = getItem(pos);
+            if (currentTask != null) {
+                moveTaskUp(currentTask);
+                notifyDataSetChanged();
+            }
+        });
+
+        holder.moveDownButton.setOnClickListener((buttonView) -> {
+            Object tag = buttonView.getTag();
+            if (tag == null) {
+                Log.e("TaskAdapter", "moveDownButton tag is null");
+                return;
+            }
+            int pos = (int) tag;
+            Task currentTask = getItem(pos);
+            if (currentTask != null) {
+                moveTaskDown(currentTask);
+                notifyDataSetChanged();
             }
         });
 
@@ -150,22 +171,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         dataSource.putRoutine(routine);
 
         // Handle auto-complete
-        boolean allTasksCompleted = routine.autoCompleteRoutine();
-        if (allTasksCompleted) {
+        if (routine.autoCompleteRoutine()) {
             dataSource.putRoutine(routine);
-            
-            // Find the RoutineFragment that contains this adapter
-            if (getContext() instanceof FragmentActivity) {
-                FragmentActivity activity = (FragmentActivity) getContext();
-                RoutineFragment fragment = (RoutineFragment) activity
-                    .getSupportFragmentManager()
-                    .findFragmentById(R.id.fragment_container);
-                
-                if (fragment != null) {
-                    // Update the UI to reflect that the routine is ended
-                    fragment.updateUIForEndedRoutine();
-                }
-            }
         }
 
         // Update UI components
@@ -174,14 +181,38 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
         Log.d("TaskCompletion",
                 "Completed: " + task.getTaskName() +
-                        " | Duration: " + formatTime(task.getDuration()) +
-                        " | All Tasks Completed: " + allTasksCompleted);
+                        " | Duration: " + formatTime(task.getDuration()));
     }
 
     private void renameTask(Task task, String newName) {
         if (task == null || newName == null || newName.trim().isEmpty()) return;
         task.setTaskName(newName);
         dataSource.putRoutine(routine);
+        notifyDataSetChanged();
+    }
+    private void moveTaskUp(Task task) {
+        List<Task> tasks = routine.getTasks();
+
+        if (tasks == null || tasks.isEmpty()) {
+            Log.e("TaskAdapter", "moveTaskUp: Task list is null or empty");
+            return;
+        }
+        routine.moveTaskUp(task);
+        clear();
+        addAll(tasks);
+        notifyDataSetChanged();
+    }
+
+    private void moveTaskDown(Task task) {
+        List<Task> tasks = routine.getTasks();
+
+        if (tasks == null || tasks.isEmpty()) {
+            Log.e("TaskAdapter", "moveTaskDown: Task list is null or empty");
+            return;
+        }
+        routine.moveTaskDown(task);
+        clear();
+        addAll(tasks);
         notifyDataSetChanged();
     }
 
@@ -206,7 +237,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         if (collection != null && !collection.isEmpty()) {
             int i = 0;
             for (Task task : collection) {
-                Log.d("TaskAdapter", "Task " + i + ": " + 
+                Log.d("TaskAdapter", "Task " + i + ": " +
                         (task != null ? task.getTaskName() : "null"));
                 i++;
             }
