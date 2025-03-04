@@ -74,12 +74,28 @@ public class HomeScreenFragment extends Fragment {
                     // Get the routine from the repository
                     Routine routine = activityModel.getRoutineRepository().getRoutine(routineId);
         
+                    // Special handling for Morning routine with ID 0 to prevent duplication
+                    boolean isMorningRoutineWithIdZero = routine != null && 
+                                                       "Morning".equals(routine.getRoutineName()) && 
+                                                       routine.getRoutineId() == 0;
+                    
+                    Log.d(TAG, "Routine click: " + (routine != null ? routine.getRoutineName() : "null") + 
+                          " with ID: " + routineId + ", is Morning with ID 0: " + isMorningRoutineWithIdZero);
+                    
                     // Only start the routine timer if it has tasks
                     // We won't even call startRoutine for empty routines
                     if (routine != null && !routine.getTasks().isEmpty()) {
                         Log.d(TAG, "Starting routine with tasks: " + routine.getRoutineName());
                         routine.startRoutine(LocalDateTime.now());
-                        activityModel.getRoutineRepository().save(routine);
+                        
+                        // For Morning routine with ID 0, update it locally without calling save
+                        // This prevents repository from creating a duplicate
+                        if (!isMorningRoutineWithIdZero) {
+                            activityModel.getRoutineRepository().save(routine);
+                            Log.d(TAG, "Saved routine state to repository");
+                        } else {
+                            Log.d(TAG, "Morning routine with ID 0 - not saving to prevent duplication");
+                        }
                     } else if (routine != null) {
                         Log.d(TAG, "Not starting empty routine: " + routine.getRoutineName());
                     }
@@ -114,9 +130,6 @@ public class HomeScreenFragment extends Fragment {
                 Log.d(TAG, "  " + i + ": " + r.getRoutineId() + " - " + r.getRoutineName());
             }
             
-            // Clear the list first
-            this.routines.clear();
-            
             // Check if routines is not null
             if (routines != null) {
                 // Log incoming routines
@@ -127,21 +140,13 @@ public class HomeScreenFragment extends Fragment {
                           " with " + r.getTasks().size() + " tasks");
                 }
                 
-                // De-duplicate routines by ID before adding to our list
-                Map<Integer, Routine> uniqueRoutineMap = new HashMap<>();
-                for (Routine r : routines) {
-                    // Only keep the first occurrence of each routine ID
-                    if (!uniqueRoutineMap.containsKey(r.getRoutineId())) {
-                        uniqueRoutineMap.put(r.getRoutineId(), r);
-                    } else {
-                        Log.d(TAG, "Skipping duplicate routine: " + r.getRoutineId() + " - " + r.getRoutineName());
-                    }
-                }
+                // Clear the list first before adding new routines
+                this.routines.clear();
                 
-                // Add the unique routines to our list
-                this.routines.addAll(uniqueRoutineMap.values());
-                Log.d(TAG, "Added " + this.routines.size() + " unique routines (removed " + 
-                      (routines.size() - this.routines.size()) + " duplicates)");
+                // Add all routines including duplicates - no filtering
+                this.routines.addAll(routines);
+                
+                Log.d(TAG, "Added all " + this.routines.size() + " routines including duplicates");
                 
                 // Force UI update on main thread
                 new Handler(Looper.getMainLooper()).post(() -> {
@@ -221,6 +226,15 @@ public class HomeScreenFragment extends Fragment {
         Routine routine = activityModel.getRoutineRepository().getRoutine(routineId);
         Log.d(TAG, "Routine found: " + (routine != null ? routine.getRoutineName() : "null") + 
               " with " + (routine != null ? routine.getTasks().size() : 0) + " tasks");
+
+        // Store the current routine ID in a tag to prevent duplication when coming back
+        if (routine != null && "Morning".equals(routine.getRoutineName())) {
+            // Store this ID to prevent duplication
+            if (getActivity() != null) {
+                getActivity().getIntent().putExtra("LAST_MORNING_ROUTINE_ID", routineId);
+                Log.d(TAG, "Saved Morning routine ID: " + routineId + " to prevent duplication");
+            }
+        }
 
         FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
         transaction.replace(R.id.fragment_container, RoutineFragment.newInstance(routineId));

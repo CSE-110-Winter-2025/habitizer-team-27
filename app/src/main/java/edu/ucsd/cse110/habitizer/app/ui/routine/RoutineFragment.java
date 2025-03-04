@@ -245,10 +245,23 @@ public class RoutineFragment extends Fragment {
                 // Update UI immediately
                 updateTimeDisplay();
                 
+                // Special handling for Morning routine with ID 0 to prevent duplication
+                boolean isMorningRoutineWithIdZero = currentRoutine != null && 
+                                                  "Morning".equals(currentRoutine.getRoutineName()) && 
+                                                  currentRoutine.getRoutineId() == 0;
+                
                 // Save state
                 if (!isUpdatingFromObserver) {
+                    // Always update local repository
                     repository.updateRoutine(currentRoutine);
-                    activityModel.getRoutineRepository().save(currentRoutine);
+                    
+                    // But for Morning with ID 0, don't save to main repository to prevent duplication
+                    if (!isMorningRoutineWithIdZero) {
+                        activityModel.getRoutineRepository().save(currentRoutine);
+                        Log.d("RoutineFragment", "Saved routine state to repository");
+                    } else {
+                        Log.d("RoutineFragment", "Morning routine with ID 0 - not saving to prevent duplication");
+                    }
                 }
             } else {
                 // Second press = end the routine
@@ -261,10 +274,23 @@ public class RoutineFragment extends Fragment {
                 binding.endRoutineButton.setEnabled(false);
                 binding.stopTimerButton.setEnabled(false);
                 
+                // Special handling for Morning routine with ID 0 to prevent duplication
+                boolean isMorningRoutineWithIdZero = currentRoutine != null && 
+                                                  "Morning".equals(currentRoutine.getRoutineName()) && 
+                                                  currentRoutine.getRoutineId() == 0;
+                
                 // Save the routine state to make sure the end time is preserved
                 if (!isUpdatingFromObserver) {
+                    // Always update local repository
                     repository.updateRoutine(currentRoutine);
-                    activityModel.getRoutineRepository().save(currentRoutine);
+                    
+                    // But for Morning with ID 0, don't save to main repository to prevent duplication
+                    if (!isMorningRoutineWithIdZero) {
+                        activityModel.getRoutineRepository().save(currentRoutine);
+                        Log.d("RoutineFragment", "Saved routine state to repository");
+                    } else {
+                        Log.d("RoutineFragment", "Morning routine with ID 0 - not saving to prevent duplication");
+                    }
                 }
                 
                 updateTimeDisplay();
