@@ -301,20 +301,62 @@ public class HabitizerRepository {
     public void addRoutine(Routine routine) {
         executor.execute(() -> {
             try {
-                // Save to database
-                RoutineEntity routineEntity = RoutineEntity.fromRoutine(routine);
-                long routineId = database.routineDao().insert(routineEntity);
+                // Ensure routine is inserted
+                Log.d(TAG, "Inserting routine: " + routine.getRoutineName());
+                RoutineEntity routineEntity = database.routineDao().find((int) routine.getRoutineId());
+                if (routineEntity == null) {
+                    Log.e(TAG, "Routine with ID " + routine.getRoutineId() + " does not exist. Creating a new one.");
+                    routineEntity = RoutineEntity.fromRoutine(routine);
+                    long routineId = database.routineDao().insert(routineEntity);
+                    Log.d(TAG, "Inserted new routine with ID: " + routineId);
+                } else {
+                    Log.d(TAG, "Updating existing routine with ID: " + routine.getRoutineId());
+                    routineEntity.setRoutineName(routine.getRoutineName());
+                    database.routineDao().insert(routineEntity);
+                }
                 
-                // Save associations between routine and tasks
+                // Ensure tasks are inserted
                 List<Task> tasks = routine.getTasks();
                 for (int i = 0; i < tasks.size(); i++) {
                     Task task = tasks.get(i);
+                    Log.d(TAG, "Inserting task: " + task.getTaskName());
+                    TaskEntity taskEntity = database.taskDao().findByNameExact(task.getTaskName());
+                    if (taskEntity == null) {
+                        taskEntity = new TaskEntity();
+                        taskEntity.setTaskName(task.getTaskName());
+                        taskEntity.setCheckedOff(task.isCheckedOff());
+                        long taskId = database.taskDao().insert(taskEntity);
+                        if (taskId == -1) {
+                            Log.e(TAG, "Failed to insert task: " + task.getTaskName());
+                            return;
+                        }
+                        taskEntity.setId((int) taskId);
+                        Log.d(TAG, "Inserted task with ID: " + taskId);
+                    }
+
+                    // Check existence before cross-reference
+                    Log.d(TAG, "Checking existence of routine_id: " + routine.getRoutineId());
+                    RoutineEntity existingRoutineEntity = database.routineDao().find((int) routine.getRoutineId());
+                    if (existingRoutineEntity == null) {
+                        Log.e(TAG, "Routine with ID " + routine.getRoutineId() + " does not exist.");
+                        return;
+                    }
+
+                    Log.d(TAG, "Checking existence of task_id: " + taskEntity.getId());
+                    TaskEntity existingTaskEntity = database.taskDao().find(taskEntity.getId());
+                    if (existingTaskEntity == null) {
+                        Log.e(TAG, "Task with ID " + taskEntity.getId() + " does not exist.");
+                        return;
+                    }
+
+                    // Create cross reference
                     RoutineTaskCrossRef crossRef = new RoutineTaskCrossRef(
-                            (int) routineId, 
-                            task.getTaskId(),
-                            i  // Save the position of the task in the routine
+                        (int) routine.getRoutineId(),
+                        taskEntity.getId(),
+                        i  // Save the position of the task in the routine
                     );
                     database.routineDao().insertRoutineTaskCrossRef(crossRef);
+                    Log.d(TAG, "Added task " + taskEntity.getTaskName() + " to routine " + routineEntity.getRoutineName());
                 }
                 
                 // Update in-memory data
@@ -507,6 +549,21 @@ public class HabitizerRepository {
                                 long taskId = database.taskDao().insert(taskEntity);
                                 taskEntity.setId((int)taskId);
                                 Log.d(TAG, "Created new task: " + taskEntity.getTaskName() + " with ID: " + taskId);
+                            }
+                            
+                            // Before inserting the cross-reference, check if the routine and task exist
+                            Log.d(TAG, "Checking existence of routine_id: " + routineId);
+                            RoutineEntity existingRoutineEntity = database.routineDao().find((int) routineId);
+                            if (existingRoutineEntity == null) {
+                                Log.e(TAG, "Routine with ID " + routineId + " does not exist.");
+                                return;
+                            }
+
+                            Log.d(TAG, "Checking existence of task_id: " + task.getTaskId());
+                            TaskEntity existingTaskEntity = database.taskDao().find(task.getTaskId());
+                            if (existingTaskEntity == null) {
+                                Log.e(TAG, "Task with ID " + task.getTaskId() + " does not exist.");
+                                return;
                             }
                             
                             // Create cross reference
