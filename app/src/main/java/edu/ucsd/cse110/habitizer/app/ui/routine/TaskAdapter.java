@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Collection;
 
@@ -35,7 +36,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         TextView taskName;
         CheckBox checkBox;
         TextView taskTime;
-
+        ImageButton moveUpButton;
+        ImageButton moveDownButton;
         ImageButton renameButton;
 
     }
@@ -80,6 +82,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             holder.checkBox = convertView.findViewById(R.id.check_task);
             holder.taskTime = convertView.findViewById(R.id.task_time);
             holder.renameButton = convertView.findViewById(R.id.rename_button);
+            holder.moveUpButton = convertView.findViewById(R.id.move_up_button);
+            holder.moveDownButton = convertView.findViewById(R.id.move_down_button);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -102,6 +106,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         holder.checkBox.setChecked(task.isCompleted());
         updateTimeDisplay(holder.taskTime, task);
         holder.checkBox.setEnabled(!task.isCheckedOff());
+        holder.moveUpButton.setTag(position);
+        holder.moveDownButton.setTag(position);
 
         // Set position tag for correct item identification
         holder.checkBox.setTag(position);
@@ -120,6 +126,35 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             RenameTaskDialogFragment dialog = RenameTaskDialogFragment.newInstance(newName ->
                     renameTask(task, newName));
             dialog.show(fragmentManager, "RenameTaskDialog");
+        });
+
+        holder.moveUpButton.setOnClickListener((buttonView) -> {
+            Object tag = buttonView.getTag();
+            if (tag == null) {
+                Log.e("TaskAdapter", "moveUpButton tag is null");
+                return;
+            }
+
+            int pos = (int) tag;
+            Task currentTask = getItem(pos);
+            if (currentTask != null) {
+                moveTaskUp(currentTask);
+                notifyDataSetChanged();
+            }
+        });
+
+        holder.moveDownButton.setOnClickListener((buttonView) -> {
+            Object tag = buttonView.getTag();
+            if (tag == null) {
+                Log.e("TaskAdapter", "moveDownButton tag is null");
+                return;
+            }
+            int pos = (int) tag;
+            Task currentTask = getItem(pos);
+            if (currentTask != null) {
+                moveTaskDown(currentTask);
+                notifyDataSetChanged();
+            }
         });
 
         return convertView;
@@ -153,6 +188,31 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         if (task == null || newName == null || newName.trim().isEmpty()) return;
         task.setTaskName(newName);
         dataSource.putRoutine(routine);
+        notifyDataSetChanged();
+    }
+    private void moveTaskUp(Task task) {
+        List<Task> tasks = routine.getTasks();
+
+        if (tasks == null || tasks.isEmpty()) {
+            Log.e("TaskAdapter", "moveTaskUp: Task list is null or empty");
+            return;
+        }
+        routine.moveTaskUp(task);
+        clear();
+        addAll(tasks);
+        notifyDataSetChanged();
+    }
+
+    private void moveTaskDown(Task task) {
+        List<Task> tasks = routine.getTasks();
+
+        if (tasks == null || tasks.isEmpty()) {
+            Log.e("TaskAdapter", "moveTaskDown: Task list is null or empty");
+            return;
+        }
+        routine.moveTaskDown(task);
+        clear();
+        addAll(tasks);
         notifyDataSetChanged();
     }
 
