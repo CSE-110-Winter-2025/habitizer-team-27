@@ -134,4 +134,36 @@ public interface RoutineDao {
      */
     @Query("DELETE FROM routine_task_cross_refs")
     void deleteAllRoutineTaskCrossRefs();
+    
+    /**
+     * Find a routine by name
+     * @param name Routine name
+     * @return Found routine or null if not found
+     */
+    @Query("SELECT * FROM routines WHERE routine_name = :name LIMIT 1")
+    RoutineEntity findByName(String name);
+    
+    /**
+     * Get the positions of tasks in a routine
+     * @param routineId Routine ID
+     * @return List of cross references with positions
+     */
+    @Query("SELECT * FROM routine_task_cross_refs WHERE routine_id = :routineId ORDER BY task_position")
+    List<RoutineTaskCrossRef> getTaskPositions(int routineId);
+    
+    /**
+     * Get all routine-task relationships ordered by task position
+     * @return List of all routine-task cross references ordered by position
+     */
+    @Query("SELECT * FROM routine_task_cross_refs ORDER BY routine_id, task_position")
+    List<RoutineTaskCrossRef> getAllTaskRelationshipsOrdered();
+    
+    /**
+     * Get all routines with tasks ordered by position
+     * This uses a custom query to join the tables directly
+     * @return List of RoutineWithTasks ordered by task position
+     */
+    @Transaction
+    @Query("SELECT r.* FROM routines r ORDER BY r.id")
+    List<RoutineWithTasks> getAllRoutinesWithTasksOrdered();
 } 

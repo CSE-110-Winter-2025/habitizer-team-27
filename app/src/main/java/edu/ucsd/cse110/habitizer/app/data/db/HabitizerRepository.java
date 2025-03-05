@@ -67,6 +67,14 @@ public class HabitizerRepository {
     }
     
     /**
+     * Get the database instance
+     * @return The AppDatabase instance
+     */
+    public AppDatabase getDatabase() {
+        return database;
+    }
+    
+    /**
      * Reset the repository instance (for testing)
      * This will also reset the database instance
      */
@@ -110,8 +118,8 @@ public class HabitizerRepository {
                 }
                 Log.d(TAG, "Loaded " + tasks.size() + " tasks from database");
                 
-                // Load routines and tasks
-                List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasks();
+                // Load routines and tasks using our ordered query
+                List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasksOrdered();
                 List<Routine> routines = new ArrayList<>();
                 
                 // Check for duplicate routines in the database query result
@@ -301,20 +309,62 @@ public class HabitizerRepository {
     public void addRoutine(Routine routine) {
         executor.execute(() -> {
             try {
-                // Save to database
-                RoutineEntity routineEntity = RoutineEntity.fromRoutine(routine);
-                long routineId = database.routineDao().insert(routineEntity);
+                // Ensure routine is inserted
+                Log.d(TAG, "Inserting routine: " + routine.getRoutineName());
+                RoutineEntity routineEntity = database.routineDao().find((int) routine.getRoutineId());
+                if (routineEntity == null) {
+                    Log.e(TAG, "Routine with ID " + routine.getRoutineId() + " does not exist. Creating a new one.");
+                    routineEntity = RoutineEntity.fromRoutine(routine);
+                    long routineId = database.routineDao().insert(routineEntity);
+                    Log.d(TAG, "Inserted new routine with ID: " + routineId);
+                } else {
+                    Log.d(TAG, "Updating existing routine with ID: " + routine.getRoutineId());
+                    routineEntity.setRoutineName(routine.getRoutineName());
+                    database.routineDao().insert(routineEntity);
+                }
                 
-                // Save associations between routine and tasks
+                // Ensure tasks are inserted
                 List<Task> tasks = routine.getTasks();
                 for (int i = 0; i < tasks.size(); i++) {
                     Task task = tasks.get(i);
+                    Log.d(TAG, "Inserting task: " + task.getTaskName());
+                    TaskEntity taskEntity = database.taskDao().findByNameExact(task.getTaskName());
+                    if (taskEntity == null) {
+                        taskEntity = new TaskEntity();
+                        taskEntity.setTaskName(task.getTaskName());
+                        taskEntity.setCheckedOff(task.isCheckedOff());
+                        long taskId = database.taskDao().insert(taskEntity);
+                        if (taskId == -1) {
+                            Log.e(TAG, "Failed to insert task: " + task.getTaskName());
+                            return;
+                        }
+                        taskEntity.setId((int) taskId);
+                        Log.d(TAG, "Inserted task with ID: " + taskId);
+                    }
+
+                    // Check existence before cross-reference
+                    Log.d(TAG, "Checking existence of routine_id: " + routine.getRoutineId());
+                    RoutineEntity existingRoutineEntity = database.routineDao().find((int) routine.getRoutineId());
+                    if (existingRoutineEntity == null) {
+                        Log.e(TAG, "Routine with ID " + routine.getRoutineId() + " does not exist.");
+                        return;
+                    }
+
+                    Log.d(TAG, "Checking existence of task_id: " + taskEntity.getId());
+                    TaskEntity existingTaskEntity = database.taskDao().find(taskEntity.getId());
+                    if (existingTaskEntity == null) {
+                        Log.e(TAG, "Task with ID " + taskEntity.getId() + " does not exist.");
+                        return;
+                    }
+
+                    // Create cross reference
                     RoutineTaskCrossRef crossRef = new RoutineTaskCrossRef(
-                            (int) routineId, 
-                            task.getTaskId(),
-                            i  // Save the position of the task in the routine
+                        (int) routine.getRoutineId(),
+                        taskEntity.getId(),
+                        i  // Save the position of the task in the routine
                     );
                     database.routineDao().insertRoutineTaskCrossRef(crossRef);
+                    Log.d(TAG, "Added task " + taskEntity.getTaskName() + " to routine " + routineEntity.getRoutineName());
                 }
                 
                 // Update in-memory data
@@ -416,6 +466,133 @@ public class HabitizerRepository {
                 Log.d(TAG, "Deleted routine with ID: " + routineId);
             } catch (Exception e) {
                 Log.e(TAG, "Error deleting routine", e);
+            }
+        });
+    }
+    
+    /**
+     * Refresh routines data from database
+     */
+    public void refreshRoutines() {
+        executor.execute(() -> {
+            try {
+                // Load routines and tasks using ordered query
+                List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasksOrdered();
+                List<Routine> routines = new ArrayList<>();
+                
+                // Check for duplicate routines in the database query result
+                Map<Integer, Routine> uniqueRoutineMap = new HashMap<>();
+                for (RoutineWithTasks routineWithTasks : routinesWithTasks) {
+                    Routine routine = routineWithTasks.toRoutine();
+                    uniqueRoutineMap.put(routine.getRoutineId(), routine);
+                }
+                
+                routines.addAll(uniqueRoutineMap.values());
+                
+                if (uniqueRoutineMap.size() < routinesWithTasks.size()) {
+                    Log.w(TAG, "Found and removed " + (routinesWithTasks.size() - uniqueRoutineMap.size()) + 
+                           " duplicate routines during refresh");
+                }
+                
+                // Update observables on main thread
+                final List<Routine> finalRoutines = routines;
+                mainHandler.post(() -> {
+                    routinesSubject.setValue(finalRoutines);
+                    routinesLiveData.setValue(finalRoutines);
+                    Log.d(TAG, "Routines refreshed with " + finalRoutines.size() + " routines");
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error refreshing routines", e);
+            }
+        });
+    }
+    
+    /**
+     * Force update the routines in the repository with the provided list.
+     * This is primarily used for cleaning up duplicate routines.
+     * @param routines The list of routines to set in the repository
+     */
+    public void setRoutines(List<Routine> routines) {
+        Log.d(TAG, "Force updating repository with " + routines.size() + " routines");
+        // Update in-memory subject and LiveData immediately for UI
+        mainHandler.post(() -> {
+            routinesLiveData.setValue(routines);
+            routinesSubject.setValue(routines);
+            Log.d(TAG, "In-memory routines updated with " + routines.size() + " routines");
+        });
+        
+        // Update database on background thread
+        executor.execute(() -> {
+            try {
+                // Start by getting the current database state
+                List<RoutineEntity> existingRoutines = database.routineDao().findAll();
+                Log.d(TAG, "Found " + existingRoutines.size() + " existing routines in database");
+                
+                // Transaction to delete old routines and add new ones
+                database.runInTransaction(() -> {
+                    // Clear cross references first to avoid foreign key constraints
+                    database.routineDao().deleteAllRoutineTaskCrossRefs();
+                    
+                    // Delete all routines (using a clean slate approach)
+                    database.routineDao().deleteAll();
+                    
+                    // Insert the new routines
+                    for (Routine routine : routines) {
+                        // Convert domain to entity
+                        RoutineEntity routineEntity = new RoutineEntity();
+                        routineEntity.setId(routine.getRoutineId());
+                        routineEntity.setRoutineName(routine.getRoutineName());
+                        
+                        // Insert routine
+                        long routineId = database.routineDao().insert(routineEntity);
+                        Log.d(TAG, "Inserted routine: " + routineEntity.getRoutineName() + " with ID: " + routineId);
+                        
+                        // Insert task associations
+                        for (Task task : routine.getTasks()) {
+                            // Get or create task in database
+                            TaskEntity taskEntity = database.taskDao().findByNameExact(task.getTaskName());
+                            if (taskEntity == null) {
+                                taskEntity = new TaskEntity();
+                                taskEntity.setTaskName(task.getTaskName());
+                                taskEntity.setCheckedOff(task.isCheckedOff());
+                                long taskId = database.taskDao().insert(taskEntity);
+                                taskEntity.setId((int)taskId);
+                                Log.d(TAG, "Created new task: " + taskEntity.getTaskName() + " with ID: " + taskId);
+                            }
+                            
+                            // Before inserting the cross-reference, check if the routine and task exist
+                            Log.d(TAG, "Checking existence of routine_id: " + routineId);
+                            RoutineEntity existingRoutineEntity = database.routineDao().find((int) routineId);
+                            if (existingRoutineEntity == null) {
+                                Log.e(TAG, "Routine with ID " + routineId + " does not exist.");
+                                return;
+                            }
+
+                            Log.d(TAG, "Checking existence of task_id: " + task.getTaskId());
+                            TaskEntity existingTaskEntity = database.taskDao().find(task.getTaskId());
+                            if (existingTaskEntity == null) {
+                                Log.e(TAG, "Task with ID " + task.getTaskId() + " does not exist.");
+                                return;
+                            }
+                            
+                            // Create cross reference
+                            RoutineTaskCrossRef crossRef = new RoutineTaskCrossRef(
+                                (int)routineId,
+                                taskEntity.getId(),
+                                0  // Default position
+                            );
+                            database.routineDao().insertRoutineTaskCrossRef(crossRef);
+                            Log.d(TAG, "Added task " + taskEntity.getTaskName() + " to routine " + routineEntity.getRoutineName());
+                        }
+                    }
+                });
+                
+                Log.d(TAG, "Database successfully updated with " + routines.size() + " routines");
+                
+                // Refresh to confirm changes
+                refreshRoutines();
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating routines in database", e);
             }
         });
     }
