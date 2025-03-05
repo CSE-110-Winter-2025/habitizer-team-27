@@ -114,6 +114,8 @@ public class AddRoutineTests {
 
         // Check that new routine exists in database
         List<Routine> routines = repository.getRoutines().getValue();
+        Log.d("Routine Value", "Value: " + routines.toString());
+
         var currentRoutine = routines.get(routines.size() - 1);
         assertEquals(currentRoutine.getRoutineName(), "New Routine");
 
@@ -142,8 +144,7 @@ public class AddRoutineTests {
 
         // Checks that routine has ended
         onView(withId(R.id.end_routine_button)).check(matches(not(isEnabled())));
-        onView(withId(R.id.end_routine_button))
-                .check(matches(withText(containsString("Routine Ended"))));
+        onView(withId(R.id.home_button)).check(matches(isEnabled()));
     }
 }
 
