@@ -22,18 +22,24 @@ public class TestHelper {
     private static final String TAG = "TestHelper";
     
     // Default morning tasks for tests
+    // Default data for initialization
     private static final List<Task> DEFAULT_MORNING_TASKS = List.of(
             new Task(0, "Shower", false),
             new Task(1, "Brush teeth", false),
             new Task(2, "Dress", false),
-            new Task(3, "Make coffee", false)
+            new Task(3, "Make coffee", false),
+            new Task(4, "Make lunch", false),
+            new Task(5, "Dinner prep", false),
+            new Task(6, "Pack bag", false)
     );
 
-    // Default evening tasks for tests
     private static final List<Task> DEFAULT_EVENING_TASKS = List.of(
             new Task(100, "Charge devices", false),
             new Task(101, "Prepare dinner", false),
-            new Task(102, "Wash dishes", false)
+            new Task(102, "Eat dinner", false),
+            new Task(103, "Wash dishes", false),
+            new Task(104, "Pack bag", false),
+            new Task(105, "Homework", false)
     );
     
     /**
