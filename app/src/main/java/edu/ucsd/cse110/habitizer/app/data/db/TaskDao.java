@@ -80,4 +80,12 @@ public interface TaskDao {
      */
     @Query("DELETE FROM tasks")
     void deleteAll();
+    
+    /**
+     * Find a task by exact name
+     * @param taskName Task name to search for
+     * @return Found task or null if not found
+     */
+    @Query("SELECT * FROM tasks WHERE task_name = :taskName LIMIT 1")
+    TaskEntity findByNameExact(String taskName);
 } 

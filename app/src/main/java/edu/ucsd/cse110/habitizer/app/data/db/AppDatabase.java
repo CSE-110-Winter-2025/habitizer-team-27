@@ -1,6 +1,7 @@
 package edu.ucsd.cse110.habitizer.app.data.db;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.room.Database;
 import androidx.room.Room;
@@ -23,6 +24,7 @@ import org.threeten.bp.LocalDateTime;
 )
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
+    private static final String TAG = "AppDatabase";
     private static final String DATABASE_NAME = "habitizer-db";
     
     // Singleton pattern
@@ -37,16 +39,43 @@ public abstract class AppDatabase extends RoomDatabase {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
                 if (INSTANCE == null) {
-                    INSTANCE = Room.databaseBuilder(
-                            context.getApplicationContext(),
-                            AppDatabase.class,
-                            DATABASE_NAME)
-                            .fallbackToDestructiveMigration()
-                            .build();
+                    // Determine if we're in test mode by checking the package name
+                    boolean isTestMode = context.getPackageName().contains("test");
+                    
+                    if (isTestMode) {
+                        Log.d(TAG, "Creating in-memory database for test environment");
+                        // Use in-memory database for tests
+                        INSTANCE = Room.inMemoryDatabaseBuilder(
+                                context.getApplicationContext(),
+                                AppDatabase.class)
+                                .build();
+                    } else {
+                        Log.d(TAG, "Creating persistent database for normal use");
+                        // Use persistent database for normal use
+                        INSTANCE = Room.databaseBuilder(
+                                context.getApplicationContext(),
+                                AppDatabase.class,
+                                DATABASE_NAME)
+                                .fallbackToDestructiveMigration()
+                                .build();
+                    }
                 }
             }
         }
         return INSTANCE;
+    }
+    
+    /**
+     * Reset the database instance (for testing)
+     */
+    public static void resetInstance() {
+        Log.d(TAG, "Resetting database instance");
+        synchronized (AppDatabase.class) {
+            if (INSTANCE != null) {
+                INSTANCE.clearAllTables();
+                INSTANCE = null;
+            }
+        }
     }
     
     /**

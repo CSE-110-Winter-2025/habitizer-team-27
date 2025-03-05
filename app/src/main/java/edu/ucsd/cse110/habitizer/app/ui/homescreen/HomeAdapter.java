@@ -53,9 +53,9 @@ public class HomeAdapter extends BaseAdapter {
         TextView routineNameText = convertView.findViewById(R.id.routine_name);
         Button startRoutineButton = convertView.findViewById(R.id.start_routine_button);
 
-
         Routine routine = routines.get(position);
         routineNameText.setText(routine.getRoutineName());
+
 
         startRoutineButton.setOnClickListener(v -> {
             // Fetch routine from repository instead of local list

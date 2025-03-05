@@ -45,6 +45,8 @@ public class RoutineFragment extends Fragment {
     // Add a flag to prevent recursive updates
     private boolean isUpdatingFromObserver = false;
 
+    private boolean manuallyStarted = false;
+
     public RoutineFragment() {
         // required empty public constructor
     }
@@ -91,8 +93,15 @@ public class RoutineFragment extends Fragment {
         // Get routine
         this.currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
         Log.d("RoutineFragment", "Current routine: " + (currentRoutine != null ? currentRoutine.getRoutineName() : "null"));
-        if (currentRoutine != null) {
-            Log.d("RoutineFragment", "Task count: " + currentRoutine.getTasks().size());
+        
+        // Check if the routine is active (was started from the home page)
+        if (currentRoutine != null && currentRoutine.isActive() && !currentRoutine.getTasks().isEmpty()) {
+            Log.d("RoutineFragment", "Routine is active and has tasks, marking as manually started");
+            // If the routine was started from home page and has tasks, mark it as manually started
+            manuallyStarted = true;
+        } else {
+            Log.d("RoutineFragment", "Routine is not active or empty, not marking as manually started");
+            manuallyStarted = false;
         }
     }
 
@@ -103,6 +112,10 @@ public class RoutineFragment extends Fragment {
         binding = FragmentRoutineScreenBinding.inflate(inflater, container, false);
         Log.d("RoutineFragment", "Binding inflated");
 
+        // Explicitly set the actual time to "-" at initialization to prevent flicker
+        binding.actualTime.setText("-");
+
+        // Initialize timer updates but only start the timer if there are tasks
         initTimerUpdates();
         isTimerRunning = true;
 
@@ -218,11 +231,70 @@ public class RoutineFragment extends Fragment {
         });
 
         binding.endRoutineButton.setOnClickListener(v -> {
-            isTimerRunning = false;
-            currentRoutine.endRoutine(LocalDateTime.now());
-            updateTimeDisplay();
-            binding.endRoutineButton.setEnabled(false);
-            binding.stopTimerButton.setEnabled(false);
+            // Determine action based on manuallyStarted flag, not button text
+            if (!manuallyStarted) {
+                // First press = start the routine
+                manuallyStarted = true;
+                isTimerRunning = true;
+                
+                // Ensure routine is active
+                if (!currentRoutine.isActive()) {
+                    currentRoutine.startRoutine(LocalDateTime.now());
+                }
+                
+                // Update UI immediately
+                updateTimeDisplay();
+                
+                // Special handling for Morning routine with ID 0 to prevent duplication
+                boolean isMorningRoutineWithIdZero = currentRoutine != null && 
+                                                  "Morning".equals(currentRoutine.getRoutineName()) && 
+                                                  currentRoutine.getRoutineId() == 0;
+                
+                // Save state
+                if (!isUpdatingFromObserver) {
+                    // Always update local repository
+                    repository.updateRoutine(currentRoutine);
+                    
+                    // But for Morning with ID 0, don't save to main repository to prevent duplication
+                    if (!isMorningRoutineWithIdZero) {
+                        activityModel.getRoutineRepository().save(currentRoutine);
+                        Log.d("RoutineFragment", "Saved routine state to repository");
+                    } else {
+                        Log.d("RoutineFragment", "Morning routine with ID 0 - not saving to prevent duplication");
+                    }
+                }
+            } else {
+                // Second press = end the routine
+                isTimerRunning = false;
+                currentRoutine.endRoutine(LocalDateTime.now());
+                manuallyStarted = false;  // Reset the manually started flag when ending
+                
+                // Explicitly set the button text to "Routine Ended" when ending the routine
+                binding.endRoutineButton.setText("Routine Ended");
+                binding.endRoutineButton.setEnabled(false);
+                binding.stopTimerButton.setEnabled(false);
+                
+                // Special handling for Morning routine with ID 0 to prevent duplication
+                boolean isMorningRoutineWithIdZero = currentRoutine != null && 
+                                                  "Morning".equals(currentRoutine.getRoutineName()) && 
+                                                  currentRoutine.getRoutineId() == 0;
+                
+                // Save the routine state to make sure the end time is preserved
+                if (!isUpdatingFromObserver) {
+                    // Always update local repository
+                    repository.updateRoutine(currentRoutine);
+                    
+                    // But for Morning with ID 0, don't save to main repository to prevent duplication
+                    if (!isMorningRoutineWithIdZero) {
+                        activityModel.getRoutineRepository().save(currentRoutine);
+                        Log.d("RoutineFragment", "Saved routine state to repository");
+                    } else {
+                        Log.d("RoutineFragment", "Morning routine with ID 0 - not saving to prevent duplication");
+                    }
+                }
+                
+                updateTimeDisplay();
+            }
         });
 
         binding.stopTimerButton.setOnClickListener(v -> {
@@ -275,6 +347,9 @@ public class RoutineFragment extends Fragment {
     private void addTaskToRoutine(String taskName) {
         if (taskName == null || taskName.trim().isEmpty()) return;
 
+        // Check if this is the first task being added
+        boolean wasEmpty = currentRoutine.getTasks().isEmpty();
+
         // Create task with auto-increment ID based on timestamp for uniqueness
         int newTaskId = (int)(System.currentTimeMillis() % 100000);
         Task newTask = new Task(newTaskId, taskName, false);
@@ -282,6 +357,25 @@ public class RoutineFragment extends Fragment {
 
         // Add to current routine first (local update)
         currentRoutine.addTask(newTask);
+        
+        // Check if the routine has already been ended
+        boolean routineEnded = binding.endRoutineButton.getText().toString().equals("Routine Ended");
+        
+        if (!routineEnded) {
+            // Only auto-start the routine if it hasn't been ended yet
+            manuallyStarted = true;
+            isTimerRunning = true;
+            
+            // Start the routine if it's not already active
+            if (!currentRoutine.isActive()) {
+                currentRoutine.startRoutine(LocalDateTime.now());
+                Log.d("RoutineFragment", "Starting routine after adding task");
+            }
+        } else {
+            // For tasks added after routine has ended, they should be disabled
+            // Keep the routine in ended state - don't restart it
+            Log.d("RoutineFragment", "Adding task to ended routine - not restarting timer");
+        }
         
         // Update adapter immediately for responsive UI
         taskAdapter.clear();
@@ -301,6 +395,9 @@ public class RoutineFragment extends Fragment {
             // Also update the legacy repository for compatibility
             activityModel.getRoutineRepository().save(currentRoutine);
         }
+
+        // Manually call updateTimeDisplay to ensure button states are updated
+        updateTimeDisplay();
     }
 
     private void updateRoutineGoalDisplay(@Nullable Integer newTime) {
@@ -321,25 +418,58 @@ public class RoutineFragment extends Fragment {
 
     private void updateTimeDisplay() {
         long minutes = currentRoutine.getRoutineDurationMinutes();
-        if (minutes == 0) binding.actualTime.setText("-");
-        else binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+        
+        // Only show minutes if there's a meaningful value to display (> 0)
+        // Always show "-" when minutes is 0, regardless of other states
+        if (minutes == 0) {
+            binding.actualTime.setText("-");
+        } else {
+            binding.actualTime.setText(String.format("%d%s", minutes, "m"));
+        }
 
-        boolean isActive = currentRoutine.isActive();
+        boolean hasTasks = !currentRoutine.getTasks().isEmpty();
+        
+        // Only auto-activate the routine if we've manually started it AND it has tasks
+        // This preserves the user's control over when the routine starts
+        if (hasTasks && manuallyStarted && !currentRoutine.isActive()) {
+            // If it has tasks but isn't active, activate it unless explicitly ended
+            if (!binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
+                currentRoutine.startRoutine(LocalDateTime.now());
+            }
+        }
+        
+        boolean routineIsActive = currentRoutine.isActive();
+        Log.d("RoutineFragment", "UpdateTimeDisplay - hasTasks: " + hasTasks + ", isActive: " + routineIsActive + ", manuallyStarted: " + manuallyStarted + ", time: " + minutes + "m");
 
-        if (!currentRoutine.isActive()) {
+        // Modified button logic:
+        // 1. Empty routine: "End Routine" text, always disabled
+        // 2. Routine with tasks that isn't manually started: "End Routine" text, disabled (user must start from home page)
+        // 3. Routine with tasks that is manually started: "End Routine" text, enabled (to end routine)
+        // 4. Routine that was ended: "Routine Ended" text, disabled
+
+        if (binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
+            // Case 4: Routine was explicitly ended - maintain the ended state
             binding.endRoutineButton.setText("Routine Ended");
             binding.endRoutineButton.setEnabled(false);
-        }
-
-        // Control button states
-        binding.endRoutineButton.setEnabled(isActive);
-        if (!isActive) {
             binding.stopTimerButton.setEnabled(false);
+            binding.fastForwardButton.setEnabled(false);
+            binding.homeButton.setEnabled(true);
+        } else if (!hasTasks || !manuallyStarted) {
+            // Cases 1 & 2: Empty routine OR routine with tasks that isn't manually started
+            // Keep text as "End Routine" and DISABLE the button
+            binding.endRoutineButton.setText("End Routine");
+            binding.endRoutineButton.setEnabled(false);
+            binding.stopTimerButton.setEnabled(false);
+            binding.fastForwardButton.setEnabled(false);
+            binding.homeButton.setEnabled(true);
         } else {
+            // Case 3: Routine with tasks that is manually started - enable "End Routine" to end it
+            binding.endRoutineButton.setText("End Routine");
+            binding.endRoutineButton.setEnabled(true);
             binding.stopTimerButton.setEnabled(isTimerRunning);
+            binding.fastForwardButton.setEnabled(true);
+            binding.homeButton.setEnabled(false);
         }
-        binding.fastForwardButton.setEnabled(isActive);
-        binding.homeButton.setEnabled(!isActive);
 
         // Update task list times
         taskAdapter.notifyDataSetChanged();
@@ -364,5 +494,35 @@ public class RoutineFragment extends Fragment {
         if (r1.getTasks().size() != r2.getTasks().size()) return false;
         
         return true; // Consider equal for update purposes
+    }
+
+    /**
+     * Update the UI to reflect that the routine has ended
+     * Called when the routine is automatically completed due to all tasks being checked
+     */
+    public void updateUIForEndedRoutine() {
+        if (binding == null) return;
+        
+        Log.d("RoutineFragment", "Updating UI for automatically ended routine");
+        
+        // Set the routine as ended
+        isTimerRunning = false;
+        manuallyStarted = false;
+        
+        // Update UI elements
+        binding.endRoutineButton.setText("Routine Ended");
+        binding.endRoutineButton.setEnabled(false);
+        binding.stopTimerButton.setEnabled(false);
+        binding.fastForwardButton.setEnabled(false);
+        binding.homeButton.setEnabled(true);
+        
+        // Force update the time display
+        updateTimeDisplay();
+        
+        // Save the routine state to ensure the end time is preserved
+        if (!isUpdatingFromObserver) {
+            repository.updateRoutine(currentRoutine);
+            activityModel.getRoutineRepository().save(currentRoutine);
+        }
     }
 }

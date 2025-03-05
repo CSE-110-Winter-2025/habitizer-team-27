@@ -25,6 +25,7 @@ import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentActivity;
 
 public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
@@ -171,8 +172,22 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         dataSource.putRoutine(routine);
 
         // Handle auto-complete
-        if (routine.autoCompleteRoutine()) {
+        boolean allTasksCompleted = routine.autoCompleteRoutine();
+        if (allTasksCompleted) {
             dataSource.putRoutine(routine);
+
+            // Find the RoutineFragment that contains this adapter
+            if (getContext() instanceof FragmentActivity) {
+                FragmentActivity activity = (FragmentActivity) getContext();
+                RoutineFragment fragment = (RoutineFragment) activity
+                    .getSupportFragmentManager()
+                    .findFragmentById(R.id.fragment_container);
+
+                if (fragment != null) {
+                    // Update the UI to reflect that the routine is ended
+                    fragment.updateUIForEndedRoutine();
+                }
+            }
         }
 
         // Update UI components
@@ -181,7 +196,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
         Log.d("TaskCompletion",
                 "Completed: " + task.getTaskName() +
-                        " | Duration: " + formatTime(task.getDuration()));
+                        " | Duration: " + formatTime(task.getDuration()) +
+                        " | All Tasks Completed: " + allTasksCompleted);
     }
 
     private void renameTask(Task task, String newName) {
