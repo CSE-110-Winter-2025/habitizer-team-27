@@ -31,7 +31,7 @@ import edu.ucsd.cse110.habitizer.lib.domain.Task;
 public class RoutineFragment extends Fragment {
     private MainViewModel activityModel;
     private FragmentRoutineScreenBinding binding;
-    private ArrayAdapter<Task> taskAdapter;
+    private TaskAdapter taskAdapter;
     private HabitizerRepository repository;
 
     private static final String ARG_ROUTINE_ID = "routine_id";
@@ -46,6 +46,10 @@ public class RoutineFragment extends Fragment {
     private boolean isUpdatingFromObserver = false;
 
     private boolean manuallyStarted = false;
+    
+    // Add variables to track timer state when app is minimized
+    private boolean wasTimerRunningBeforeMinimize = false;
+    private LocalDateTime timeWhenMinimized = null;
 
     public RoutineFragment() {
         // required empty public constructor
@@ -55,7 +59,10 @@ public class RoutineFragment extends Fragment {
         timerRunnable = new Runnable() {
             @Override
             public void run() {
-                updateTimeDisplay();
+                // Only update if app is in foreground
+                if (edu.ucsd.cse110.habitizer.app.MainActivity.isAppInForeground) {
+                    updateTimeDisplay();
+                }
 
                 timerHandler.postDelayed(this, UPDATE_INTERVAL_MS);
             }
@@ -148,6 +155,24 @@ public class RoutineFragment extends Fragment {
         for (Task task : currentRoutine.getTasks()) {
             task.reset();
         }
+        
+        // Reset the routine itself to ensure fresh timer state
+        // This is important to prevent carrying over any stale timer state
+        if (currentRoutine.isActive()) {
+            Log.d("RoutineFragment", "Routine was already active, resetting it to ensure clean timer state");
+            // End any existing routine first
+            currentRoutine.endRoutine(LocalDateTime.now());
+        }
+        
+        // Start fresh - set the proper routine initial state
+        if (!currentRoutine.getTasks().isEmpty()) {
+            Log.d("RoutineFragment", "Starting routine with tasks");
+            // Only auto-start if coming from home screen (was active)
+            if (currentRoutine.isActive()) {
+                manuallyStarted = true;
+                currentRoutine.startRoutine(LocalDateTime.now());
+            }
+        }
 
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
@@ -170,6 +195,10 @@ public class RoutineFragment extends Fragment {
                 LegacyLogicAdapter.getCompatInstance(), 
                 getParentFragmentManager()
         );
+        
+        // Set this fragment as a reference for the TaskAdapter
+        taskAdapter.setRoutineFragment(this);
+        
         taskListView.setAdapter(taskAdapter);
         Log.d("RoutineFragment", "Task adapter set on ListView");
 
@@ -273,6 +302,14 @@ public class RoutineFragment extends Fragment {
                 binding.endRoutineButton.setText("Routine Ended");
                 binding.endRoutineButton.setEnabled(false);
                 binding.stopTimerButton.setEnabled(false);
+                binding.fastForwardButton.setEnabled(false);
+                binding.homeButton.setEnabled(true);
+                
+                // Refresh adapter to update checkbox states for any unchecked tasks
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                    Log.d("RoutineFragment", "Refreshed task adapter after manual routine end");
+                }
                 
                 // Special handling for Morning routine with ID 0 to prevent duplication
                 boolean isMorningRoutineWithIdZero = currentRoutine != null && 
@@ -342,6 +379,52 @@ public class RoutineFragment extends Fragment {
     public void onResume() {
         super.onResume();
         Log.d("RoutineFragment", "onResume called");
+        
+        // Resume timer if it was running before app was minimized
+        if (timeWhenMinimized != null && wasTimerRunningBeforeMinimize && currentRoutine != null && currentRoutine.isActive()) {
+            Log.d("RoutineFragment", "Resuming timer after app was minimized");
+            
+            // Calculate time difference between when app was minimized and now
+            LocalDateTime now = LocalDateTime.now();
+            long secondsDifference = java.time.Duration.between(timeWhenMinimized, now).getSeconds();
+            
+            Log.d("RoutineFragment", "App was in background for " + secondsDifference + 
+                  " seconds (from " + timeWhenMinimized + " to " + now + ")");
+            
+            // Resume timer using the resumeTime method
+            currentRoutine.resumeTime(now);
+            
+            // Resume timer state
+            isTimerRunning = true;
+            
+            // Reset the flag and time
+            wasTimerRunningBeforeMinimize = false;
+            timeWhenMinimized = null;
+            
+            // Force update display
+            updateTimeDisplay();
+            
+            Log.d("RoutineFragment", "Timer resumed, current duration: " + 
+                  currentRoutine.getRoutineDurationMinutes() + "m");
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.d("RoutineFragment", "onPause called");
+        
+        // Save timer state when app is minimized
+        if (currentRoutine != null && currentRoutine.isActive() && isTimerRunning) {
+            Log.d("RoutineFragment", "Pausing timer as app is being minimized");
+            
+            // Save current state
+            wasTimerRunningBeforeMinimize = isTimerRunning;
+            timeWhenMinimized = LocalDateTime.now();
+            
+            // Pause the timer but don't update UI yet (will update in onResume)
+            currentRoutine.pauseTime(timeWhenMinimized);
+        }
     }
 
     private void addTaskToRoutine(String taskName) {
@@ -428,7 +511,36 @@ public class RoutineFragment extends Fragment {
     }
 
     private void updateTimeDisplay() {
+        // Ensure the routine is properly initialized
+        if (currentRoutine == null) {
+            Log.e("RoutineFragment", "Cannot update time display - routine is null");
+            binding.actualTime.setText("-");
+            return;
+        }
+        
+        // Get current routine duration from the routine
         long minutes = currentRoutine.getRoutineDurationMinutes();
+        
+        // Log detailed timing information for debugging
+        Log.d("RoutineFragment", "=== TIME DISPLAY UPDATE ===");
+        Log.d("RoutineFragment", "Minutes to display: " + minutes);
+        Log.d("RoutineFragment", "Routine active: " + currentRoutine.isActive());
+        Log.d("RoutineFragment", "Timer running: " + isTimerRunning);
+        Log.d("RoutineFragment", "Manually started: " + manuallyStarted);
+        
+        // Check the routine's internal timer state
+        if (currentRoutine.getRoutineTimer() != null) {
+            LocalDateTime startTime = currentRoutine.getRoutineTimer().getStartTime();
+            LocalDateTime endTime = currentRoutine.getRoutineTimer().getEndTime();
+            Log.d("RoutineFragment", "Routine timer start: " + startTime);
+            Log.d("RoutineFragment", "Routine timer end: " + endTime);
+            
+            // Calculate the expected time based on the current time
+            if (startTime != null) {
+                long expectedSeconds = java.time.Duration.between(startTime, LocalDateTime.now()).getSeconds();
+                Log.d("RoutineFragment", "Expected duration (raw): " + (expectedSeconds / 60.0) + " minutes");
+            }
+        }
         
         // Only show minutes if there's a meaningful value to display (> 0)
         // Always show "-" when minutes is 0, regardless of other states
@@ -445,6 +557,7 @@ public class RoutineFragment extends Fragment {
         if (hasTasks && manuallyStarted && !currentRoutine.isActive()) {
             // If it has tasks but isn't active, activate it unless explicitly ended
             if (!binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
+                Log.d("RoutineFragment", "Auto-activating routine that has tasks and is manually started");
                 currentRoutine.startRoutine(LocalDateTime.now());
             }
         }
@@ -529,6 +642,12 @@ public class RoutineFragment extends Fragment {
         
         // Force update the time display
         updateTimeDisplay();
+        
+        // Ensure task adapter refreshes to update checkbox states
+        if (taskAdapter != null) {
+            taskAdapter.notifyDataSetChanged();
+            Log.d("RoutineFragment", "Refreshed task adapter to update checkbox states");
+        }
         
         // Save the routine state to ensure the end time is preserved
         if (!isUpdatingFromObserver) {
