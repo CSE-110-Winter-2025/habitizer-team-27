@@ -1,11 +1,8 @@
-package edu.ucsd.cse110.habitizer.app;
+package edu.ucsd.cse110.habitizer.app.MS1Tests;
 
-import static androidx.test.espresso.Espresso.onData;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
-import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
-import static androidx.test.espresso.action.ViewActions.typeText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.hasSibling;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
@@ -19,12 +16,17 @@ import static org.junit.Assert.assertTrue;
 
 import androidx.test.espresso.Espresso;
 
+import androidx.test.espresso.matcher.ViewMatchers;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import edu.ucsd.cse110.habitizer.app.MainActivity;
+import edu.ucsd.cse110.habitizer.app.R;
 
 @RunWith(AndroidJUnit4.class)
 public class US2Tests {
@@ -35,8 +37,8 @@ public class US2Tests {
     // Tests completing a step
     @Test
     public void completeTask() {
-        onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        onView(CoreMatchers.allOf(
+                ViewMatchers.withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
 

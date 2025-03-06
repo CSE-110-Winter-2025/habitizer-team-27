@@ -1,9 +1,11 @@
-package edu.ucsd.cse110.habitizer.app;
+package edu.ucsd.cse110.habitizer.app.MS1Tests;
 
 import androidx.test.espresso.Espresso;
+import androidx.test.espresso.matcher.ViewMatchers;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,6 +21,9 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.Matchers.anything;
+
+import edu.ucsd.cse110.habitizer.app.MainActivity;
+import edu.ucsd.cse110.habitizer.app.R;
 
 @RunWith(AndroidJUnit4.class)
 public class Iteration2Testing {
@@ -37,8 +42,8 @@ public class Iteration2Testing {
     public void testEndRoutineFlow() {
         //home screen has a ListView (@+id/card_list) of routines using routine_list.xml.
         //since there are both Morning and Evening routines the test uses (Morning) routine.
-        Espresso.onView(allOf(
-                withId(R.id.start_routine_button), hasSibling(withText("Morning"))
+        Espresso.onView(CoreMatchers.allOf(
+                ViewMatchers.withId(R.id.start_routine_button), hasSibling(withText("Morning"))
         )).perform(click());
 
         //now in fragment_routine_screen.xml tap the "End Routine" button.

@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.habitizer.app;
+package edu.ucsd.cse110.habitizer.app.MS1Tests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
