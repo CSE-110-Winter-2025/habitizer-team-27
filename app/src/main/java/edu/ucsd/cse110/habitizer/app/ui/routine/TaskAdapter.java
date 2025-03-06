@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import java.util.Collections;
 import java.util.List;
 import java.util.Collection;
+import java.util.ArrayList;
 
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.data.LegacyLogicAdapter;
@@ -205,29 +206,95 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         notifyDataSetChanged();
     }
     private void moveTaskUp(Task task) {
-        List<Task> tasks = routine.getTasks();
+        // First, keep a reference to the original tasks in the routine
+        List<Task> originalTasks = new ArrayList<>(routine.getTasks());
 
-        if (tasks == null || tasks.isEmpty()) {
+        if (originalTasks == null || originalTasks.isEmpty()) {
             Log.e("TaskAdapter", "moveTaskUp: Task list is null or empty");
             return;
         }
+        
+        int oldPosition = originalTasks.indexOf(task);
+        Log.d("TaskReorder", "Moving task up: " + task.getTaskName() + " from position " + oldPosition);
+        
+        // Move task up in the routine - this modifies routine.getTasks() directly
         routine.moveTaskUp(task);
+        
+        int newPosition = routine.getTasks().indexOf(task);
+        Log.d("TaskReorder", "Task " + task.getTaskName() + " new position: " + newPosition);
+        
+        // Debug info about routine before saving
+        Log.d("TaskReorder", "Routine " + routine.getRoutineName() + " (ID: " + routine.getRoutineId() + ") tasks before saving:");
+        List<Task> tasksAfterMove = routine.getTasks();
+        for (int i = 0; i < tasksAfterMove.size(); i++) {
+            Log.d("TaskReorder", "  " + i + ": " + tasksAfterMove.get(i).getTaskName() + " (ID: " + tasksAfterMove.get(i).getTaskId() + ")");
+        }
+        
+        // Save the updated routine to database BEFORE clearing the adapter
+        dataSource.putRoutine(routine);
+        Log.d("TaskReorder", "Saved reordered tasks to database after moving up: " + task.getTaskName());
+        
+        // Update the adapter AFTER saving to database
         clear();
-        addAll(tasks);
+        addAll(routine.getTasks());  // Use the routine's tasks directly
         notifyDataSetChanged();
+        
+        // Confirm adapter content after update
+        Log.d("TaskReorder", "After notifyDataSetChanged, adapter contains " + getCount() + " tasks");
+        for (int i = 0; i < getCount(); i++) {
+            Task t = getItem(i);
+            if (t != null) {
+                Log.d("TaskReorder", "  Adapter position " + i + ": " + t.getTaskName());
+            } else {
+                Log.d("TaskReorder", "  Adapter position " + i + ": NULL");
+            }
+        }
     }
 
     private void moveTaskDown(Task task) {
-        List<Task> tasks = routine.getTasks();
+        // First, keep a reference to the original tasks in the routine
+        List<Task> originalTasks = new ArrayList<>(routine.getTasks());
 
-        if (tasks == null || tasks.isEmpty()) {
+        if (originalTasks == null || originalTasks.isEmpty()) {
             Log.e("TaskAdapter", "moveTaskDown: Task list is null or empty");
             return;
         }
+        
+        int oldPosition = originalTasks.indexOf(task);
+        Log.d("TaskReorder", "Moving task down: " + task.getTaskName() + " from position " + oldPosition);
+        
+        // Move task down in the routine - this modifies routine.getTasks() directly
         routine.moveTaskDown(task);
+        
+        int newPosition = routine.getTasks().indexOf(task);
+        Log.d("TaskReorder", "Task " + task.getTaskName() + " new position: " + newPosition);
+        
+        // Debug info about routine before saving
+        Log.d("TaskReorder", "Routine " + routine.getRoutineName() + " (ID: " + routine.getRoutineId() + ") tasks before saving:");
+        List<Task> tasksAfterMove = routine.getTasks();
+        for (int i = 0; i < tasksAfterMove.size(); i++) {
+            Log.d("TaskReorder", "  " + i + ": " + tasksAfterMove.get(i).getTaskName() + " (ID: " + tasksAfterMove.get(i).getTaskId() + ")");
+        }
+        
+        // Save the updated routine to database BEFORE clearing the adapter
+        dataSource.putRoutine(routine);
+        Log.d("TaskReorder", "Saved reordered tasks to database after moving down: " + task.getTaskName());
+        
+        // Update the adapter AFTER saving to database
         clear();
-        addAll(tasks);
+        addAll(routine.getTasks());  // Use the routine's tasks directly
         notifyDataSetChanged();
+        
+        // Confirm adapter content after update
+        Log.d("TaskReorder", "After notifyDataSetChanged, adapter contains " + getCount() + " tasks");
+        for (int i = 0; i < getCount(); i++) {
+            Task t = getItem(i);
+            if (t != null) {
+                Log.d("TaskReorder", "  Adapter position " + i + ": " + t.getTaskName());
+            } else {
+                Log.d("TaskReorder", "  Adapter position " + i + ": NULL");
+            }
+        }
     }
 
     private void updateTimeDisplay(TextView taskTime, Task task) {

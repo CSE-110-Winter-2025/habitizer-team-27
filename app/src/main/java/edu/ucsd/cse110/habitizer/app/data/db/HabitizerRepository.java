@@ -413,15 +413,28 @@ public class HabitizerRepository {
     public void updateRoutine(Routine routine) {
         executor.execute(() -> {
             try {
+                Log.d(TAG, "Updating routine: " + routine.getRoutineName() + " (ID: " + routine.getRoutineId() + ")");
+                
+                // Debug the tasks in the routine before saving
+                List<Task> tasksList = routine.getTasks();
+                Log.d(TAG, "Tasks in routine before saving (" + tasksList.size() + " tasks):");
+                for (int i = 0; i < tasksList.size(); i++) {
+                    Task t = tasksList.get(i);
+                    Log.d(TAG, "  Position " + i + ": " + t.getTaskName() + " (ID: " + t.getTaskId() + ")");
+                }
+                
                 // Delete old associations
+                Log.d(TAG, "Deleting old task associations for routine ID: " + routine.getRoutineId());
                 database.routineDao().deleteRoutineTaskCrossRefs(routine.getRoutineId());
                 
                 // Save routine to database
                 RoutineEntity routineEntity = RoutineEntity.fromRoutine(routine);
                 database.routineDao().insert(routineEntity);
+                Log.d(TAG, "Saved routine entity to database: " + routineEntity.getRoutineName());
                 
                 // Save new associations
                 List<Task> tasks = routine.getTasks();
+                Log.d(TAG, "Saving " + tasks.size() + " task associations with positions");
                 for (int i = 0; i < tasks.size(); i++) {
                     Task task = tasks.get(i);
                     RoutineTaskCrossRef crossRef = new RoutineTaskCrossRef(
@@ -430,6 +443,7 @@ public class HabitizerRepository {
                             i  // Save the position of the task in the routine
                     );
                     database.routineDao().insertRoutineTaskCrossRef(crossRef);
+                    Log.d(TAG, "  Saved task position " + i + ": " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
                 }
                 
                 // Update in-memory data
@@ -437,6 +451,7 @@ public class HabitizerRepository {
                 for (int i = 0; i < currentRoutines.size(); i++) {
                     if (currentRoutines.get(i).getRoutineId() == routine.getRoutineId()) {
                         currentRoutines.set(i, routine);
+                        Log.d(TAG, "Updated in-memory routine at position " + i);
                         break;
                     }
                 }
@@ -446,9 +461,10 @@ public class HabitizerRepository {
                 mainHandler.post(() -> {
                     routinesSubject.setValue(finalRoutines);
                     routinesLiveData.setValue(finalRoutines);
+                    Log.d(TAG, "Updated routine observables on main thread");
                 });
                 
-                Log.d(TAG, "Updated routine: " + routine.getRoutineName() + " with " + tasks.size() + " tasks");
+                Log.d(TAG, "Successfully updated routine: " + routine.getRoutineName() + " with " + tasks.size() + " tasks");
             } catch (Exception e) {
                 Log.e(TAG, "Error updating routine", e);
             }

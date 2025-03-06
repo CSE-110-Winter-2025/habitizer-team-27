@@ -67,14 +67,6 @@ public class ReorderTasksTests {
     public void reorderTasks() {
         Log.d(TAG, "Running reorderTasks()");
 
-//                new Task(0, "Shower", false),
-//                new Task(1, "Brush teeth", false),
-//                new Task(2, "Dress", false),
-//                new Task(3, "Make coffee", false),
-//                new Task(4, "Make lunch", false),
-//                new Task(5, "Dinner prep", false),
-//                new Task(6, "Pack bag", false)
-
         // Starts Morning routine
         onData(anything())
                 .inAdapterView(withId(R.id.card_list))
@@ -82,6 +74,13 @@ public class ReorderTasksTests {
                 .onChildView(withId(R.id.start_routine_button))
                 .perform(click());
         var currentRoutine = repository.getRoutines().getValue().get(0);
+        
+        // Log initial state of tasks
+        Log.d(TAG, "Initial task order before reordering:");
+        var initialTasks = currentRoutine.getTasks();
+        for (int i = 0; i < initialTasks.size(); i++) {
+            Log.d(TAG, "  " + i + ": " + initialTasks.get(i).getTaskName() + " (ID: " + initialTasks.get(i).getTaskId() + ")");
+        }
 
         // Press "move down" on "Dress"
         onData(anything())
@@ -90,7 +89,27 @@ public class ReorderTasksTests {
                 .onChildView(withId(R.id.move_down_button))
                 .perform(click());
 
-        // Check items have swapped places ("Dress" and "Make coffee")
+        // Wait for database operations to complete
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Sleep interrupted", e);
+        }
+
+        // Force refresh from database to ensure we have the latest data
+        repository.refreshRoutines();
+
+        // Wait for refresh to complete
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Sleep interrupted", e);
+        }
+
+        // Get a fresh reference to the routine
+        currentRoutine = repository.getRoutines().getValue().get(0);
+        
+        // Check UI reflects the changes
         onData(anything())
                 .inAdapterView(withId(R.id.routine_list))
                 .atPosition(2)
@@ -104,9 +123,45 @@ public class ReorderTasksTests {
 
         // Check database has also changed
         var currentTasks = currentRoutine.getTasks();
-        Log.d("Current Tasks", "Value: " + currentTasks.toString());
-        assertEquals(currentTasks.get(2).getTaskName(), "Make coffee");
-        assertEquals(currentTasks.get(3).getTaskName(), "Dress");
+        Log.d(TAG, "Updated task order after reordering and refresh:");
+        for (int i = 0; i < currentTasks.size(); i++) {
+            Log.d(TAG, "  " + i + ": " + currentTasks.get(i).getTaskName() + " (ID: " + currentTasks.get(i).getTaskId() + ")");
+        }
+        
+        // With retry logic to handle async operations
+        boolean verified = false;
+        for (int attempt = 0; attempt < 3 && !verified; attempt++) {
+            try {
+                assertEquals("Task at position 2 should be 'Make coffee'", 
+                    "Make coffee", currentTasks.get(2).getTaskName());
+                assertEquals("Task at position 3 should be 'Dress'", 
+                    "Dress", currentTasks.get(3).getTaskName());
+                verified = true;
+            } catch (AssertionError | IndexOutOfBoundsException e) {
+                Log.d(TAG, "Verification failed on attempt " + attempt + ", refreshing data");
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    Log.e(TAG, "Sleep interrupted", ie);
+                }
+                repository.refreshRoutines();
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    Log.e(TAG, "Sleep interrupted", ie);
+                }
+                currentRoutine = repository.getRoutines().getValue().get(0);
+                currentTasks = currentRoutine.getTasks();
+            }
+        }
+        
+        // If we still couldn't verify after retries, throw the assertion error
+        if (!verified) {
+            assertEquals("Task at position 2 should be 'Make coffee'", 
+                "Make coffee", currentTasks.get(2).getTaskName());
+            assertEquals("Task at position 3 should be 'Dress'", 
+                "Dress", currentTasks.get(3).getTaskName());
+        }
     }
 
     // Tests that moving the top task up doesn't change the order of tasks
