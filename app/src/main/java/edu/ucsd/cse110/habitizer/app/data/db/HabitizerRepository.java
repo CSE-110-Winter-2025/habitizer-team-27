@@ -368,14 +368,35 @@ public class HabitizerRepository {
                 }
                 
                 // Update in-memory data
-                List<Routine> currentRoutines = new ArrayList<>(routinesSubject.getValue());
-                currentRoutines.add(routine);
+                List<Routine> currentRoutines = new ArrayList<>();
+                List<Routine> existingRoutines = routinesSubject.getValue();
+                if (existingRoutines != null) {
+                    currentRoutines.addAll(existingRoutines);
+                }
+                
+                // Check if the routine already exists and update it instead of adding a duplicate
+                boolean routineExists = false;
+                for (int i = 0; i < currentRoutines.size(); i++) {
+                    if (currentRoutines.get(i).getRoutineId() == routine.getRoutineId()) {
+                        currentRoutines.set(i, routine);
+                        routineExists = true;
+                        Log.d(TAG, "Updated existing routine in list with ID: " + routine.getRoutineId());
+                        break;
+                    }
+                }
+                
+                // Only add if it doesn't exist
+                if (!routineExists) {
+                    currentRoutines.add(routine);
+                    Log.d(TAG, "Added new routine to list with ID: " + routine.getRoutineId());
+                }
                 
                 // Update observables on main thread
                 final List<Routine> finalRoutines = currentRoutines;
                 mainHandler.post(() -> {
                     routinesSubject.setValue(finalRoutines);
                     routinesLiveData.setValue(finalRoutines);
+                    Log.d(TAG, "Updated observables with " + finalRoutines.size() + " routines");
                 });
                 
                 Log.d(TAG, "Added routine: " + routine.getRoutineName() + " with " + tasks.size() + " tasks");
@@ -476,8 +497,13 @@ public class HabitizerRepository {
     public void refreshRoutines() {
         executor.execute(() -> {
             try {
+                Log.d(TAG, "Starting database refresh of routines");
+                
                 // Load routines and tasks using ordered query
                 List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasksOrdered();
+                Log.d(TAG, "Loaded " + routinesWithTasks.size() + " routines with tasks from database");
+                
+                // Create a new list for domain objects
                 List<Routine> routines = new ArrayList<>();
                 
                 // Check for duplicate routines in the database query result
@@ -485,6 +511,23 @@ public class HabitizerRepository {
                 for (RoutineWithTasks routineWithTasks : routinesWithTasks) {
                     Routine routine = routineWithTasks.toRoutine();
                     uniqueRoutineMap.put(routine.getRoutineId(), routine);
+                    
+                    // Detailed logging for each routine's tasks
+                    Log.d(TAG, "===== Task Details for Routine: " + routine.getRoutineName() + " =====");
+                    Log.d(TAG, "Routine ID: " + routine.getRoutineId());
+                    Log.d(TAG, "Task Count: " + routine.getTasks().size());
+                    if (routine.getTasks().isEmpty()) {
+                        Log.d(TAG, "This routine has NO TASKS");
+                    } else {
+                        for (Task task : routine.getTasks()) {
+                            Log.d(TAG, "Task: ID=" + task.getTaskId() + ", Name='" + task.getTaskName() + 
+                                  "', Completed=" + task.isCompleted() + ", Skipped=" + task.isSkipped());
+                        }
+                    }
+                    Log.d(TAG, "=================================================");
+                    
+                    Log.d(TAG, "Processed routine: " + routine.getRoutineName() + " with ID " + routine.getRoutineId() + 
+                          " and " + routine.getTasks().size() + " tasks");
                 }
                 
                 routines.addAll(uniqueRoutineMap.values());
@@ -494,12 +537,19 @@ public class HabitizerRepository {
                            " duplicate routines during refresh");
                 }
                 
-                // Update observables on main thread
+                Log.d(TAG, "Final routine list contains " + routines.size() + " routines");
+                
+                // Update observables on main thread with a guaranteed UI update
                 final List<Routine> finalRoutines = routines;
                 mainHandler.post(() -> {
+                    // Update both subjects with the new data
                     routinesSubject.setValue(finalRoutines);
                     routinesLiveData.setValue(finalRoutines);
                     Log.d(TAG, "Routines refreshed with " + finalRoutines.size() + " routines");
+                    
+                    // Force a sanity check - verify the values were actually set
+                    List<Routine> currentValue = routinesSubject.getValue();
+                    Log.d(TAG, "After refresh, subject contains " + (currentValue != null ? currentValue.size() : 0) + " routines");
                 });
             } catch (Exception e) {
                 Log.e(TAG, "Error refreshing routines", e);
