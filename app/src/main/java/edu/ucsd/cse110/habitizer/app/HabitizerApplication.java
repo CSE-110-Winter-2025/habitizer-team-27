@@ -317,10 +317,17 @@ public class HabitizerApplication extends Application {
                             }
                             routine = newRoutine;
                             Log.d(TAG, "Generated new routine ID: " + routine.getRoutineId());
+                            
+                            // Log the task details for the newly created routine
+                            logTaskDetails(routine);
                         }
                         
                         // Add or update routine atomically with proper transaction
                         repository.addRoutine(routine);
+                        
+                        // Log task details after saving to repository
+                        Log.d(TAG, "After saving routine to repository, task details:");
+                        logTaskDetails(routine);
                         
                         // Force an immediate refresh of the routine list to ensure UI is updated
                         // This is crucial to ensure the UI displays the updated list
@@ -405,7 +412,37 @@ public class HabitizerApplication extends Application {
     private void forceRefreshRoutines() {
         Log.d(TAG, "Force refreshing routines in HabitizerApplication");
         if (repository != null) {
+            // Log current routine state before refresh
+            List<Routine> routinesBefore = repository.getRoutines().getValue();
+            if (routinesBefore != null) {
+                Log.d(TAG, "Before refresh: Found " + routinesBefore.size() + " routines");
+                for (Routine routine : routinesBefore) {
+                    Log.d(TAG, "BEFORE REFRESH - Routine: " + routine.getRoutineName() + 
+                          " (ID: " + routine.getRoutineId() + ") has " + 
+                          routine.getTasks().size() + " tasks");
+                }
+            } else {
+                Log.d(TAG, "Before refresh: No routines found (null list)");
+            }
+            
+            // Perform the refresh
             repository.refreshRoutines();
+            
+            // Add a small delay to let the refresh complete
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                // Log routines after refresh
+                List<Routine> routinesAfter = repository.getRoutines().getValue();
+                if (routinesAfter != null) {
+                    Log.d(TAG, "After refresh: Found " + routinesAfter.size() + " routines");
+                    for (Routine routine : routinesAfter) {
+                        Log.d(TAG, "AFTER REFRESH - Routine: " + routine.getRoutineName() + 
+                              " (ID: " + routine.getRoutineId() + ") has " + 
+                              routine.getTasks().size() + " tasks");
+                    }
+                } else {
+                    Log.d(TAG, "After refresh: No routines found (null list)");
+                }
+            }, 500); // 500ms delay to allow refresh to complete
         }
     }
 
@@ -931,6 +968,15 @@ public class HabitizerApplication extends Application {
             repository.refreshRoutines();
         } catch (Exception e) {
             Log.e(TAG, "Error fixing routine with default tasks", e);
+        }
+    }
+
+    private void logTaskDetails(Routine routine) {
+        Log.d(TAG, "Routine ID: " + routine.getRoutineId());
+        Log.d(TAG, "Routine Name: " + routine.getRoutineName());
+        Log.d(TAG, "Tasks: " + routine.getTasks().size());
+        for (Task task : routine.getTasks()) {
+            Log.d(TAG, "  - Task ID: " + task.getTaskId() + ", Name: " + task.getTaskName());
         }
     }
 }

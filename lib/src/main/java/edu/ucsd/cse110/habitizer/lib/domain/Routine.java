@@ -73,6 +73,8 @@ public class Routine implements Serializable {
     // Add the task
     public void addTask(Task task) {
         tasks.add(task);
+        System.out.println("Habitizer-Tasks: Task added to " + routineName + ": " + task.getTaskName() + 
+                          " (ID: " + task.getTaskId() + "), tasks list now has " + tasks.size() + " items");
     }
 
 

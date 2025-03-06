@@ -511,6 +511,21 @@ public class HabitizerRepository {
                 for (RoutineWithTasks routineWithTasks : routinesWithTasks) {
                     Routine routine = routineWithTasks.toRoutine();
                     uniqueRoutineMap.put(routine.getRoutineId(), routine);
+                    
+                    // Detailed logging for each routine's tasks
+                    Log.d(TAG, "===== Task Details for Routine: " + routine.getRoutineName() + " =====");
+                    Log.d(TAG, "Routine ID: " + routine.getRoutineId());
+                    Log.d(TAG, "Task Count: " + routine.getTasks().size());
+                    if (routine.getTasks().isEmpty()) {
+                        Log.d(TAG, "This routine has NO TASKS");
+                    } else {
+                        for (Task task : routine.getTasks()) {
+                            Log.d(TAG, "Task: ID=" + task.getTaskId() + ", Name='" + task.getTaskName() + 
+                                  "', Completed=" + task.isCompleted() + ", Skipped=" + task.isSkipped());
+                        }
+                    }
+                    Log.d(TAG, "=================================================");
+                    
                     Log.d(TAG, "Processed routine: " + routine.getRoutineName() + " with ID " + routine.getRoutineId() + 
                           " and " + routine.getTasks().size() + " tasks");
                 }
