@@ -411,44 +411,109 @@ public class HabitizerRepository {
      * @param routine Routine to update
      */
     public void updateRoutine(Routine routine) {
+        Log.d("REPOSITORY_UPDATE", "Starting updateRoutine for " + routine.getRoutineName() + " (ID: " + routine.getRoutineId() + ")");
+        
+        // Log task state
+        List<Task> tasks = routine.getTasks();
+        Log.d("REPOSITORY_UPDATE", "Task count: " + tasks.size());
+        for (int i = 0; i < tasks.size(); i++) {
+            Task task = tasks.get(i);
+            Log.d("REPOSITORY_UPDATE", "Task at position " + i + ": " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
+        }
+        
+        // Create a final copy of tasks list for use in lambda
+        final List<Task> tasksList = new ArrayList<>(routine.getTasks());
+        
         executor.execute(() -> {
             try {
-                // Delete old associations
-                database.routineDao().deleteRoutineTaskCrossRefs(routine.getRoutineId());
-                
-                // Save routine to database
-                RoutineEntity routineEntity = RoutineEntity.fromRoutine(routine);
-                database.routineDao().insert(routineEntity);
-                
-                // Save new associations
-                List<Task> tasks = routine.getTasks();
-                for (int i = 0; i < tasks.size(); i++) {
-                    Task task = tasks.get(i);
-                    RoutineTaskCrossRef crossRef = new RoutineTaskCrossRef(
-                            routine.getRoutineId(), 
-                            task.getTaskId(),
-                            i  // Save the position of the task in the routine
-                    );
-                    database.routineDao().insertRoutineTaskCrossRef(crossRef);
-                }
-                
-                // Update in-memory data
-                List<Routine> currentRoutines = new ArrayList<>(routinesSubject.getValue());
-                for (int i = 0; i < currentRoutines.size(); i++) {
-                    if (currentRoutines.get(i).getRoutineId() == routine.getRoutineId()) {
-                        currentRoutines.set(i, routine);
-                        break;
+                // Wrap everything in a transaction to ensure atomicity
+                database.runInTransaction(() -> {
+                    Log.d("REPOSITORY_UPDATE", "Deleting old task associations for routine " + routine.getRoutineId());
+                    // Delete old associations
+                    database.routineDao().deleteRoutineTaskCrossRefs(routine.getRoutineId());
+                    
+                    Log.d("REPOSITORY_UPDATE", "Saving routine entity to database");
+                    // Save routine to database
+                    RoutineEntity routineEntity = RoutineEntity.fromRoutine(routine);
+                    database.routineDao().insert(routineEntity);
+                    
+                    Log.d("REPOSITORY_UPDATE", "Saving task associations");
+                    // Save new associations
+                    if (tasksList.isEmpty()) {
+                        Log.e("REPOSITORY_UPDATE", "WARNING: Task list is empty for routine: " + routine.getRoutineName());
                     }
-                }
-                
-                // Update observables on main thread
-                final List<Routine> finalRoutines = currentRoutines;
-                mainHandler.post(() -> {
-                    routinesSubject.setValue(finalRoutines);
-                    routinesLiveData.setValue(finalRoutines);
+                    
+                    int associationsSaved = 0;
+                    
+                    for (int i = 0; i < tasksList.size(); i++) {
+                        Task task = tasksList.get(i);
+                        RoutineTaskCrossRef crossRef = new RoutineTaskCrossRef(
+                                routine.getRoutineId(), 
+                                task.getTaskId(),
+                                i  // index within the task list
+                        );
+                        
+                        Log.d("REPOSITORY_UPDATE", "Saving cross-ref for task " + task.getTaskName() + 
+                              " (ID: " + task.getTaskId() + ") at position " + i);
+                              
+                        database.routineDao().insertRoutineTaskCrossRef(crossRef);
+                        associationsSaved++;
+                        
+                        // Also ensure the task itself is saved
+                        TaskEntity taskEntity = TaskEntity.fromTask(task);
+                        database.taskDao().insert(taskEntity);
+                    }
+                    
+                    Log.d("REPOSITORY_UPDATE", "Transaction completed - saved " + associationsSaved + " task associations");
                 });
                 
-                Log.d(TAG, "Updated routine: " + routine.getRoutineName() + " with " + tasks.size() + " tasks");
+                // Verify task associations were saved properly
+                List<RoutineTaskCrossRef> savedAssocs = 
+                    database.routineDao().getTaskPositions(routine.getRoutineId());
+                Log.d("REPOSITORY_UPDATE", "Saved " + savedAssocs.size() + 
+                      " task associations for routine " + routine.getRoutineName());
+                
+                if (savedAssocs.size() != tasksList.size()) {
+                    Log.e("REPOSITORY_UPDATE", "ERROR: Mismatch in saved associations! Expected " + 
+                         tasksList.size() + " but found " + savedAssocs.size());
+                }
+                
+                // Brief delay to ensure all database writes are complete
+                try {
+                    Log.d("REPOSITORY_UPDATE", "Waiting for database operations to complete");
+                    Thread.sleep(250); // Increased delay for better reliability
+                } catch (InterruptedException e) {
+                    Log.e("REPOSITORY_UPDATE", "Sleep interrupted", e);
+                }
+                
+                Log.d("REPOSITORY_UPDATE", "Database update complete, refreshing in-memory data");
+                
+                // Force refresh of in-memory collections
+                refreshRoutines();
+                
+                // Log the state after refresh
+                mainHandler.post(() -> {
+                    Log.d("REPOSITORY_UPDATE", "After refresh - Checking routine state");
+                    List<Routine> allRoutines = routinesSubject.getValue();
+                    if (allRoutines != null) {
+                        for (Routine r : allRoutines) {
+                            if (r.getRoutineId() == routine.getRoutineId()) {
+                                Log.d("REPOSITORY_UPDATE", "Found updated routine: " + r.getRoutineName() + 
+                                      " with " + r.getTasks().size() + " tasks");
+                                for (int i = 0; i < r.getTasks().size(); i++) {
+                                    Task t = r.getTasks().get(i);
+                                    Log.d("REPOSITORY_UPDATE", "  Task at position " + i + ": " + 
+                                          t.getTaskName() + " (ID: " + t.getTaskId() + ")");
+                                }
+                                if (r.getTasks().size() != tasksList.size()) {
+                                    Log.e("REPOSITORY_UPDATE", "ERROR: Task count mismatch after refresh! " +
+                                          "Original: " + tasksList.size() + ", After refresh: " + r.getTasks().size());
+                                }
+                                break;
+                            }
+                        }
+                    }
+                });
             } catch (Exception e) {
                 Log.e(TAG, "Error updating routine", e);
             }
@@ -497,59 +562,96 @@ public class HabitizerRepository {
     public void refreshRoutines() {
         executor.execute(() -> {
             try {
-                Log.d(TAG, "Starting database refresh of routines");
+                Log.d("HabitizerRepository", "Starting database refresh of routines");
                 
-                // Load routines and tasks using ordered query
+                // First check what task associations exist in the database
+                List<RoutineTaskCrossRef> allTaskAssociations = database.routineDao().getAllTaskRelationshipsOrdered();
+                Log.d("HabitizerRepository", "Found " + allTaskAssociations.size() + " task associations in database");
+                
+                // Extra verification - log the first 10 associations to help debug
+                for (int i = 0; i < Math.min(10, allTaskAssociations.size()); i++) {
+                    RoutineTaskCrossRef ref = allTaskAssociations.get(i);
+                    Log.d("HabitizerRepository", "Association " + i + ": RoutineID=" + ref.routineId + 
+                          ", TaskID=" + ref.taskId + ", Position=" + ref.taskPosition);
+                }
+                
+                // Load routines with tasks
                 List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasksOrdered();
-                Log.d(TAG, "Loaded " + routinesWithTasks.size() + " routines with tasks from database");
+                Log.d("HabitizerRepository", "Loaded " + routinesWithTasks.size() + " routines with tasks from database");
                 
-                // Create a new list for domain objects
                 List<Routine> routines = new ArrayList<>();
                 
-                // Check for duplicate routines in the database query result
-                Map<Integer, Routine> uniqueRoutineMap = new HashMap<>();
+                // For each routine, check its tasks
                 for (RoutineWithTasks routineWithTasks : routinesWithTasks) {
-                    Routine routine = routineWithTasks.toRoutine();
-                    uniqueRoutineMap.put(routine.getRoutineId(), routine);
+                    RoutineEntity routineEntity = routineWithTasks.routine;
+                    List<TaskEntity> taskEntities = routineWithTasks.tasks;
                     
-                    // Detailed logging for each routine's tasks
-                    Log.d(TAG, "===== Task Details for Routine: " + routine.getRoutineName() + " =====");
-                    Log.d(TAG, "Routine ID: " + routine.getRoutineId());
-                    Log.d(TAG, "Task Count: " + routine.getTasks().size());
-                    if (routine.getTasks().isEmpty()) {
-                        Log.d(TAG, "This routine has NO TASKS");
-                    } else {
-                        for (Task task : routine.getTasks()) {
-                            Log.d(TAG, "Task: ID=" + task.getTaskId() + ", Name='" + task.getTaskName() + 
-                                  "', Completed=" + task.isCompleted() + ", Skipped=" + task.isSkipped());
+                    Log.d("HabitizerRepository", "Routine: " + routineEntity.getRoutineName() + " (ID: " + routineEntity.getId() + 
+                          ") has " + taskEntities.size() + " tasks");
+                    
+                    // Check for task associations directly for this routine
+                    List<RoutineTaskCrossRef> routineAssociations = 
+                        database.routineDao().getTaskPositions(routineEntity.getId());
+                    Log.d("HabitizerRepository", "Found " + routineAssociations.size() + 
+                          " associations for routine " + routineEntity.getRoutineName());
+                    
+                    // Check if the number of task entities matches the number of associations
+                    if (taskEntities.size() != routineAssociations.size()) {
+                        Log.w("HabitizerRepository", "Warning: Task count mismatch for routine " + 
+                              routineEntity.getRoutineName() + ". Tasks: " + taskEntities.size() + 
+                              ", Associations: " + routineAssociations.size());
+                    }
+                    
+                    // Special handling for important routines
+                    if ("Morning".equals(routineEntity.getRoutineName()) || "Evening".equals(routineEntity.getRoutineName())) {
+                        if (taskEntities.isEmpty()) {
+                            Log.e("HabitizerRepository", "CRITICAL: " + routineEntity.getRoutineName() + 
+                                  " routine has NO TASKS!");
+                            
+                            // Extra debug - check if any associations exist for this routine
+                            List<RoutineTaskCrossRef> assocs = 
+                                database.routineDao().getTaskPositions(routineEntity.getId());
+                            Log.e("HabitizerRepository", "Database shows " + assocs.size() + 
+                                  " associations for " + routineEntity.getRoutineName());
+                            
+                            // Log all tasks in database to see if they exist
+                            List<TaskEntity> allTasks = database.taskDao().findAll();
+                            Log.e("HabitizerRepository", "Total tasks in database: " + allTasks.size());
                         }
                     }
-                    Log.d(TAG, "=================================================");
                     
-                    Log.d(TAG, "Processed routine: " + routine.getRoutineName() + " with ID " + routine.getRoutineId() + 
-                          " and " + routine.getTasks().size() + " tasks");
+                    // Log the details of each task for debugging
+                    for (int i = 0; i < taskEntities.size(); i++) {
+                        TaskEntity taskEntity = taskEntities.get(i);
+                        Log.d("HabitizerRepository", "  Task " + i + ": " + taskEntity.getTaskName() + 
+                              " (ID: " + taskEntity.getId() + ")");
+                    }
+                    
+                    // Create Routine object
+                    Routine routine = routineEntity.toRoutine();
+                    
+                    // Add tasks to routine
+                    for (TaskEntity taskEntity : taskEntities) {
+                        Task task = taskEntity.toTask();
+                        routine.addTask(task);
+                    }
+                    
+                    routines.add(routine);
                 }
                 
-                routines.addAll(uniqueRoutineMap.values());
-                
-                if (uniqueRoutineMap.size() < routinesWithTasks.size()) {
-                    Log.w(TAG, "Found and removed " + (routinesWithTasks.size() - uniqueRoutineMap.size()) + 
-                           " duplicate routines during refresh");
-                }
-                
-                Log.d(TAG, "Final routine list contains " + routines.size() + " routines");
-                
-                // Update observables on main thread with a guaranteed UI update
-                final List<Routine> finalRoutines = routines;
+                // Post updated routines to main handler
                 mainHandler.post(() -> {
-                    // Update both subjects with the new data
-                    routinesSubject.setValue(finalRoutines);
-                    routinesLiveData.setValue(finalRoutines);
-                    Log.d(TAG, "Routines refreshed with " + finalRoutines.size() + " routines");
+                    Log.d("HabitizerRepository", "Posting " + routines.size() + " refreshed routines to UI");
+                    routinesSubject.setValue(routines);
                     
-                    // Force a sanity check - verify the values were actually set
-                    List<Routine> currentValue = routinesSubject.getValue();
-                    Log.d(TAG, "After refresh, subject contains " + (currentValue != null ? currentValue.size() : 0) + " routines");
+                    // Final verification of task counts after setting value
+                    List<Routine> postedRoutines = routinesSubject.getValue();
+                    if (postedRoutines != null) {
+                        for (Routine r : postedRoutines) {
+                            Log.d("HabitizerRepository", "Verified: " + r.getRoutineName() + 
+                                  " has " + r.getTasks().size() + " tasks after refresh");
+                        }
+                    }
                 });
             } catch (Exception e) {
                 Log.e(TAG, "Error refreshing routines", e);

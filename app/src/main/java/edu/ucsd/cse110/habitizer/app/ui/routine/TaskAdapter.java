@@ -211,9 +211,36 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             Log.e("TaskAdapter", "moveTaskUp: Task list is null or empty");
             return;
         }
+        
+        // Log task list before moving
+        Log.d("TASK_REORDERING", "Before moveTaskUp - Task: " + task.getTaskName() + ", Task ID: " + task.getTaskId());
+        logTaskList("Before moveTaskUp", tasks);
+        
+        // Perform the task swap in the routine
         routine.moveTaskUp(task);
+        
+        // Create a new Routine instance to ensure proper state update
+        Routine updatedRoutine = new Routine(routine.getRoutineId(), routine.getRoutineName());
+        
+        // Add all tasks in the current order to ensure order is preserved
+        for (Task t : routine.getTasks()) {
+            updatedRoutine.addTask(t);
+        }
+        
+        // Set the same goal time if it exists
+        updatedRoutine.updateGoalTime(routine.getGoalTime());
+        
+        // Save the updated routine to the repository
+        Log.d("TASK_REORDERING", "Saving routine to repository after moveTaskUp");
+        Log.d("TASK_REORDERING", "Routine ID: " + updatedRoutine.getRoutineId() + ", Routine Name: " + updatedRoutine.getRoutineName());
+        dataSource.putRoutine(updatedRoutine);
+        
+        // Log task list after repository update
+        logTaskList("After moveTaskUp and repository save", updatedRoutine.getTasks());
+        
+        // Update the UI adapter with the new task list
         clear();
-        addAll(tasks);
+        addAll(updatedRoutine.getTasks());
         notifyDataSetChanged();
     }
 
@@ -224,10 +251,47 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             Log.e("TaskAdapter", "moveTaskDown: Task list is null or empty");
             return;
         }
+        
+        // Log task list before moving
+        Log.d("TASK_REORDERING", "Before moveTaskDown - Task: " + task.getTaskName() + ", Task ID: " + task.getTaskId());
+        logTaskList("Before moveTaskDown", tasks);
+        
+        // Perform the task swap in the routine
         routine.moveTaskDown(task);
+        
+        // Create a new Routine instance to ensure proper state update
+        Routine updatedRoutine = new Routine(routine.getRoutineId(), routine.getRoutineName());
+        
+        // Add all tasks in the current order to ensure order is preserved
+        for (Task t : routine.getTasks()) {
+            updatedRoutine.addTask(t);
+        }
+        
+        // Set the same goal time if it exists
+        updatedRoutine.updateGoalTime(routine.getGoalTime());
+        
+        // Save the updated routine to the repository
+        Log.d("TASK_REORDERING", "Saving routine to repository after moveTaskDown");
+        Log.d("TASK_REORDERING", "Routine ID: " + updatedRoutine.getRoutineId() + ", Routine Name: " + updatedRoutine.getRoutineName());
+        dataSource.putRoutine(updatedRoutine);
+        
+        // Log task list after repository update
+        logTaskList("After moveTaskDown and repository save", updatedRoutine.getTasks());
+        
+        // Update the UI adapter with the new task list
         clear();
-        addAll(tasks);
+        addAll(updatedRoutine.getTasks());
         notifyDataSetChanged();
+    }
+    
+    // Helper method to log task list for debugging
+    private void logTaskList(String prefix, List<Task> tasks) {
+        Log.d("TASK_REORDERING", prefix + " - Task count: " + tasks.size());
+        for (int i = 0; i < tasks.size(); i++) {
+            Task t = tasks.get(i);
+            Log.d("TASK_REORDERING", prefix + " - Position " + i + ": " + 
+                  t.getTaskName() + " (ID: " + t.getTaskId() + ")");
+        }
     }
 
     private void updateTimeDisplay(TextView taskTime, Task task) {

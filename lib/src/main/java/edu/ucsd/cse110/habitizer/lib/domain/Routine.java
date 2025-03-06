@@ -151,18 +151,42 @@ public class Routine implements Serializable {
 
     public void moveTaskUp(Task task) {
         if (tasks.size() == 1 || tasks.indexOf(task) == 0) {
+            System.out.println("TASK_SWAP: Cannot move task up - already at top or single task: " + task.getTaskName());
             return;
         }
         int i = tasks.indexOf(task);
+        
+        // Log before swap
+        System.out.println("TASK_SWAP: Moving task UP - Before swap: Position " + i + 
+                           ", Task: " + task.getTaskName() + 
+                           ", Above task: " + tasks.get(i-1).getTaskName());
+        
         Collections.swap(tasks, i, i-1);
+        
+        // Log after swap
+        System.out.println("TASK_SWAP: After swap: Position " + (i-1) + 
+                           ", Task: " + tasks.get(i-1).getTaskName() + 
+                           ", Below task: " + tasks.get(i).getTaskName());
     }
 
     public void moveTaskDown(Task task) {
         if(tasks.size() == 1 || tasks.indexOf(task) == tasks.size()-1) {
+            System.out.println("TASK_SWAP: Cannot move task down - already at bottom or single task: " + task.getTaskName());
             return;
         }
         int i = tasks.indexOf(task);
+        
+        // Log before swap
+        System.out.println("TASK_SWAP: Moving task DOWN - Before swap: Position " + i + 
+                           ", Task: " + task.getTaskName() + 
+                           ", Below task: " + tasks.get(i+1).getTaskName());
+        
         Collections.swap(tasks, i, i+1);
+        
+        // Log after swap
+        System.out.println("TASK_SWAP: After swap: Position " + (i+1) + 
+                           ", Task: " + tasks.get(i+1).getTaskName() + 
+                           ", Above task: " + tasks.get(i).getTaskName());
     }
 
     public void advanceTime(int seconds) {
