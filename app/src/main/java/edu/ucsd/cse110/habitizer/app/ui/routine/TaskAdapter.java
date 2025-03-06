@@ -31,6 +31,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
     private final LegacyLogicAdapter dataSource;
     private final FragmentManager fragmentManager;
+    private RoutineFragment routineFragment;
 
     // ViewHolder pattern for better performance
     static class ViewHolder {
@@ -59,6 +60,10 @@ public class TaskAdapter extends ArrayAdapter<Task> {
                         (task != null ? task.getTaskName() : "null"));
             }
         }
+    }
+
+    public void setRoutineFragment(RoutineFragment fragment) {
+        this.routineFragment = fragment;
     }
 
     @NonNull
@@ -90,7 +95,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        Task task = getItem(position);
+        final Task task = getItem(position);
         if (task == null) {
             Log.e("TaskAdapter", "Task at position " + position + " is null");
             return convertView;
@@ -104,9 +109,9 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
         // Bind data to views
         holder.taskName.setText(task.getTaskName());
-        holder.checkBox.setChecked(task.isCompleted());
+        holder.checkBox.setChecked(task.isCheckedOff());
+        holder.checkBox.setEnabled(!task.isCheckedOff() && routine.isActive());
         updateTimeDisplay(holder.taskTime, task);
-        holder.checkBox.setEnabled(!task.isCheckedOff());
         holder.moveUpButton.setTag(position);
         holder.moveDownButton.setTag(position);
 
@@ -174,6 +179,14 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         // Handle auto-complete
         if (routine.autoCompleteRoutine()) {
             dataSource.putRoutine(routine);
+            
+            // Notify the RoutineFragment to update UI for ended routine
+            if (routineFragment != null) {
+                routineFragment.updateUIForEndedRoutine();
+                Log.d("TaskAdapter", "Notified RoutineFragment that routine was auto-completed");
+            } else {
+                Log.e("TaskAdapter", "Unable to notify RoutineFragment - reference is null");
+            }
         }
 
         // Update UI components

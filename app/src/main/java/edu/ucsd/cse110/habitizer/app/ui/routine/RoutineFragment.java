@@ -31,7 +31,7 @@ import edu.ucsd.cse110.habitizer.lib.domain.Task;
 public class RoutineFragment extends Fragment {
     private MainViewModel activityModel;
     private FragmentRoutineScreenBinding binding;
-    private ArrayAdapter<Task> taskAdapter;
+    private TaskAdapter taskAdapter;
     private HabitizerRepository repository;
 
     private static final String ARG_ROUTINE_ID = "routine_id";
@@ -170,6 +170,10 @@ public class RoutineFragment extends Fragment {
                 LegacyLogicAdapter.getCompatInstance(), 
                 getParentFragmentManager()
         );
+        
+        // Set this fragment as a reference for the TaskAdapter
+        taskAdapter.setRoutineFragment(this);
+        
         taskListView.setAdapter(taskAdapter);
         Log.d("RoutineFragment", "Task adapter set on ListView");
 
@@ -273,6 +277,14 @@ public class RoutineFragment extends Fragment {
                 binding.endRoutineButton.setText("Routine Ended");
                 binding.endRoutineButton.setEnabled(false);
                 binding.stopTimerButton.setEnabled(false);
+                binding.fastForwardButton.setEnabled(false);
+                binding.homeButton.setEnabled(true);
+                
+                // Refresh adapter to update checkbox states for any unchecked tasks
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                    Log.d("RoutineFragment", "Refreshed task adapter after manual routine end");
+                }
                 
                 // Special handling for Morning routine with ID 0 to prevent duplication
                 boolean isMorningRoutineWithIdZero = currentRoutine != null && 
@@ -529,6 +541,12 @@ public class RoutineFragment extends Fragment {
         
         // Force update the time display
         updateTimeDisplay();
+        
+        // Ensure task adapter refreshes to update checkbox states
+        if (taskAdapter != null) {
+            taskAdapter.notifyDataSetChanged();
+            Log.d("RoutineFragment", "Refreshed task adapter to update checkbox states");
+        }
         
         // Save the routine state to ensure the end time is preserved
         if (!isUpdatingFromObserver) {
