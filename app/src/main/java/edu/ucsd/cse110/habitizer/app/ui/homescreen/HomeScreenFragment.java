@@ -148,12 +148,16 @@ public class HomeScreenFragment extends Fragment {
                 
                 Log.d(TAG, "Added all " + this.routines.size() + " routines including duplicates");
                 
-                // Force UI update on main thread
-                new Handler(Looper.getMainLooper()).post(() -> {
-                    // Update the adapter
-                    adapter.notifyDataSetChanged();
-                    Log.d(TAG, "IMPORTANT: Adapter notified of data change with " + this.routines.size() + " routines");
-                });
+                // Force UI update on main thread using our adapter instance
+                if (adapter != null) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        // Update the adapter
+                        adapter.notifyDataSetChanged();
+                        Log.d(TAG, "IMPORTANT: Adapter notified of data change with " + this.routines.size() + " routines");
+                    });
+                } else {
+                    Log.e(TAG, "ERROR: Adapter is null, cannot update UI!");
+                }
             } else {
                 Log.e(TAG, "CRITICAL ERROR: Received null routine list from repository!");
                 // Force a refresh from MainActivity
@@ -198,6 +202,21 @@ public class HomeScreenFragment extends Fragment {
         activityModel.getRoutineRepository().save(newRoutine);
         
         Log.d(TAG, "New routine created with ID: " + newRoutineId);
+        
+        // Force reloading the data on the UI thread after a small delay
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (routineObserver != null) {
+                Log.d(TAG, "Refreshing data after routine creation");
+                activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
+                activityModel.getRoutineRepository().findAll().observe(routineObserver);
+            }
+            
+            // If MainActivity is available, request a force refresh
+            if (getActivity() instanceof MainActivity) {
+                Log.d(TAG, "Requesting force refresh from MainActivity");
+                ((MainActivity) getActivity()).forceRefreshRoutinesPublic();
+            }
+        }, 200);
     }
     
     private int generateUniqueRoutineId() {
@@ -253,10 +272,30 @@ public class HomeScreenFragment extends Fragment {
             Log.d(TAG, "Scheduling refresh attempt " + refreshAttempts + "/" + MAX_REFRESH_ATTEMPTS);
             refreshHandler.postDelayed(() -> {
                 Log.d(TAG, "Refreshing routines list (attempt " + refreshAttempts + ")");
+                
                 // Force a refresh of the data by re-observing
                 if (routineObserver != null) {
-                    activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
-                    activityModel.getRoutineRepository().findAll().observe(routineObserver);
+                    try {
+                        // First, get the current value of routines if possible
+                        List<Routine> currentRoutines = activityModel.getRoutineRepository().findAll().getValue();
+                        Log.d(TAG, "Current routines before refresh: " + (currentRoutines != null ? currentRoutines.size() : 0));
+                        
+                        // Remove and re-add the observer
+                        activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
+                        activityModel.getRoutineRepository().findAll().observe(routineObserver);
+                        
+                        // If there's a MainActivity, ask it to help refresh
+                        if (getActivity() instanceof MainActivity) {
+                            Log.d(TAG, "Requesting help from MainActivity to refresh routines");
+                            ((MainActivity) getActivity()).forceRefreshRoutinesPublic();
+                        }
+                        
+                        Log.d(TAG, "Refresh attempt " + refreshAttempts + " completed");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error during refresh attempt " + refreshAttempts, e);
+                    }
+                } else {
+                    Log.e(TAG, "Cannot refresh - routineObserver is null");
                 }
             }, REFRESH_DELAY * refreshAttempts); // Increase delay based on attempt number
         } else {
@@ -290,9 +329,18 @@ public class HomeScreenFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // If we only have one routine, try refreshing the data
+        Log.d(TAG, "onResume called - refreshing routines");
+        
+        // Force a refresh by removing and re-adding the observer
+        if (routineObserver != null) {
+            Log.d(TAG, "Removing and re-adding observer to refresh data");
+            activityModel.getRoutineRepository().findAll().removeObserver(routineObserver);
+            activityModel.getRoutineRepository().findAll().observe(routineObserver);
+        }
+        
+        // If we have few routines, also try the schedule refresh mechanism
         if (routines.size() < 2) {
-            Log.d(TAG, "onResume: Only " + routines.size() + " routines found. Refreshing data...");
+            Log.d(TAG, "Only " + routines.size() + " routines found. Scheduling additional refresh...");
             scheduleRefresh();
         }
     }

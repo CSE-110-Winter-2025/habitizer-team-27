@@ -14,7 +14,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         // Enable Room schema export function
         javaCompileOptions {
             annotationProcessorOptions {
@@ -59,7 +59,7 @@ dependencies {
 
     // ThreeTen Android Backport for handling Java 8 date/time
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
-    
+
     // Room database
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")

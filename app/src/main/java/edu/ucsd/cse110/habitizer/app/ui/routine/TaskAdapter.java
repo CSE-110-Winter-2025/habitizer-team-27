@@ -49,13 +49,13 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         this.routine = routine;
         this.dataSource = dataSource;
         this.fragmentManager = fragmentManager;
-        Log.d("TaskAdapter", "TaskAdapter created for routine: " + 
-                (routine != null ? routine.getRoutineName() : "null") + 
+        Log.d("TaskAdapter", "TaskAdapter created for routine: " +
+                (routine != null ? routine.getRoutineName() : "null") +
                 " with " + (tasks != null ? tasks.size() : 0) + " tasks");
         if (tasks != null && !tasks.isEmpty()) {
             for (int i = 0; i < tasks.size(); i++) {
                 Task task = tasks.get(i);
-                Log.d("TaskAdapter", "Initial task " + i + ": " + 
+                Log.d("TaskAdapter", "Initial task " + i + ": " +
                         (task != null ? task.getTaskName() : "null"));
             }
         }
@@ -64,9 +64,9 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-        Log.d("TaskAdapter", "getView called for position: " + position + 
+        Log.d("TaskAdapter", "getView called for position: " + position +
                 " out of " + getCount() + " tasks");
-        
+
         // Validate position first
         if (position < 0 || position >= getCount()) {
             Log.e("TaskAdapter", "Invalid position: " + position + ", count: " + getCount());
@@ -95,8 +95,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             Log.e("TaskAdapter", "Task at position " + position + " is null");
             return convertView;
         }
-        
-        Log.d("TaskAdapter", "Binding task at position " + position + ": " + task.getTaskName() + 
+
+        Log.d("TaskAdapter", "Binding task at position " + position + ": " + task.getTaskName() +
                 ", completed: " + task.isCompleted());
 
         // Clear previous listener to prevent recycling issues
@@ -172,22 +172,8 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         dataSource.putRoutine(routine);
 
         // Handle auto-complete
-        boolean allTasksCompleted = routine.autoCompleteRoutine();
-        if (allTasksCompleted) {
+        if (routine.autoCompleteRoutine()) {
             dataSource.putRoutine(routine);
-
-            // Find the RoutineFragment that contains this adapter
-            if (getContext() instanceof FragmentActivity) {
-                FragmentActivity activity = (FragmentActivity) getContext();
-                RoutineFragment fragment = (RoutineFragment) activity
-                    .getSupportFragmentManager()
-                    .findFragmentById(R.id.fragment_container);
-
-                if (fragment != null) {
-                    // Update the UI to reflect that the routine is ended
-                    fragment.updateUIForEndedRoutine();
-                }
-            }
         }
 
         // Update UI components
@@ -196,8 +182,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
         Log.d("TaskCompletion",
                 "Completed: " + task.getTaskName() +
-                        " | Duration: " + formatTime(task.getDuration()) +
-                        " | All Tasks Completed: " + allTasksCompleted);
+                        " | Duration: " + formatTime(task.getDuration()));
     }
 
     private void renameTask(Task task, String newName) {
@@ -253,7 +238,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         if (collection != null && !collection.isEmpty()) {
             int i = 0;
             for (Task task : collection) {
-                Log.d("TaskAdapter", "Task " + i + ": " + 
+                Log.d("TaskAdapter", "Task " + i + ": " +
                         (task != null ? task.getTaskName() : "null"));
                 i++;
             }
