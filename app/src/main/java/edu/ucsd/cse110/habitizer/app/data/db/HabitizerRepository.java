@@ -508,6 +508,49 @@ public class HabitizerRepository {
     }
     
     /**
+     * Remove a task from a routine but keep the task in the database
+     * @param routineId ID of the routine
+     * @param taskId ID of the task to remove from the routine
+     */
+    public void removeTaskFromRoutine(int routineId, int taskId) {
+        executor.execute(() -> {
+            try {
+                // Delete the association between routine and task
+                database.routineDao().deleteRoutineTaskCrossRef(routineId, taskId);
+                
+                Log.d(TAG, "Removed task ID: " + taskId + " from routine ID: " + routineId);
+                
+                // Get the updated routine with remaining tasks
+                RoutineWithTasks routineWithTasks = database.routineDao().getRoutineWithTasks(routineId);
+                if (routineWithTasks != null) {
+                    Routine updatedRoutine = routineWithTasks.toRoutine();
+                    
+                    // Update in-memory data
+                    List<Routine> currentRoutines = new ArrayList<>(routinesSubject.getValue());
+                    for (int i = 0; i < currentRoutines.size(); i++) {
+                        if (currentRoutines.get(i).getRoutineId() == routineId) {
+                            currentRoutines.set(i, updatedRoutine);
+                            break;
+                        }
+                    }
+                    
+                    // Update observables on main thread
+                    final List<Routine> finalRoutines = currentRoutines;
+                    mainHandler.post(() -> {
+                        routinesSubject.setValue(finalRoutines);
+                        routinesLiveData.setValue(finalRoutines);
+                    });
+                    
+                    Log.d(TAG, "Updated routine after task removal. Routine now has " + 
+                         updatedRoutine.getTasks().size() + " tasks");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error removing task from routine", e);
+            }
+        });
+    }
+    
+    /**
      * Refresh routines data from database
      */
     public void refreshRoutines() {

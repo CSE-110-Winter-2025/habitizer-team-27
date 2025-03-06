@@ -39,6 +39,15 @@ public class LegacyLogicAdapter {
         repository.deleteTask(taskId);
     }
     
+    /**
+     * Remove a task from a routine but keep the task in the database
+     * @param routineId ID of the routine
+     * @param taskId ID of the task to remove
+     */
+    public void removeTaskFromRoutine(int routineId, int taskId) {
+        repository.removeTaskFromRoutine(routineId, taskId);
+    }
+    
     public void addRoutine(Routine routine) {
         repository.addRoutine(routine);
     }
