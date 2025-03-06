@@ -97,7 +97,7 @@ public class Iteration1Tests {
 
         // Check that new routine exists in database
         List<Routine> routines = repository.getRoutines().getValue();
-        var currentRoutine = routines.getLast();
+        var currentRoutine = routines.get(2);
         assertEquals(currentRoutine.getRoutineName(), "New Routine");
 
         // Check that new routine has no tasks
