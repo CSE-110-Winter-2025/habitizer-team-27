@@ -34,8 +34,16 @@ public class Routine implements Serializable {
 
     // Start the routine
     public void startRoutine(LocalDateTime startTime) {
+        // Make sure to end any possibly running timers
+        if (routineTimer.isRunning()) {
+            routineTimer.end(startTime);
+        }
+        if (taskTimer.isRunning()) {
+            taskTimer.end(startTime);
+        }
+        
+        // Restart timers
         routineTimer.start(startTime);
-        // Start the timer of the task automatically
         taskTimer.start(startTime);
         currentTime = startTime;
         timerStopped = false;
@@ -43,6 +51,13 @@ public class Routine implements Serializable {
 
     // End the routine
     public void endRoutine(LocalDateTime endTime) {
+        // Add debug log
+        System.out.println("Ending routine at: " + endTime + 
+                          ", routine was active for: " + 
+                          (routineTimer.getStartTime() != null ? 
+                           java.time.Duration.between(routineTimer.getStartTime(), endTime).getSeconds() / 60.0 : 
+                           "unknown") + " minutes");
+        
         // If the timer was stopped, ignore the actual system time and use
         // our adjusted time
         if (timerStopped) {
@@ -84,21 +99,59 @@ public class Routine implements Serializable {
                 .filter(t -> t.getTaskName().equals(taskName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskName));
-        if (timerStopped) {
-            taskTimer.end(currentTime);
-        } else {
-            taskTimer.end(LocalDateTime.now());
+        
+        // Get the current time for consistency
+        LocalDateTime endTimeForTask = timerStopped ? currentTime : LocalDateTime.now();
+        
+        // DEBUG: Add more detailed logging about timer state
+        System.out.println("===== TASK COMPLETION DETAILS =====");
+        System.out.println("Completing task: '" + taskName + "'");
+        System.out.println("Current wall time: " + LocalDateTime.now());
+        System.out.println("Time used for calculations: " + endTimeForTask);
+        System.out.println("Routine timer start: " + routineTimer.getStartTime());
+        System.out.println("Routine timer active: " + routineTimer.isActive());
+        System.out.println("Task timer start: " + taskTimer.getStartTime());
+        System.out.println("Task timer running: " + taskTimer.isRunning());
+        System.out.println("timerStopped flag: " + timerStopped);
+        
+        // Ensure TaskTimer is properly initialized
+        if (taskTimer.getStartTime() == null || !taskTimer.isRunning()) {
+            // If TaskTimer is not initialized, use RoutineTimer's start time
+            LocalDateTime startTime = routineTimer.getStartTime();
+            if (startTime == null) {
+                // If RoutineTimer is also not initialized, use current time
+                startTime = LocalDateTime.now().minusSeconds(1); // Ensure at least 1 second
+            }
+            taskTimer.start(startTime);
         }
+        
+        // End the task timer with consistent time
+        taskTimer.end(endTimeForTask);
 
+        // Calculate elapsed minutes
         int elapsedMinutes = taskTimer.getElapsedMinutes();
+        
+        // Calculate raw duration for debugging
+        double rawMinutes = 0;
+        if (taskTimer.getStartTime() != null && taskTimer.getEndTime() != null) {
+            long durationSeconds = java.time.Duration.between(taskTimer.getStartTime(), taskTimer.getEndTime()).getSeconds();
+            rawMinutes = durationSeconds / 60.0;
+        }
+        
+        System.out.println("Task duration calculation:");
+        System.out.println("- Start time: " + taskTimer.getStartTime());
+        System.out.println("- End time: " + taskTimer.getEndTime());
+        System.out.println("- Raw duration: " + rawMinutes + " minutes");
+        System.out.println("- Rounded duration: " + elapsedMinutes + " minutes");
+        
+        // Set the task duration and mark as complete
         task.setDurationAndComplete(elapsedMinutes);
 
-        // Reset the timer of the task
-        if (timerStopped) {
-            taskTimer.start(currentTime);
-        } else {
-            taskTimer.start(LocalDateTime.now());
-        }
+        // Reset the timer of the task with the same time used for ending
+        taskTimer.start(endTimeForTask);
+        
+        System.out.println("Task timer restarted at: " + endTimeForTask);
+        System.out.println("==============================");
     }
 
 
@@ -134,6 +187,28 @@ public class Routine implements Serializable {
     public void pauseTime(LocalDateTime pauseTime) {
         currentTime = pauseTime;
         timerStopped = true;
+    }
+    
+    // Resume the timer with the current system time
+    public void resumeTime(LocalDateTime resumeTime) {
+        // Calculate time difference between paused time and resume time
+        long secondsDifference = java.time.Duration.between(currentTime, resumeTime).getSeconds();
+        
+        // Only adjust if we were paused
+        if (timerStopped) {
+            // Update the start times of both timers to account for the time the app was in background
+            if (routineTimer.isActive()) {
+                routineTimer.updateStartTime(routineTimer.getStartTime().plusSeconds(secondsDifference));
+            }
+            
+            if (taskTimer.isRunning()) {
+                taskTimer.updateStartTime(taskTimer.getStartTime().plusSeconds(secondsDifference));
+            }
+            
+            // Update current time to the resume time
+            currentTime = resumeTime;
+            timerStopped = false;
+        }
     }
 
     // Fast forward by thirty seconds

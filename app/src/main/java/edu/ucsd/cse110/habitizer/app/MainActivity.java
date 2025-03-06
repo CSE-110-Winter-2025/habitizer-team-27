@@ -29,6 +29,9 @@ public class MainActivity extends AppCompatActivity {
     private boolean isShowingRoutine = false;
     private HabitizerRepository repository;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    
+    // Static flag to track if app is in foreground
+    public static boolean isAppInForeground = true;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -210,5 +213,19 @@ public class MainActivity extends AppCompatActivity {
     public void forceRefreshRoutinesPublic() {
         Log.d(TAG, "Public force refresh called from fragment");
         forceRefreshRoutines();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause called - app going to background");
+        isAppInForeground = false;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume called - app coming to foreground");
+        isAppInForeground = true;
     }
 }
