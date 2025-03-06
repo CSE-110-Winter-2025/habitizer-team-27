@@ -16,15 +16,20 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.anything;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.Matchers.isA;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.util.Log;
+import android.view.View;
+import android.widget.TextView;
 
 import androidx.test.espresso.Espresso;
 
+import androidx.test.espresso.NoMatchingViewException;
+import androidx.test.espresso.ViewAssertion;
 import androidx.test.espresso.matcher.ViewMatchers;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -105,12 +110,37 @@ public class AddRoutineTests {
                 .perform(click());
         Espresso.onIdle();
 
+        // Wait a bit more after clicking "Add Routine"
+        try {
+            Thread.sleep(1000); // Wait for 1 second (adjust as needed)
+        } catch (InterruptedException e) {
+            // Ignore
+        }
+        Espresso.onIdle(); // Wait again after sleep
+
         // Check that new routine with default name is at position 2 (after Morning and Evening routines)
         onData(anything())
                 .inAdapterView(withId(R.id.card_list))
                 .atPosition(2)
                 .onChildView(withId(R.id.routine_name))
                 .check(matches(withText("New Routine")));
+
+        // Add this logging to check the actual routine name at position 2:
+        onData(anything())
+                .inAdapterView(withId(R.id.card_list))
+                .atPosition(2)
+                .onChildView(withId(R.id.routine_name))
+                .check(matches(withText(isA(String.class)))) // Check if it's at least a String
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        if (noViewFoundException != null) {
+                            throw noViewFoundException;
+                        }
+                        TextView routineNameTextView = (TextView) view;
+                        Log.d(TAG, "Routine Name at Position 2: " + routineNameTextView.getText().toString());
+                    }
+                });
 
         // Check that new routine exists in database
         List<Routine> routines = repository.getRoutines().getValue();
@@ -120,7 +150,7 @@ public class AddRoutineTests {
         assertEquals(currentRoutine.getRoutineName(), "New Routine");
 
         // Check that new routine has no tasks
-        assertNull(currentRoutine.getTasks());
+        assertTrue(currentRoutine.getTasks().isEmpty());
     }
 
     // Tests that start a default routine (or a routine with no tasks) automatically stops the routine

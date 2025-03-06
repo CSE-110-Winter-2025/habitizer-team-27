@@ -1,4 +1,4 @@
-package edu.ucsd.cse110.secards.habitizer_test;
+package edu.ucsd.cse110.habitizer_test;
 
 import android.content.Context;
 

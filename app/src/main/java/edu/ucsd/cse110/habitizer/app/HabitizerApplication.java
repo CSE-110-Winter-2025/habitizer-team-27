@@ -1,6 +1,8 @@
 package edu.ucsd.cse110.habitizer.app;
 
 import android.app.Application;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 
@@ -317,8 +319,41 @@ public class HabitizerApplication extends Application {
                             Log.d(TAG, "Generated new routine ID: " + routine.getRoutineId());
                         }
                         
-                        // Add or update routine atomically
+                        // Add or update routine atomically with proper transaction
                         repository.addRoutine(routine);
+                        
+                        // Force an immediate refresh of the routine list to ensure UI is updated
+                        // This is crucial to ensure the UI displays the updated list
+                        final Routine finalRoutine = routine;  // Make it effectively final for the lambda
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            Log.d(TAG, "Forcing repository update after saving routine " + finalRoutine.getRoutineName());
+                            
+                            // Use forceRefreshRoutines instead of direct setValue
+                            if (repository instanceof HabitizerRepository) {
+                                ((HabitizerRepository) repository).refreshRoutines();
+                                Log.d(TAG, "Called refreshRoutines directly");
+                            } else {
+                                // Fallback if we can't access refreshRoutines
+                                try {
+                                    // Get current value
+                                    List<Routine> currentRoutines = repository.getRoutines().getValue();
+                                    if (currentRoutines != null) {
+                                        // Trigger a refresh in MainActivity if possible
+                                        forceRefreshRoutines();
+                                        Log.d(TAG, "Triggered global routine refresh");
+                                    }
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error refreshing routines", e);
+                                }
+                            }
+                            
+                            // Double-check the UI update after a slightly longer delay
+                            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                // Try again after a delay to ensure update happened
+                                forceRefreshRoutines();
+                                Log.d(TAG, "Second refresh to ensure UI is updated");
+                            }, 300);
+                        }, 100);
                         
                         // Wait a moment to ensure persistence on Windows
                         try {
@@ -362,6 +397,16 @@ public class HabitizerApplication extends Application {
     
     public RoutineRepository getRoutineRepository() {
         return routineRepository;
+    }
+
+    /**
+     * Force refresh routines by updating from database
+     */
+    private void forceRefreshRoutines() {
+        Log.d(TAG, "Force refreshing routines in HabitizerApplication");
+        if (repository != null) {
+            repository.refreshRoutines();
+        }
     }
 
     /**
