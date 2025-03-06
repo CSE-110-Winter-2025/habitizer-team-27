@@ -7,6 +7,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.CoreMatchers.anything;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import android.util.Log;
 
@@ -73,43 +74,39 @@ public class ReorderTasksTests {
                 .atPosition(0)
                 .onChildView(withId(R.id.start_routine_button))
                 .perform(click());
-        var currentRoutine = repository.getRoutines().getValue().get(0);
         
-        // Log initial state of tasks
-        Log.d(TAG, "Initial task order before reordering:");
-        var initialTasks = currentRoutine.getTasks();
-        for (int i = 0; i < initialTasks.size(); i++) {
-            Log.d(TAG, "  " + i + ": " + initialTasks.get(i).getTaskName() + " (ID: " + initialTasks.get(i).getTaskId() + ")");
+        // Get initial tasks for reference
+        Routine initialRoutine = repository.getRoutines().getValue().get(0);
+        Log.d(TAG, "Initial tasks: " + initialRoutine.getTasks());
+        for (int i = 0; i < initialRoutine.getTasks().size(); i++) {
+            Log.d(TAG, "Initial position " + i + ": " + initialRoutine.getTasks().get(i).getTaskName());
         }
 
-        // Press "move down" on "Dress"
+        // Add initial delay to stabilize UI
+        try {
+            Log.d(TAG, "Initial delay before reordering...");
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Sleep interrupted", e);
+        }
+
+        // Press "move down" on "Dress" (at position 2)
         onData(anything())
                 .inAdapterView(withId(R.id.routine_list))
                 .atPosition(2)
                 .onChildView(withId(R.id.move_down_button))
                 .perform(click());
-
-        // Wait for database operations to complete
+                
+        // Add a significant delay to ensure repository operations complete
         try {
-            Thread.sleep(500);
+            Log.d(TAG, "Waiting for repository update to complete...");
+            Thread.sleep(3000);  // Increased to 3 seconds for more reliable results
         } catch (InterruptedException e) {
             Log.e(TAG, "Sleep interrupted", e);
         }
 
-        // Force refresh from database to ensure we have the latest data
-        repository.refreshRoutines();
-
-        // Wait for refresh to complete
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Sleep interrupted", e);
-        }
-
-        // Get a fresh reference to the routine
-        currentRoutine = repository.getRoutines().getValue().get(0);
-        
-        // Check UI reflects the changes
+        // Check UI has updated - items have swapped places
+        Log.d(TAG, "Checking UI updates...");
         onData(anything())
                 .inAdapterView(withId(R.id.routine_list))
                 .atPosition(2)
@@ -120,47 +117,53 @@ public class ReorderTasksTests {
                 .atPosition(3)
                 .onChildView(withId(R.id.task_name))
                 .check(matches(withText("Dress")));
-
-        // Check database has also changed
-        var currentTasks = currentRoutine.getTasks();
-        Log.d(TAG, "Updated task order after reordering and refresh:");
-        for (int i = 0; i < currentTasks.size(); i++) {
-            Log.d(TAG, "  " + i + ": " + currentTasks.get(i).getTaskName() + " (ID: " + currentTasks.get(i).getTaskId() + ")");
+                
+        Log.d(TAG, "UI updates verified.");
+        
+        // Add additional delay before checking repository
+        try {
+            Log.d(TAG, "Waiting a bit more for repository...");
+            Thread.sleep(2000);  // Another 2 seconds
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Sleep interrupted", e);
         }
         
-        // With retry logic to handle async operations
-        boolean verified = false;
-        for (int attempt = 0; attempt < 3 && !verified; attempt++) {
-            try {
-                assertEquals("Task at position 2 should be 'Make coffee'", 
-                    "Make coffee", currentTasks.get(2).getTaskName());
-                assertEquals("Task at position 3 should be 'Dress'", 
-                    "Dress", currentTasks.get(3).getTaskName());
-                verified = true;
-            } catch (AssertionError | IndexOutOfBoundsException e) {
-                Log.d(TAG, "Verification failed on attempt " + attempt + ", refreshing data");
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException ie) {
-                    Log.e(TAG, "Sleep interrupted", ie);
-                }
-                repository.refreshRoutines();
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException ie) {
-                    Log.e(TAG, "Sleep interrupted", ie);
-                }
-                currentRoutine = repository.getRoutines().getValue().get(0);
-                currentTasks = currentRoutine.getTasks();
+        Log.d(TAG, "Getting latest routine data from repository...");
+        activityRule.getScenario().onActivity(activity -> {
+            // Get repository reference directly from activity
+            repository = HabitizerRepository.getInstance(activity);
+        });
+        
+        // Get the LATEST repository data
+        List<Routine> latestRoutines = repository.getRoutines().getValue();
+        Log.d(TAG, "Latest routines size: " + (latestRoutines != null ? latestRoutines.size() : "null"));
+        
+        if (latestRoutines != null && !latestRoutines.isEmpty()) {
+            Routine updatedRoutine = latestRoutines.get(0);
+            List<Task> currentTasks = updatedRoutine.getTasks();
+            
+            Log.d(TAG, "Updated routine: " + updatedRoutine.getRoutineName() + " with " + currentTasks.size() + " tasks");
+            for (int i = 0; i < currentTasks.size(); i++) {
+                Task task = currentTasks.get(i);
+                Log.d(TAG, "Position " + i + ": " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
             }
-        }
-        
-        // If we still couldn't verify after retries, throw the assertion error
-        if (!verified) {
-            assertEquals("Task at position 2 should be 'Make coffee'", 
-                "Make coffee", currentTasks.get(2).getTaskName());
-            assertEquals("Task at position 3 should be 'Dress'", 
-                "Dress", currentTasks.get(3).getTaskName());
+            
+            // Verify positions 2 and 3 have the expected tasks
+            if (currentTasks.size() > 3) {
+                String pos2Name = currentTasks.get(2).getTaskName();
+                String pos3Name = currentTasks.get(3).getTaskName();
+                
+                assertEquals("Expected 'Make coffee' at position 2 but found '" + pos2Name + "'", 
+                            "Make coffee", pos2Name);
+                assertEquals("Expected 'Dress' at position 3 but found '" + pos3Name + "'", 
+                            "Dress", pos3Name);
+            } else {
+                fail("Not enough tasks in the list (need at least 4, found " + currentTasks.size() + ")");
+            }
+        } else {
+            // If we can't get the latest data, fail the test
+            Log.e(TAG, "Failed to get updated routine data from repository");
+            fail("Could not retrieve updated routine data from repository");
         }
     }
 
