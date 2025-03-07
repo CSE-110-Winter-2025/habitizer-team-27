@@ -124,6 +124,14 @@ public interface RoutineDao {
     void deleteRoutineTaskCrossRefs(int routineId);
     
     /**
+     * Delete a specific task association from a routine
+     * @param routineId Routine ID
+     * @param taskId Task ID
+     */
+    @Query("DELETE FROM routine_task_cross_refs WHERE routine_id = :routineId AND task_id = :taskId")
+    void deleteRoutineTaskCrossRef(int routineId, int taskId);
+    
+    /**
      * Delete all routines
      */
     @Query("DELETE FROM routines")

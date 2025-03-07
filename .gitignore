@@ -13,6 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+<<<<<<< HEAD
 .idea
 
 # Ignore all .class files
@@ -27,3 +28,5 @@ local.properties
 # Ignore Clean and Rebuild files
 Clean
 Rebuild
+=======
+>>>>>>> f710fb1 (Merge)

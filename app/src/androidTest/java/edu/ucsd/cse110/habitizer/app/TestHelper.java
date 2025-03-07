@@ -2,6 +2,7 @@ package edu.ucsd.cse110.habitizer.app;
 
 import android.content.Context;
 import android.util.Log;
+import android.view.animation.Animation;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -22,18 +23,24 @@ public class TestHelper {
     private static final String TAG = "TestHelper";
     
     // Default morning tasks for tests
+    // Default data for initialization
     private static final List<Task> DEFAULT_MORNING_TASKS = List.of(
             new Task(0, "Shower", false),
             new Task(1, "Brush teeth", false),
             new Task(2, "Dress", false),
-            new Task(3, "Make coffee", false)
+            new Task(3, "Make coffee", false),
+            new Task(4, "Make lunch", false),
+            new Task(5, "Dinner prep", false),
+            new Task(6, "Pack bag", false)
     );
 
-    // Default evening tasks for tests
     private static final List<Task> DEFAULT_EVENING_TASKS = List.of(
             new Task(100, "Charge devices", false),
             new Task(101, "Prepare dinner", false),
-            new Task(102, "Wash dishes", false)
+            new Task(102, "Eat dinner", false),
+            new Task(103, "Wash dishes", false),
+            new Task(104, "Pack bag", false),
+            new Task(105, "Homework", false)
     );
     
     /**
@@ -142,6 +149,40 @@ public class TestHelper {
             }
         } else {
             Log.e(TAG, "ERROR: No routines after test initialization");
+        }
+    }
+    
+    /**
+     * Create a list of demo tasks
+     * @return List of tasks for testing
+     */
+    public static List<Task> createDemoTasks() {
+        List<Task> tasks = new ArrayList<>();
+        tasks.add(new Task(1, "Brush teeth", false));
+        tasks.add(new Task(2, "Shower", false));
+        tasks.add(new Task(3, "Get dressed", false));
+        tasks.add(new Task(4, "Breakfast", false));
+        tasks.add(new Task(5, "Pack bag", false));
+        return tasks;
+    }
+    
+    /**
+     * Disable animations on the device to make Espresso tests more reliable
+     */
+    public static void disableAnimations() {
+        try {
+            // Try using UiAutomation to disable animations
+            int value = 0; // Animation scale (0 = disabled)
+            InstrumentationRegistry.getInstrumentation().getUiAutomation()
+                .executeShellCommand("settings put global window_animation_scale " + value);
+            InstrumentationRegistry.getInstrumentation().getUiAutomation()
+                .executeShellCommand("settings put global transition_animation_scale " + value);
+            InstrumentationRegistry.getInstrumentation().getUiAutomation()
+                .executeShellCommand("settings put global animator_duration_scale " + value);
+            
+            Log.d(TAG, "Disabled animations for testing");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to disable animations", e);
         }
     }
 } 

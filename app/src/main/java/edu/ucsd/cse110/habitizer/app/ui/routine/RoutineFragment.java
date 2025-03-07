@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -16,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 
 import edu.ucsd.cse110.habitizer.app.HabitizerApplication;
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
@@ -27,11 +29,12 @@ import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.SetRoutineTimeDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.habitizer.app.ui.dialog.EditRoutineNameDialogFragment;
 
 public class RoutineFragment extends Fragment {
     private MainViewModel activityModel;
     private FragmentRoutineScreenBinding binding;
-    private ArrayAdapter<Task> taskAdapter;
+    private TaskAdapter taskAdapter;
     private HabitizerRepository repository;
 
     private static final String ARG_ROUTINE_ID = "routine_id";
@@ -46,6 +49,13 @@ public class RoutineFragment extends Fragment {
     private boolean isUpdatingFromObserver = false;
 
     private boolean manuallyStarted = false;
+    
+    // Add variables to track timer state when app is minimized
+    private boolean wasTimerRunningBeforeMinimize = false;
+    private LocalDateTime timeWhenMinimized = null;
+
+    private boolean isPaused = false; // Add this flag to track pause state
+    private boolean isStopTimerPressed = false; // Add this flag to track stop timer state
 
     public RoutineFragment() {
         // required empty public constructor
@@ -55,7 +65,20 @@ public class RoutineFragment extends Fragment {
         timerRunnable = new Runnable() {
             @Override
             public void run() {
-                updateTimeDisplay();
+                // Only update if app is in foreground
+                if (edu.ucsd.cse110.habitizer.app.MainActivity.isAppInForeground) {
+                    // First update the current task elapsed time
+                    updateCurrentTaskElapsedTime();
+                    
+                    // Then update the overall routine time display
+                    updateTimeDisplay();
+                    
+                    // Log time updates for debugging
+                    Log.d("TimerUpdate", "Timer update: routine active=" + 
+                         (currentRoutine != null ? currentRoutine.isActive() : "null routine") + 
+                         ", isTimerRunning=" + isTimerRunning +
+                         ", isPaused=" + isPaused);
+                }
 
                 timerHandler.postDelayed(this, UPDATE_INTERVAL_MS);
             }
@@ -114,6 +137,16 @@ public class RoutineFragment extends Fragment {
 
         // Explicitly set the actual time to "-" at initialization to prevent flicker
         binding.actualTime.setText("-");
+        
+        // Initialize pause button state
+        isPaused = false;
+        binding.pauseButton.setText("Pause");
+        binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+
+        // Initialize stop timer state
+        isStopTimerPressed = false;
+        binding.stopTimerButton.setText("Stop Timer");
+        binding.stopTimerButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
 
         // Initialize timer updates but only start the timer if there are tasks
         initTimerUpdates();
@@ -148,6 +181,24 @@ public class RoutineFragment extends Fragment {
         for (Task task : currentRoutine.getTasks()) {
             task.reset();
         }
+        
+        // Reset the routine itself to ensure fresh timer state
+        // This is important to prevent carrying over any stale timer state
+        if (currentRoutine.isActive()) {
+            Log.d("RoutineFragment", "Routine was already active, resetting it to ensure clean timer state");
+            // End any existing routine first
+            currentRoutine.endRoutine(LocalDateTime.now());
+        }
+        
+        // Start fresh - set the proper routine initial state
+        if (!currentRoutine.getTasks().isEmpty()) {
+            Log.d("RoutineFragment", "Starting routine with tasks");
+            // Only auto-start if coming from home screen (was active)
+            if (currentRoutine.isActive()) {
+                manuallyStarted = true;
+                currentRoutine.startRoutine(LocalDateTime.now());
+            }
+        }
 
         // Initialize ListView and Adapter
         ListView taskListView = binding.routineList;
@@ -170,6 +221,10 @@ public class RoutineFragment extends Fragment {
                 LegacyLogicAdapter.getCompatInstance(), 
                 getParentFragmentManager()
         );
+        
+        // Set this fragment as a reference for the TaskAdapter
+        taskAdapter.setRoutineFragment(this);
+        
         taskListView.setAdapter(taskAdapter);
         Log.d("RoutineFragment", "Task adapter set on ListView");
 
@@ -237,6 +292,9 @@ public class RoutineFragment extends Fragment {
                 manuallyStarted = true;
                 isTimerRunning = true;
                 
+                // Reset button states
+                resetButtonStates();
+                
                 // Ensure routine is active
                 if (!currentRoutine.isActive()) {
                     currentRoutine.startRoutine(LocalDateTime.now());
@@ -269,10 +327,21 @@ public class RoutineFragment extends Fragment {
                 currentRoutine.endRoutine(LocalDateTime.now());
                 manuallyStarted = false;  // Reset the manually started flag when ending
                 
+                // Reset button states
+                resetButtonStates();
+                
                 // Explicitly set the button text to "Routine Ended" when ending the routine
                 binding.endRoutineButton.setText("Routine Ended");
                 binding.endRoutineButton.setEnabled(false);
                 binding.stopTimerButton.setEnabled(false);
+                binding.pauseButton.setEnabled(false);
+                binding.homeButton.setEnabled(true);
+                
+                // Refresh adapter to update checkbox states for any unchecked tasks
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                    Log.d("RoutineFragment", "Refreshed task adapter after manual routine end");
+                }
                 
                 // Special handling for Morning routine with ID 0 to prevent duplication
                 boolean isMorningRoutineWithIdZero = currentRoutine != null && 
@@ -298,13 +367,87 @@ public class RoutineFragment extends Fragment {
         });
 
         binding.stopTimerButton.setOnClickListener(v -> {
-            if (currentRoutine.isActive()) {
-                // Pause at current simulated time
-                currentRoutine.pauseTime(LocalDateTime.now());
-                updateTimeDisplay();
+            if (!isStopTimerPressed) {
+                // First click - Stop Timer functionality
+                isStopTimerPressed = true;
+                binding.stopTimerButton.setText("Fast Forward");
+                
+                // Original stop timer functionality
+                if (currentRoutine.isActive()) {
+                    // Pause at current simulated time, but don't affect the pause state
+                    // This allows separate tracking of pause button vs stop timer button
+                    currentRoutine.pauseTime(LocalDateTime.now());
+                    updateTimeDisplay();
+                }
+                
+                // We don't set isTimerRunning to false here to allow mockup testing
+                // even when the routine is paused
+            } else {
+                // Second click - Fast Forward functionality
+                
+                // Only fast forward if not in paused state
+                if (!isPaused) {
+                    // Fast forward 30 seconds
+                    currentRoutine.fastForwardTime();
+
+                    // Force immediate UI update
+                    updateTimeDisplay();
+
+                    // If routine completed via FF, update state
+                    if (currentRoutine.autoCompleteRoutine()) {
+                        binding.endRoutineButton.setEnabled(false);
+                        isTimerRunning = false;
+                    }
+                } else {
+                    // In paused state, show a log message but don't actually fast forward
+                    Log.d("RoutineFragment", "Fast Forward button clicked in paused state - no action taken");
+                }
             }
-            binding.stopTimerButton.setEnabled(false);
-            isTimerRunning = false;
+        });
+
+        // Add pause button click listener
+        binding.pauseButton.setOnClickListener(v -> {
+            // Toggle between pause and resume
+            if (!isPaused) {
+                // Pause the timer
+                isPaused = true;
+                // Don't set isTimerRunning = false, this affects the Stop Timer button
+                // Instead, only pause the routine itself
+                
+                // Update button text and color
+                binding.pauseButton.setText("Resume");
+                binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+                
+                // Pause the routine timer
+                if (currentRoutine.isActive()) {
+                    currentRoutine.pauseTime(LocalDateTime.now());
+                    updateTimeDisplay();
+                }
+                
+                // Refresh task list to disable checkboxes
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                }
+            } else {
+                // Resume the timer
+                isPaused = false;
+                isTimerRunning = true;
+                
+                // Reset button text and color
+                binding.pauseButton.setText("Pause");
+                binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+                
+                // Resume the routine timer
+                if (currentRoutine.isActive()) {
+                    currentRoutine.resumeTime(LocalDateTime.now());
+                    updateTimeDisplay();
+                }
+                
+                // Refresh task list to re-enable checkboxes
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                }
+            }
         });
 
         binding.homeButton.setOnClickListener(v -> {
@@ -315,20 +458,6 @@ public class RoutineFragment extends Fragment {
         // Initial state setup
         binding.homeButton.setEnabled(false);
 
-        binding.fastForwardButton.setOnClickListener(v -> {
-            // Fast forward 30 seconds
-            currentRoutine.fastForwardTime();
-
-            // Force immediate UI update
-            updateTimeDisplay();
-
-            // If routine completed via FF, update state
-            if (currentRoutine.autoCompleteRoutine()) {
-                binding.endRoutineButton.setEnabled(false);
-                isTimerRunning = false;
-            }
-        });
-
         return binding.getRoot();
     }
 
@@ -336,12 +465,107 @@ public class RoutineFragment extends Fragment {
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         Log.d("RoutineFragment", "onViewCreated called");
+
+        // Add pause button click listener
+        binding.pauseButton.setOnClickListener(v -> {
+            // Toggle between pause and resume
+            if (!isPaused) {
+                // Pause the timer
+                isPaused = true;
+                // Don't set isTimerRunning = false, this affects the Stop Timer button
+                // Instead, only pause the routine itself
+                
+                // Update button text and color
+                binding.pauseButton.setText("Resume");
+                binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+                
+                // Pause the routine timer
+                if (currentRoutine.isActive()) {
+                    currentRoutine.pauseTime(LocalDateTime.now());
+                    updateTimeDisplay();
+                }
+                
+                // Refresh task list to disable checkboxes
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                }
+            } else {
+                // Resume the timer
+                isPaused = false;
+                isTimerRunning = true;
+                
+                // Reset button text and color
+                binding.pauseButton.setText("Pause");
+                binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+                
+                // Resume the routine timer
+                if (currentRoutine.isActive()) {
+                    currentRoutine.resumeTime(LocalDateTime.now());
+                    updateTimeDisplay();
+                }
+                
+                // Refresh task list to re-enable checkboxes
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                }
+            }
+        });
+
+        // ... rest of existing code ...
     }
 
     @Override
     public void onResume() {
         super.onResume();
         Log.d("RoutineFragment", "onResume called");
+        
+        // Resume timer if it was running before app was minimized
+        if (timeWhenMinimized != null && wasTimerRunningBeforeMinimize && currentRoutine != null && currentRoutine.isActive()) {
+            Log.d("RoutineFragment", "Resuming timer after app was minimized");
+            
+            // Calculate time difference between when app was minimized and now
+            LocalDateTime now = LocalDateTime.now();
+            long secondsDifference = java.time.Duration.between(timeWhenMinimized, now).getSeconds();
+            
+            Log.d("RoutineFragment", "App was in background for " + secondsDifference + 
+                  " seconds (from " + timeWhenMinimized + " to " + now + ")");
+            
+            // Resume timer using the resumeTime method
+            currentRoutine.resumeTime(now);
+            
+            // Resume timer state (only if not explicitly paused)
+            if (!isPaused) {
+                isTimerRunning = true;
+            }
+            
+            // Reset the flag and time
+            wasTimerRunningBeforeMinimize = false;
+            timeWhenMinimized = null;
+            
+            // Force update display
+            updateTimeDisplay();
+            
+            Log.d("RoutineFragment", "Timer resumed, current duration: " + 
+                  currentRoutine.getRoutineDurationMinutes() + "m");
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.d("RoutineFragment", "onPause called");
+        
+        // Save timer state when app is minimized
+        if (currentRoutine != null && currentRoutine.isActive() && isTimerRunning) {
+            Log.d("RoutineFragment", "Pausing timer as app is being minimized");
+            
+            // Save current state
+            wasTimerRunningBeforeMinimize = isTimerRunning;
+            timeWhenMinimized = LocalDateTime.now();
+            
+            // Pause the timer but don't update UI yet (will update in onResume)
+            currentRoutine.pauseTime(timeWhenMinimized);
+        }
     }
 
     private void addTaskToRoutine(String taskName) {
@@ -365,6 +589,9 @@ public class RoutineFragment extends Fragment {
             // Only auto-start the routine if it hasn't been ended yet
             manuallyStarted = true;
             isTimerRunning = true;
+            
+            // Reset button states when starting a routine
+            resetButtonStates();
             
             // Start the routine if it's not already active
             if (!currentRoutine.isActive()) {
@@ -428,7 +655,36 @@ public class RoutineFragment extends Fragment {
     }
 
     private void updateTimeDisplay() {
+        // Ensure the routine is properly initialized
+        if (currentRoutine == null) {
+            Log.e("RoutineFragment", "Cannot update time display - routine is null");
+            binding.actualTime.setText("-");
+            return;
+        }
+        
+        // Get current routine duration from the routine
         long minutes = currentRoutine.getRoutineDurationMinutes();
+        
+        // Log detailed timing information for debugging
+        Log.d("RoutineFragment", "=== TIME DISPLAY UPDATE ===");
+        Log.d("RoutineFragment", "Minutes to display: " + minutes);
+        Log.d("RoutineFragment", "Routine active: " + currentRoutine.isActive());
+        Log.d("RoutineFragment", "Timer running: " + isTimerRunning);
+        Log.d("RoutineFragment", "Manually started: " + manuallyStarted);
+        
+        // Check the routine's internal timer state
+        if (currentRoutine.getRoutineTimer() != null) {
+            LocalDateTime startTime = currentRoutine.getRoutineTimer().getStartTime();
+            LocalDateTime endTime = currentRoutine.getRoutineTimer().getEndTime();
+            Log.d("RoutineFragment", "Routine timer start: " + startTime);
+            Log.d("RoutineFragment", "Routine timer end: " + endTime);
+            
+            // Calculate the expected time based on the current time
+            if (startTime != null) {
+                long expectedSeconds = java.time.Duration.between(startTime, LocalDateTime.now()).getSeconds();
+                Log.d("RoutineFragment", "Expected duration (raw): " + (expectedSeconds / 60.0) + " minutes");
+            }
+        }
         
         // Only show minutes if there's a meaningful value to display (> 0)
         // Always show "-" when minutes is 0, regardless of other states
@@ -445,6 +701,7 @@ public class RoutineFragment extends Fragment {
         if (hasTasks && manuallyStarted && !currentRoutine.isActive()) {
             // If it has tasks but isn't active, activate it unless explicitly ended
             if (!binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
+                Log.d("RoutineFragment", "Auto-activating routine that has tasks and is manually started");
                 currentRoutine.startRoutine(LocalDateTime.now());
             }
         }
@@ -463,7 +720,7 @@ public class RoutineFragment extends Fragment {
             binding.endRoutineButton.setText("Routine Ended");
             binding.endRoutineButton.setEnabled(false);
             binding.stopTimerButton.setEnabled(false);
-            binding.fastForwardButton.setEnabled(false);
+            binding.pauseButton.setEnabled(false); // Disable pause button when routine is ended
             binding.homeButton.setEnabled(true);
         } else if (!hasTasks || !manuallyStarted) {
             // Cases 1 & 2: Empty routine OR routine with tasks that isn't manually started
@@ -471,14 +728,27 @@ public class RoutineFragment extends Fragment {
             binding.endRoutineButton.setText("End Routine");
             binding.endRoutineButton.setEnabled(false);
             binding.stopTimerButton.setEnabled(false);
-            binding.fastForwardButton.setEnabled(false);
+            binding.pauseButton.setEnabled(false); // Disable pause button when routine isn't started
             binding.homeButton.setEnabled(true);
         } else {
-            // Case 3: Routine with tasks that is manually started - enable "End Routine" to end it
+            // Case 3: Routine with tasks that is manually started - enable buttons
             binding.endRoutineButton.setText("End Routine");
             binding.endRoutineButton.setEnabled(true);
-            binding.stopTimerButton.setEnabled(isTimerRunning);
-            binding.fastForwardButton.setEnabled(true);
+            
+            // Only enable stopTimerButton if not already pressed 
+            // (since it becomes Fast Forward after press)
+            if (!isStopTimerPressed) {
+                // Always enable stop timer button, even when paused
+                // This allows users to mock test even when paused
+                binding.stopTimerButton.setEnabled(true);
+            } else {
+                // Always enable Fast Forward functionality after Stop Timer is pressed
+                binding.stopTimerButton.setEnabled(true);
+            }
+            
+            // Keep pause button enabled even when timer is paused
+            binding.pauseButton.setEnabled(true);
+            
             binding.homeButton.setEnabled(false);
         }
 
@@ -524,11 +794,20 @@ public class RoutineFragment extends Fragment {
         binding.endRoutineButton.setText("Routine Ended");
         binding.endRoutineButton.setEnabled(false);
         binding.stopTimerButton.setEnabled(false);
-        binding.fastForwardButton.setEnabled(false);
+        binding.pauseButton.setEnabled(false); // Disable pause button when routine is ended
         binding.homeButton.setEnabled(true);
+        
+        // Reset button states
+        resetButtonStates();
         
         // Force update the time display
         updateTimeDisplay();
+        
+        // Ensure task adapter refreshes to update checkbox states
+        if (taskAdapter != null) {
+            taskAdapter.notifyDataSetChanged();
+            Log.d("RoutineFragment", "Refreshed task adapter to update checkbox states");
+        }
         
         // Save the routine state to ensure the end time is preserved
         if (!isUpdatingFromObserver) {
@@ -548,5 +827,130 @@ public class RoutineFragment extends Fragment {
                 Log.d("RoutineFragment", "Morning routine with ID 0 - not saving to repository to prevent duplication");
             }
         }
+    }
+
+    private void resetButtonStates() {
+        // Reset pause state if it was paused
+        boolean wasPaused = isPaused;
+        if (isPaused) {
+            isPaused = false;
+            binding.pauseButton.setText("Pause");
+            binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+        }
+        
+        // Reset stop timer state
+        isStopTimerPressed = false;
+        binding.stopTimerButton.setText("Stop Timer");
+        binding.stopTimerButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+        
+        // Refresh task list if pause state changed
+        if (wasPaused && taskAdapter != null) {
+            taskAdapter.notifyDataSetChanged();
+        }
+    }
+
+    // Add this getter method for the pause state
+    public boolean isPaused() {
+        return isPaused;
+    }
+
+    /**
+     * Update the display of the current task's elapsed time
+     */
+    private void updateCurrentTaskElapsedTime() {
+        final String TAG = "ELAPSED_TIME_DEBUG";
+        
+        // Early exit if no routine
+        if (currentRoutine == null) {
+            Log.d(TAG, "Routine is null, clearing elapsed time text");
+            binding.currentTaskElapsedTime.setText("");
+            return;
+        }
+
+        // Find the first uncompleted task (current active task)
+        List<Task> tasks = currentRoutine.getTasks();
+        if (tasks.isEmpty()) {
+            binding.currentTaskElapsedTime.setText("");
+            return;
+        }
+        
+        Task currentTask = null;
+        for (Task task : tasks) {
+            if (!task.isCompleted() && !task.isSkipped()) {
+                currentTask = task;
+                break;
+            }
+        }
+        
+        // If no active task found but routine has tasks, try to un-skip the first task
+        if (currentTask == null && !tasks.isEmpty()) {
+            Task firstTask = tasks.get(0);
+            firstTask.setSkipped(false);
+            currentTask = firstTask;
+            
+            // Save the change
+            if (repository != null) {
+                repository.updateRoutine(currentRoutine);
+            }
+        }
+        
+        // If still no active task, show empty elapsed time
+        if (currentTask == null) {
+            binding.currentTaskElapsedTime.setText("");
+            return;
+        }
+        
+        // Calculate elapsed time
+        long elapsedTimeSeconds = 0;
+        LocalDateTime taskStart = null;
+        
+        // Try to get task timer start time
+        if (currentRoutine.getTaskTimer() != null) {
+            taskStart = currentRoutine.getTaskTimer().getStartTime();
+        }
+        
+        // If task timer isn't initialized but routine timer is, use routine start time
+        if (taskStart == null && currentRoutine.getRoutineTimer() != null && 
+            currentRoutine.getRoutineTimer().getStartTime() != null) {
+            taskStart = currentRoutine.getRoutineTimer().getStartTime();
+            
+            // Force start the task timer if needed
+            if (currentRoutine.getTaskTimer() != null && !currentRoutine.getTaskTimer().isRunning() && 
+                currentRoutine.isActive() && manuallyStarted) {
+                currentRoutine.getTaskTimer().start(taskStart);
+                Log.d(TAG, "Force-started task timer with routine start time");
+            }
+        }
+        
+        // If we still don't have a valid start time, show initial elapsed time
+        if (taskStart == null) {
+            binding.currentTaskElapsedTime.setText("Elapsed time of the current task: 0m");
+            Log.d(TAG, "No valid start time found, showing 0m");
+            return;
+        }
+        
+        // Calculate elapsed time based on timer state
+        LocalDateTime now = LocalDateTime.now();
+        
+        if (isPaused) {
+            // If timer is paused, use the current time from the routine
+            now = currentRoutine.getCurrentTime();
+            Log.d(TAG, "Routine is paused, using stored time: " + now);
+        }
+        
+        // Calculate elapsed seconds
+        elapsedTimeSeconds = java.time.Duration.between(taskStart, now).getSeconds();
+        
+        // Ensure non-negative time
+        elapsedTimeSeconds = Math.max(0, elapsedTimeSeconds);
+        
+        // For running tasks, round DOWN to minutes (integer division)
+        long elapsedMinutes = elapsedTimeSeconds / 60;
+        
+        Log.d(TAG, "Updating current task elapsed time: " + elapsedMinutes + "m (from " + 
+             elapsedTimeSeconds + "s), task: " + currentTask.getTaskName());
+        
+        // Update the text view with the final result
+        binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + elapsedMinutes + "m");
     }
 }

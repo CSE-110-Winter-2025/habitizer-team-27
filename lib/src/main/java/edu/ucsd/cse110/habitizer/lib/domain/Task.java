@@ -41,6 +41,7 @@ public class Task implements Serializable {
         this.isCompleted = false;
         this.duration = 0;
         this.isCheckedOff = false;
+        this.isSkipped = false;
     }
 
 
