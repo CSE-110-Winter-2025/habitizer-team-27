@@ -66,7 +66,15 @@ public class RoutineFragment extends Fragment {
             public void run() {
                 // Only update if app is in foreground
                 if (edu.ucsd.cse110.habitizer.app.MainActivity.isAppInForeground) {
+                    // Update both the routine time display and task elapsed time
                     updateTimeDisplay();
+                    updateCurrentTaskElapsedTime(); // Explicitly call this for each update
+                    
+                    // Log time updates for debugging
+                    Log.d("TimerUpdate", "Timer update: routine active=" + 
+                         (currentRoutine != null ? currentRoutine.isActive() : "null routine") + 
+                         ", isTimerRunning=" + isTimerRunning +
+                         ", isPaused=" + isPaused);
                 }
 
                 timerHandler.postDelayed(this, UPDATE_INTERVAL_MS);
@@ -130,12 +138,12 @@ public class RoutineFragment extends Fragment {
         // Initialize pause button state
         isPaused = false;
         binding.pauseButton.setText("Pause");
-        binding.pauseButton.setBackgroundResource(android.R.drawable.btn_default);
+        binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
 
         // Initialize stop timer state
         isStopTimerPressed = false;
         binding.stopTimerButton.setText("Stop Timer");
-        binding.stopTimerButton.setBackgroundResource(android.R.drawable.btn_default);
+        binding.stopTimerButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
 
         // Initialize timer updates but only start the timer if there are tasks
         initTimerUpdates();
@@ -405,7 +413,7 @@ public class RoutineFragment extends Fragment {
                 
                 // Update button text and color
                 binding.pauseButton.setText("Resume");
-                binding.pauseButton.setBackgroundColor(getResources().getColor(android.R.color.holo_blue_light));
+                binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
                 
                 // Pause the routine timer
                 if (currentRoutine.isActive()) {
@@ -424,7 +432,7 @@ public class RoutineFragment extends Fragment {
                 
                 // Reset button text and color
                 binding.pauseButton.setText("Pause");
-                binding.pauseButton.setBackgroundResource(android.R.drawable.btn_default);
+                binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
                 
                 // Resume the routine timer
                 if (currentRoutine.isActive()) {
@@ -777,13 +785,13 @@ public class RoutineFragment extends Fragment {
         if (isPaused) {
             isPaused = false;
             binding.pauseButton.setText("Pause");
-            binding.pauseButton.setBackgroundResource(android.R.drawable.btn_default);
+            binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
         }
         
         // Reset stop timer state
         isStopTimerPressed = false;
         binding.stopTimerButton.setText("Stop Timer");
-        binding.stopTimerButton.setBackgroundResource(android.R.drawable.btn_default);
+        binding.stopTimerButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
         
         // Refresh task list if pause state changed
         if (wasPaused && taskAdapter != null) {
@@ -802,124 +810,83 @@ public class RoutineFragment extends Fragment {
     private void updateCurrentTaskElapsedTime() {
         final String TAG = "ELAPSED_TIME_DEBUG";
         
-        Log.d(TAG, "updateCurrentTaskElapsedTime() called");
-        Log.d(TAG, "Routine: " + (currentRoutine != null ? currentRoutine.getRoutineName() + " (ID: " + currentRoutine.getRoutineId() + ")" : "null"));
-        Log.d(TAG, "Routine active: " + (currentRoutine != null ? currentRoutine.isActive() : "null routine"));
-        Log.d(TAG, "manuallyStarted: " + manuallyStarted);
-        Log.d(TAG, "isTimerRunning: " + isTimerRunning);
-        Log.d(TAG, "isPaused: " + isPaused);
-
+        // Early exit if no routine
         if (currentRoutine == null) {
             Log.d(TAG, "Routine is null, clearing elapsed time text");
             binding.currentTaskElapsedTime.setText("");
             return;
         }
 
-        // Always show the task timer status, even if routine isn't "active"
         // Find the first uncompleted task (current active task)
         List<Task> tasks = currentRoutine.getTasks();
-        Log.d(TAG, "Total tasks in routine: " + tasks.size());
+        if (tasks.isEmpty()) {
+            binding.currentTaskElapsedTime.setText("");
+            return;
+        }
         
         Task currentTask = null;
-        
         for (Task task : tasks) {
-            Log.d(TAG, "Checking task: " + task.getTaskName() + ", completed: " + task.isCompleted() + ", skipped: " + task.isSkipped());
             if (!task.isCompleted() && !task.isSkipped()) {
                 currentTask = task;
                 break;
             }
         }
         
-        if (currentTask == null) {
-            // No active task found
-            Log.d(TAG, "No active task found");
+        // If no active task found but routine has tasks, try to un-skip the first task
+        if (currentTask == null && !tasks.isEmpty()) {
+            Task firstTask = tasks.get(0);
+            firstTask.setSkipped(false);
+            currentTask = firstTask;
             
-            // If the routine is active and has tasks, show a default elapsed time
-            // This handles the case where tasks might be incorrectly marked as skipped
-            if (currentRoutine.isActive() && !tasks.isEmpty()) {
-                Log.d(TAG, "Routine is active with tasks but no active task found, showing default elapsed time");
-                binding.currentTaskElapsedTime.setText("Elapsed time of the current task: 0m");
-                
-                // Try to un-skip the first task to make it active
-                if (tasks.size() > 0) {
-                    Task firstTask = tasks.get(0);
-                    Log.d(TAG, "Attempting to un-skip first task: " + firstTask.getTaskName());
-                    firstTask.setSkipped(false);
-                    
-                    // Save the change
-                    if (repository != null) {
-                        repository.updateRoutine(currentRoutine);
-                    }
-                }
-            } else {
-                binding.currentTaskElapsedTime.setText("");
+            // Save the change
+            if (repository != null) {
+                repository.updateRoutine(currentRoutine);
             }
+        }
+        
+        // If still no active task, show empty elapsed time
+        if (currentTask == null) {
+            binding.currentTaskElapsedTime.setText("");
             return;
         }
         
-        Log.d(TAG, "Current active task: " + currentTask.getTaskName());
-        
-        // Calculate the elapsed time for this task
+        // Calculate elapsed time
         long elapsedTimeSeconds = 0;
         LocalDateTime taskStart = null;
         
-        // Check if task timer is initialized
+        // Try to get task timer start time
         if (currentRoutine.getTaskTimer() != null) {
             taskStart = currentRoutine.getTaskTimer().getStartTime();
-        }
-        
-        // Debug timer state
-        Log.d(TAG, "Task timer start time: " + taskStart);
-        Log.d(TAG, "Routine timer start time: " + 
-              (currentRoutine.getRoutineTimer() != null ? currentRoutine.getRoutineTimer().getStartTime() : "null"));
-        Log.d(TAG, "Timer running: " + isTimerRunning);
-        Log.d(TAG, "Timer paused: " + isPaused);
-        
-        // If this is a default routine (Morning/Evening) that isn't active yet, force-start it
-        String routineName = currentRoutine.getRoutineName();
-        boolean isDefaultRoutine = routineName.equals("Morning") || routineName.equals("Evening");
-        if (tasks.size() > 0 && isDefaultRoutine && !currentRoutine.isActive()) {
-            Log.d(TAG, "Force-starting default routine: " + routineName);
-            manuallyStarted = true;
-            isTimerRunning = true;
-            isPaused = false;
-            currentRoutine.startRoutine(LocalDateTime.now());
-            
-            // Get updated start time
-            taskStart = currentRoutine.getTaskTimer().getStartTime();
-            Log.d(TAG, "Updated task timer start time after force-start: " + taskStart);
         }
         
         // If task timer isn't initialized but routine timer is, use routine start time
         if (taskStart == null && currentRoutine.getRoutineTimer() != null && 
             currentRoutine.getRoutineTimer().getStartTime() != null) {
-            
             taskStart = currentRoutine.getRoutineTimer().getStartTime();
-            Log.d(TAG, "Using routine start time as fallback: " + taskStart);
+            
+            // Force start the task timer if needed
+            if (currentRoutine.getTaskTimer() != null && !currentRoutine.getTaskTimer().isRunning() && 
+                currentRoutine.isActive() && isTimerRunning && !isPaused) {
+                currentRoutine.getTaskTimer().start(taskStart);
+            }
         }
         
-        // Even if we don't have a valid start time, show initial elapsed time of 0
+        // If we still don't have a valid start time, show initial elapsed time
         if (taskStart == null) {
-            Log.d(TAG, "No valid start time available, showing default elapsed time");
             binding.currentTaskElapsedTime.setText("Elapsed time of the current task: 0m");
             return;
         }
         
+        // Calculate elapsed time based on timer state
         LocalDateTime now = currentRoutine.getCurrentTime();
         LocalDateTime currentDateTime = LocalDateTime.now();
         
-        Log.d(TAG, "Current time from routine: " + now);
-        Log.d(TAG, "Current wall time: " + currentDateTime);
-        
-        // Handle paused state (from US6)
         if (isPaused || !isTimerRunning) {
             // If timer is paused, use the current time from the routine
             elapsedTimeSeconds = java.time.Duration.between(taskStart, now).getSeconds();
-            Log.d(TAG, "Using paused time: " + now);
         } else {
             // If timer is running, use the current wall time
             elapsedTimeSeconds = java.time.Duration.between(taskStart, currentDateTime).getSeconds();
-            Log.d(TAG, "Using wall time: " + currentDateTime);
         }
         
         // Ensure non-negative time
@@ -928,11 +895,11 @@ public class RoutineFragment extends Fragment {
         // For running tasks, round DOWN to minutes (integer division)
         long elapsedMinutes = elapsedTimeSeconds / 60;
         
-        // Update the text view with the new format
-        String elapsedTimeText = "Elapsed time of the current task: " + elapsedMinutes + "m";
-        Log.d(TAG, "Setting elapsed time text: " + elapsedTimeText);
-        binding.currentTaskElapsedTime.setText(elapsedTimeText);
+        // Update the text view with the final result
+        binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + elapsedMinutes + "m");
         
-        Log.d(TAG, "Calculated elapsed time: " + elapsedMinutes + "m (" + elapsedTimeSeconds + "s)");
+        // Log for debugging
+        Log.d(TAG, "Task: " + currentTask.getTaskName() + 
+              " - Elapsed time: " + elapsedMinutes + "m (" + elapsedTimeSeconds + "s)");
     }
 }
