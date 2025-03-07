@@ -29,6 +29,7 @@ import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.SetRoutineTimeDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.habitizer.app.ui.dialog.EditRoutineNameDialogFragment;
 
 public class RoutineFragment extends Fragment {
     private MainViewModel activityModel;
@@ -66,9 +67,11 @@ public class RoutineFragment extends Fragment {
             public void run() {
                 // Only update if app is in foreground
                 if (edu.ucsd.cse110.habitizer.app.MainActivity.isAppInForeground) {
-                    // Update both the routine time display and task elapsed time
+                    // First update the current task elapsed time
+                    updateCurrentTaskElapsedTime();
+                    
+                    // Then update the overall routine time display
                     updateTimeDisplay();
-                    updateCurrentTaskElapsedTime(); // Explicitly call this for each update
                     
                     // Log time updates for debugging
                     Log.d("TimerUpdate", "Timer update: routine active=" + 
@@ -462,6 +465,53 @@ public class RoutineFragment extends Fragment {
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         Log.d("RoutineFragment", "onViewCreated called");
+
+        // Add pause button click listener
+        binding.pauseButton.setOnClickListener(v -> {
+            // Toggle between pause and resume
+            if (!isPaused) {
+                // Pause the timer
+                isPaused = true;
+                // Don't set isTimerRunning = false, this affects the Stop Timer button
+                // Instead, only pause the routine itself
+                
+                // Update button text and color
+                binding.pauseButton.setText("Resume");
+                binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+                
+                // Pause the routine timer
+                if (currentRoutine.isActive()) {
+                    currentRoutine.pauseTime(LocalDateTime.now());
+                    updateTimeDisplay();
+                }
+                
+                // Refresh task list to disable checkboxes
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                }
+            } else {
+                // Resume the timer
+                isPaused = false;
+                isTimerRunning = true;
+                
+                // Reset button text and color
+                binding.pauseButton.setText("Pause");
+                binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+                
+                // Resume the routine timer
+                if (currentRoutine.isActive()) {
+                    currentRoutine.resumeTime(LocalDateTime.now());
+                    updateTimeDisplay();
+                }
+                
+                // Refresh task list to re-enable checkboxes
+                if (taskAdapter != null) {
+                    taskAdapter.notifyDataSetChanged();
+                }
+            }
+        });
+
+        // ... rest of existing code ...
     }
 
     @Override
@@ -866,28 +916,30 @@ public class RoutineFragment extends Fragment {
             
             // Force start the task timer if needed
             if (currentRoutine.getTaskTimer() != null && !currentRoutine.getTaskTimer().isRunning() && 
-                currentRoutine.isActive() && isTimerRunning && !isPaused) {
+                currentRoutine.isActive() && manuallyStarted) {
                 currentRoutine.getTaskTimer().start(taskStart);
+                Log.d(TAG, "Force-started task timer with routine start time");
             }
         }
         
         // If we still don't have a valid start time, show initial elapsed time
         if (taskStart == null) {
             binding.currentTaskElapsedTime.setText("Elapsed time of the current task: 0m");
+            Log.d(TAG, "No valid start time found, showing 0m");
             return;
         }
         
         // Calculate elapsed time based on timer state
-        LocalDateTime now = currentRoutine.getCurrentTime();
-        LocalDateTime currentDateTime = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         
-        if (isPaused || !isTimerRunning) {
+        if (isPaused) {
             // If timer is paused, use the current time from the routine
-            elapsedTimeSeconds = java.time.Duration.between(taskStart, now).getSeconds();
-        } else {
-            // If timer is running, use the current wall time
-            elapsedTimeSeconds = java.time.Duration.between(taskStart, currentDateTime).getSeconds();
+            now = currentRoutine.getCurrentTime();
+            Log.d(TAG, "Routine is paused, using stored time: " + now);
         }
+        
+        // Calculate elapsed seconds
+        elapsedTimeSeconds = java.time.Duration.between(taskStart, now).getSeconds();
         
         // Ensure non-negative time
         elapsedTimeSeconds = Math.max(0, elapsedTimeSeconds);
@@ -895,11 +947,10 @@ public class RoutineFragment extends Fragment {
         // For running tasks, round DOWN to minutes (integer division)
         long elapsedMinutes = elapsedTimeSeconds / 60;
         
+        Log.d(TAG, "Updating current task elapsed time: " + elapsedMinutes + "m (from " + 
+             elapsedTimeSeconds + "s), task: " + currentTask.getTaskName());
+        
         // Update the text view with the final result
         binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + elapsedMinutes + "m");
-        
-        // Log for debugging
-        Log.d(TAG, "Task: " + currentTask.getTaskName() + 
-              " - Elapsed time: " + elapsedMinutes + "m (" + elapsedTimeSeconds + "s)");
     }
 }

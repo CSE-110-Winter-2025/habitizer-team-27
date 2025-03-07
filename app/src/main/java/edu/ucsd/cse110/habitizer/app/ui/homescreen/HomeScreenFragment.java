@@ -9,6 +9,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.Toast;
+import android.app.AlertDialog;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -18,8 +20,10 @@ import androidx.lifecycle.ViewModelProvider;
 import edu.ucsd.cse110.habitizer.app.MainActivity;
 import edu.ucsd.cse110.habitizer.app.R;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateRoutineDialogFragment;
+import edu.ucsd.cse110.habitizer.app.ui.dialog.EditRoutineNameDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.routine.RoutineFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
+import edu.ucsd.cse110.habitizer.lib.domain.Task;
 import edu.ucsd.cse110.habitizer.app.MainViewModel;
 
 import java.time.LocalDateTime;
@@ -102,7 +106,43 @@ public class HomeScreenFragment extends Fragment {
                     
                     // Navigate to the routine screen regardless
                     navigateToRoutine(routineId);
-                }
+                },
+                (routineId, newName) -> {
+                    // Handle routine name edit
+                    Log.d(TAG, "Editing routine name: ID=" + routineId + ", newName=" + newName);
+                    
+                    // Get the current routine
+                    Routine currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
+                    if (currentRoutine == null) {
+                        Log.e(TAG, "Cannot edit name: Routine not found with ID: " + routineId);
+                        return;
+                    }
+                    
+                    // Create a new routine with the updated name
+                    Routine updatedRoutine = new Routine(routineId, newName);
+                    
+                    // Copy over the tasks and other properties
+                    for (Task task : currentRoutine.getTasks()) {
+                        updatedRoutine.addTask(task);
+                    }
+                    
+                    // Copy goal time if present
+                    if (currentRoutine.getGoalTime() != null) {
+                        updatedRoutine.updateGoalTime(currentRoutine.getGoalTime());
+                    }
+                    
+                    // Save the updated routine
+                    activityModel.getRoutineRepository().save(updatedRoutine);
+                    Log.d(TAG, "Routine name updated and saved: " + newName);
+                    
+                    // Refresh the UI
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        if (adapter != null) {
+                            adapter.notifyDataSetChanged();
+                        }
+                    });
+                },
+                getParentFragmentManager()
         );
         listView.setAdapter(adapter);
         Log.d(TAG, "ListView adapter set with " + routines.size() + " initial routines");
@@ -111,6 +151,13 @@ public class HomeScreenFragment extends Fragment {
         Button addRoutineButton = view.findViewById(R.id.add_routine_button);
         addRoutineButton.setOnClickListener(v -> {
             createNewRoutine("New Routine");
+        });
+        
+        // Set up the Edit Routine button
+        Button editRoutineButton = view.findViewById(R.id.edit_routine_button);
+        editRoutineButton.setOnClickListener(v -> {
+            // Show a dialog to select which routine to edit
+            showRoutineSelectionDialog();
         });
 
         // Remove previous observer if it exists when fragment is recreated
@@ -343,5 +390,80 @@ public class HomeScreenFragment extends Fragment {
             Log.d(TAG, "Only " + routines.size() + " routines found. Scheduling additional refresh...");
             scheduleRefresh();
         }
+    }
+
+    /**
+     * Shows a dialog for selecting which routine to edit
+     */
+    private void showRoutineSelectionDialog() {
+        if (routines.isEmpty()) {
+            Toast.makeText(requireContext(), "No routines to edit", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Create a dialog with a list of routines
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Select Routine to Edit");
+
+        // Create array of routine names
+        String[] routineNames = new String[routines.size()];
+        for (int i = 0; i < routines.size(); i++) {
+            routineNames[i] = routines.get(i).getRoutineName();
+        }
+
+        // Set up the routine selection
+        builder.setItems(routineNames, (dialog, which) -> {
+            Routine selectedRoutine = routines.get(which);
+            showEditRoutineNameDialog(selectedRoutine.getRoutineId(), selectedRoutine.getRoutineName());
+        });
+
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+    /**
+     * Shows dialog for editing a routine name
+     */
+    private void showEditRoutineNameDialog(int routineId, String currentName) {
+        // Show the edit name dialog
+        EditRoutineNameDialogFragment dialog = EditRoutineNameDialogFragment.newInstance(
+            routineId,
+            currentName,
+            (id, newName) -> {
+                // Use the existing edit routine name logic from adapter
+                // Get the current routine
+                Routine currentRoutine = activityModel.getRoutineRepository().getRoutine(id);
+                if (currentRoutine == null) {
+                    Log.e(TAG, "Cannot edit name: Routine not found with ID: " + id);
+                    return;
+                }
+                
+                // Create a new routine with the updated name
+                Routine updatedRoutine = new Routine(id, newName);
+                
+                // Copy over the tasks and other properties
+                for (Task task : currentRoutine.getTasks()) {
+                    updatedRoutine.addTask(task);
+                }
+                
+                // Copy goal time if present
+                if (currentRoutine.getGoalTime() != null) {
+                    updatedRoutine.updateGoalTime(currentRoutine.getGoalTime());
+                }
+                
+                // Save the updated routine
+                activityModel.getRoutineRepository().save(updatedRoutine);
+                Log.d(TAG, "Routine name updated and saved: " + newName);
+                
+                // Refresh the UI
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (adapter != null) {
+                        adapter.notifyDataSetChanged();
+                    }
+                });
+            }
+        );
+        
+        dialog.show(getParentFragmentManager(), "EditRoutineNameDialog");
     }
 }
