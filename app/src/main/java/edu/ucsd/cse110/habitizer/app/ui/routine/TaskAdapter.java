@@ -205,6 +205,12 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
         // Update business logic
         routine.completeTask(task.getTaskName());
+        
+        // Log task completion details
+        Log.d("TaskCompletion", "Task completed: " + task.getTaskName() +
+              " - Minutes: " + task.getDuration() +
+              " - Seconds: " + task.getElapsedSeconds() +
+              " - Should show in seconds: " + task.shouldShowInSeconds());
 
         // Update data source
         dataSource.putRoutine(routine);
@@ -222,13 +228,17 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             }
         }
 
-        // Update UI components
+        // Update UI components - immediately update the time display for this task
         updateTimeDisplay(holder.taskTime, task);
+        
+        // Refresh entire list for consistent display
         notifyDataSetChanged();
 
         Log.d("TaskCompletion",
                 "Completed: " + task.getTaskName() +
-                        " | Duration: " + formatTime(task.getDuration()));
+                " in " + (task.shouldShowInSeconds() ? 
+                         formatTimeInSeconds(task.getElapsedSeconds()) : 
+                         formatTime(task.getDuration())));
     }
 
     private void renameTask(Task task, String newName) {
@@ -323,12 +333,21 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             return;
         }
         
+        Log.d("TaskAdapter", "Updating time display for task: " + task.getTaskName() + 
+              " - Minutes: " + task.getDuration() + 
+              " - Seconds: " + task.getElapsedSeconds() + 
+              " - Should show in seconds: " + task.shouldShowInSeconds());
+        
         if (task.shouldShowInSeconds()) {
             // Format time in 5-second increments
-            taskTime.setText(formatTimeInSeconds(task.getElapsedSeconds()));
+            String formattedTime = formatTimeInSeconds(task.getElapsedSeconds());
+            taskTime.setText(formattedTime);
+            Log.d("TaskAdapter", "Displaying task in seconds: " + formattedTime);
         } else {
             // Format time in minutes as before
-            taskTime.setText(formatTime(task.getDuration()));
+            String formattedTime = formatTime(task.getDuration());
+            taskTime.setText(formattedTime);
+            Log.d("TaskAdapter", "Displaying task in minutes: " + formattedTime);
         }
     }
 
@@ -338,20 +357,35 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     
     /**
      * Format time in 5-second increments for tasks under 1 minute
+     * Rounds UP to the nearest 5-second increment for completed tasks
      */
     private String formatTimeInSeconds(int seconds) {
         if (seconds <= 0) {
             return "";
         }
         
-        // Round to nearest 5-second increment
-        int roundedSeconds = 5 * Math.round(seconds / 5.0f);
+        Log.d("TaskAdapter", "Formatting task time in seconds: " + seconds);
+        
+        // Round UP to nearest 5-second increment for completed tasks
+        int roundedSeconds;
+        
+        // Calculate how many seconds into the current 5-second interval
+        int remainder = seconds % 5;
+        
+        if (remainder == 0) {
+            // Already a multiple of 5, no rounding needed
+            roundedSeconds = seconds;
+        } else {
+            // Round up to next 5-second interval
+            roundedSeconds = seconds + (5 - remainder);
+        }
         
         // Make sure we show at least 5s
         if (roundedSeconds < 5) {
             roundedSeconds = 5;
         }
         
+        Log.d("TaskAdapter", "Formatting seconds: " + seconds + " → rounded UP to: " + roundedSeconds + "s");
         return String.format("%ds", roundedSeconds);
     }
 

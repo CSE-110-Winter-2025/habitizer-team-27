@@ -677,20 +677,23 @@ public class RoutineFragment extends Fragment {
         }
     }
 
+    /**
+     * Updates the display of the time elapsed in the textview.
+     */
     private void updateTimeDisplay() {
         // Ensure the routine is properly initialized
         if (currentRoutine == null) {
             Log.e("RoutineFragment", "Cannot update time display - routine is null");
-            binding.actualTime.setText("-");
+            binding.actualTime.setText("0m");  // Show "0m" instead of "-" when routine is null
             return;
         }
-        
-        // Get current routine duration from the routine
-        long minutes = currentRoutine.getRoutineDurationMinutes();
+
+        // Get current routine duration from the routine in minutes
+        long minutesDuration = currentRoutine.getRoutineDurationMinutes();
         
         // Log detailed timing information for debugging
         Log.d("RoutineFragment", "=== TIME DISPLAY UPDATE ===");
-        Log.d("RoutineFragment", "Minutes to display (raw): " + minutes);
+        Log.d("RoutineFragment", "Minutes to display: " + minutesDuration);
         Log.d("RoutineFragment", "Saved time before pause: " + timeBeforePauseMinutes);
         Log.d("RoutineFragment", "Routine active: " + currentRoutine.isActive());
         Log.d("RoutineFragment", "Timer running: " + isTimerRunning);
@@ -701,32 +704,20 @@ public class RoutineFragment extends Fragment {
         // Check the routine's internal timer state
         if (currentRoutine.getRoutineTimer() != null) {
             LocalDateTime startTime = currentRoutine.getRoutineTimer().getStartTime();
-            LocalDateTime endTime = currentRoutine.getRoutineTimer().getEndTime();
             Log.d("RoutineFragment", "Routine timer start: " + startTime);
-            Log.d("RoutineFragment", "Routine timer end: " + endTime);
-            
-            // Calculate the expected time based on the current time
-            if (startTime != null) {
-                long expectedSeconds = java.time.Duration.between(startTime, LocalDateTime.now()).getSeconds();
-                Log.d("RoutineFragment", "Expected duration (raw): " + (expectedSeconds / 60.0) + " minutes");
-            }
+            Log.d("RoutineFragment", "Routine timer end: " + currentRoutine.getRoutineTimer().getEndTime());
         }
         
         // If we're in paused state and the calculated time is 0 or less than saved time,
         // use the saved time before pause instead - but ONLY if we're still in paused state
-        if (isPaused && timeBeforePauseMinutes > 0 && minutes == 0) {
-            Log.d("RoutineFragment", "Using saved time before pause: " + timeBeforePauseMinutes + "m instead of " + minutes + "m");
-            minutes = timeBeforePauseMinutes;
+        if (isPaused && timeBeforePauseMinutes > 0 && minutesDuration == 0) {
+            Log.d("RoutineFragment", "Using saved time before pause: " + timeBeforePauseMinutes + "m instead of " + minutesDuration + "m");
+            minutesDuration = timeBeforePauseMinutes;
         }
         
-        // Only show minutes if there's a meaningful value to display (> 0)
-        // Always show "-" when minutes is 0, regardless of other states
-        if (minutes == 0) {
-            binding.actualTime.setText("-");
-        } else {
-            binding.actualTime.setText(String.format("%d%s", minutes, "m"));
-        }
-
+        // Always display in minutes format - show "0m" when the duration is 0
+        binding.actualTime.setText(minutesDuration + "m");
+        
         boolean hasTasks = !currentRoutine.getTasks().isEmpty();
         
         // Only auto-activate the routine if we've manually started it AND it has tasks
@@ -740,7 +731,7 @@ public class RoutineFragment extends Fragment {
         }
         
         boolean routineIsActive = currentRoutine.isActive();
-        Log.d("RoutineFragment", "UpdateTimeDisplay - hasTasks: " + hasTasks + ", isActive: " + routineIsActive + ", manuallyStarted: " + manuallyStarted + ", time: " + minutes + "m");
+        Log.d("RoutineFragment", "UpdateTimeDisplay - hasTasks: " + hasTasks + ", isActive: " + routineIsActive + ", manuallyStarted: " + manuallyStarted + ", time: " + minutesDuration + "m");
 
         // Modified button logic:
         // 1. Empty routine: "End Routine" text, always disabled
@@ -964,7 +955,7 @@ public class RoutineFragment extends Fragment {
             }
         }
         
-        // If we still don't have a valid start time, show initial elapsed time
+        // If we still don't have a valid start time, show initial elapsed time as 0m
         if (taskStart == null) {
             Log.d(TAG, "No valid start time found, showing 0m");
             binding.currentTaskElapsedTime.setText("Elapsed time of the current task: 0m");
@@ -994,23 +985,38 @@ public class RoutineFragment extends Fragment {
         // Ensure non-negative time
         elapsedTimeSeconds = Math.max(0, elapsedTimeSeconds);
         
-        // For running tasks, round DOWN to minutes (integer division)
-        long elapsedMinutes = elapsedTimeSeconds / 60;
+        String timeDisplay;
         
-        // If we're in paused state and the calculated time is 0, use the saved time before pause
-        // but ONLY if we're still in paused state
-        if (isPaused && timeBeforePauseMinutes > 0 && elapsedMinutes == 0) {
-            Log.d(TAG, "Using saved time before pause for task elapsed time: " + 
-                  timeBeforePauseMinutes + "m instead of " + elapsedMinutes + "m");
-            elapsedMinutes = timeBeforePauseMinutes;
+        // For running tasks less than a minute, display in 5-second increments
+        if (elapsedTimeSeconds < 60) {
+            // Round DOWN to nearest 5 seconds for running timer
+            int roundedSeconds = (int)(elapsedTimeSeconds / 5) * 5;
+            
+           
+            
+            timeDisplay = roundedSeconds + "s";
+            Log.d(TAG, "Showing seconds: " + roundedSeconds + "s (original: " + elapsedTimeSeconds + "s) [ROUNDED DOWN]");
+        } else {
+            // For tasks over a minute, show minutes as before
+            long elapsedMinutes = elapsedTimeSeconds / 60;
+            
+            // If we're in paused state and the calculated time is 0, use the saved time before pause
+            if (isPaused && timeBeforePauseMinutes > 0 && elapsedMinutes == 0) {
+                Log.d(TAG, "Using saved time before pause for task elapsed time: " + 
+                      timeBeforePauseMinutes + "m instead of " + elapsedMinutes + "m");
+                elapsedMinutes = timeBeforePauseMinutes;
+            }
+            
+            timeDisplay = elapsedMinutes + "m";
         }
         
         // Update the text view with the final result
-        binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + elapsedMinutes + "m");
+        binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + timeDisplay);
         
         // Log for debugging
         Log.d(TAG, "Task: " + currentTask.getTaskName() + 
-              " - Elapsed time: " + elapsedMinutes + "m (" + elapsedTimeSeconds + "s)" +
+              " - Elapsed time display: " + timeDisplay +
+              " - Raw seconds: " + elapsedTimeSeconds +
               " - isPaused: " + isPaused + 
               " - isStopTimerPressed: " + isStopTimerPressed + 
               " - isTimerRunning: " + isTimerRunning);

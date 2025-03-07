@@ -69,7 +69,9 @@ public class Task implements Serializable {
      * Returns true if this task should display time in seconds rather than minutes
      */
     public boolean shouldShowInSeconds() {
-        return isCompleted && duration < 1 && elapsedSeconds > 0;
+        // Show in seconds if task is completed and took less than 60 seconds 
+        // OR if duration is less than 1 minute and elapsedSeconds is recorded
+        return isCompleted && (elapsedSeconds > 0 && elapsedSeconds < 60);
     }
 
     public void setDurationAndComplete(int duration) {

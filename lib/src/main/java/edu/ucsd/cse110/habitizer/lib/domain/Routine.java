@@ -154,10 +154,9 @@ public class Routine implements Serializable {
         // Store task duration in minutes for compatibility
         task.setDurationAndComplete(elapsedMinutes);
         
-        // Store elapsed seconds for tasks under a minute
-        if (elapsedMinutes < 1 && elapsedSeconds > 0) {
-            task.setElapsedSeconds(elapsedSeconds);
-        }
+        // Always store elapsed seconds for all completed tasks - this allows showing in 
+        // seconds when less than a minute even if duration is rounded to 1
+        task.setElapsedSeconds(elapsedSeconds);
         
         // Start timer for next task automatically
         taskTimer.start(endTimeForTask);
@@ -229,16 +228,16 @@ public class Routine implements Serializable {
         }
     }
 
-    // Fast forward by thirty seconds
+    // Fast forward by fifteen seconds
     public void fastForwardTime() {
         // If timer is still running, update the start time of task and routine to mimic fast-forward
         if (!timerStopped) {
-            routineTimer.updateStartTime(routineTimer.getStartTime().minusSeconds(30));
-            taskTimer.updateStartTime(taskTimer.getStartTime().minusSeconds(30));
+            routineTimer.updateStartTime(routineTimer.getStartTime().minusSeconds(15));
+            taskTimer.updateStartTime(taskTimer.getStartTime().minusSeconds(15));
         }
-        // If timer not running, then we "fast forward" time by 30 seconds
+        // If timer not running, then we "fast forward" time by 15 seconds
         else {
-            currentTime = currentTime.plusSeconds(30);
+            currentTime = currentTime.plusSeconds(15);
         }
     }
 
