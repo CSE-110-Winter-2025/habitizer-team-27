@@ -276,6 +276,31 @@ public class Routine implements Serializable {
                            ", Above task: " + tasks.get(i).getTaskName());
     }
 
+    /**
+     * Remove a task from the routine
+     * @param task The task to remove
+     * @return true if the task was found and removed, false otherwise
+     */
+    public boolean removeTask(Task task) {
+        if (task == null) {
+            System.out.println("TASK_REMOVE: Cannot remove null task");
+            return false;
+        }
+        
+        int index = tasks.indexOf(task);
+        
+        if (index == -1) {
+            System.out.println("TASK_REMOVE: Task not found in routine: " + task.getTaskName());
+            return false;
+        }
+        
+        Task removedTask = tasks.remove(index);
+        System.out.println("TASK_REMOVE: Task removed from " + routineName + ": " + 
+                          removedTask.getTaskName() + " (ID: " + removedTask.getTaskId() + 
+                          "), tasks list now has " + tasks.size() + " items");
+        return true;
+    }
+
     public void advanceTime(int seconds) {
         currentTime = currentTime.plusSeconds(seconds);
     }
