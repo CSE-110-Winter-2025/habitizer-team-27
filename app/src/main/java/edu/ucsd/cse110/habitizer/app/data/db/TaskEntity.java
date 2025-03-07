@@ -31,18 +31,22 @@ public class TaskEntity {
     @ColumnInfo(name = "duration")
     private int duration;
     
+    @ColumnInfo(name = "elapsed_seconds")
+    private int elapsedSeconds;
+    
     // No-args constructor required by Room
     public TaskEntity() {}
     
     // Convenience constructor
     @androidx.room.Ignore
-    public TaskEntity(Integer id, String taskName, boolean isCheckedOff, boolean isCompleted, boolean isSkipped, int duration) {
+    public TaskEntity(Integer id, String taskName, boolean isCheckedOff, boolean isCompleted, boolean isSkipped, int duration, int elapsedSeconds) {
         this.id = id;
         this.taskName = taskName;
         this.isCheckedOff = isCheckedOff;
         this.isCompleted = isCompleted;
         this.isSkipped = isSkipped;
         this.duration = duration;
+        this.elapsedSeconds = elapsedSeconds;
     }
     
     // Convert Task object to TaskEntity
@@ -53,7 +57,8 @@ public class TaskEntity {
             task.isCheckedOff(),
             task.isCompleted(),
             task.isSkipped(),
-            task.getDuration()
+            task.getDuration(),
+            task.getElapsedSeconds()
         );
     }
     
@@ -62,6 +67,9 @@ public class TaskEntity {
         Task task = new Task(id, taskName, isCheckedOff);
         if (isCompleted) {
             task.setDurationAndComplete(duration);
+            if (duration < 1 && elapsedSeconds > 0) {
+                task.setElapsedSeconds(elapsedSeconds);
+            }
         }
         task.setSkipped(isSkipped);
         return task;
@@ -115,5 +123,13 @@ public class TaskEntity {
     
     public void setDuration(int duration) {
         this.duration = duration;
+    }
+    
+    public int getElapsedSeconds() {
+        return elapsedSeconds;
+    }
+    
+    public void setElapsedSeconds(int elapsedSeconds) {
+        this.elapsedSeconds = elapsedSeconds;
     }
 } 

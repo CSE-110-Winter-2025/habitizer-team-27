@@ -133,7 +133,8 @@ public class Routine implements Serializable {
         // End the task timer with consistent time
         taskTimer.end(endTimeForTask);
 
-        // Calculate elapsed minutes
+        // Calculate elapsed minutes and seconds
+        int elapsedSeconds = taskTimer.getElapsedSeconds();
         int elapsedMinutes = taskTimer.getElapsedMinutes();
         
         // Calculate raw duration for debugging
@@ -148,15 +149,20 @@ public class Routine implements Serializable {
         System.out.println("- End time: " + taskTimer.getEndTime());
         System.out.println("- Raw duration: " + rawMinutes + " minutes");
         System.out.println("- Rounded duration: " + elapsedMinutes + " minutes");
+        System.out.println("- Elapsed seconds: " + elapsedSeconds + " seconds");
         
-        // Set the task duration and mark as complete
+        // Store task duration in minutes for compatibility
         task.setDurationAndComplete(elapsedMinutes);
-
-        // Reset the timer of the task with the same time used for ending
+        
+        // Store elapsed seconds for tasks under a minute
+        if (elapsedMinutes < 1 && elapsedSeconds > 0) {
+            task.setElapsedSeconds(elapsedSeconds);
+        }
+        
+        // Start timer for next task automatically
         taskTimer.start(endTimeForTask);
         
-        System.out.println("Task timer restarted at: " + endTimeForTask);
-        System.out.println("==============================");
+        System.out.println("Completed task: " + taskName + " in " + elapsedMinutes + " minutes");
     }
 
 

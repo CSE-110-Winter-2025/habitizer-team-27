@@ -26,4 +26,15 @@ public class TaskTimer extends Timer {
         }
         return (int) Math.ceil(durationSeconds / 60.0);
     }
+    
+    /**
+     * Get elapsed seconds for the task
+     * @return total number of seconds since task started
+     */
+    public int getElapsedSeconds() {
+        if (startTime == null || endTime == null) return 0;
+        
+        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
+        return (int) durationSeconds;
+    }
 }

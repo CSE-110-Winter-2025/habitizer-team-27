@@ -318,12 +318,41 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     }
 
     private void updateTimeDisplay(TextView taskTime, Task task) {
-        taskTime.setText(task.isCompleted() ?
-                formatTime(task.getDuration()) : "");
+        if (!task.isCompleted()) {
+            taskTime.setText("");
+            return;
+        }
+        
+        if (task.shouldShowInSeconds()) {
+            // Format time in 5-second increments
+            taskTime.setText(formatTimeInSeconds(task.getElapsedSeconds()));
+        } else {
+            // Format time in minutes as before
+            taskTime.setText(formatTime(task.getDuration()));
+        }
     }
 
     private String formatTime(long minutes) {
         return minutes > 0 ? String.format("%dm", minutes) : "";
+    }
+    
+    /**
+     * Format time in 5-second increments for tasks under 1 minute
+     */
+    private String formatTimeInSeconds(int seconds) {
+        if (seconds <= 0) {
+            return "";
+        }
+        
+        // Round to nearest 5-second increment
+        int roundedSeconds = 5 * Math.round(seconds / 5.0f);
+        
+        // Make sure we show at least 5s
+        if (roundedSeconds < 5) {
+            roundedSeconds = 5;
+        }
+        
+        return String.format("%ds", roundedSeconds);
     }
 
     @Override
