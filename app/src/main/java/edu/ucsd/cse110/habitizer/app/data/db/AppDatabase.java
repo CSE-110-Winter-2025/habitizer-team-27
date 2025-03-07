@@ -3,10 +3,13 @@ package edu.ucsd.cse110.habitizer.app.data.db;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.threeten.bp.LocalDateTime;
 
@@ -19,13 +22,22 @@ import org.threeten.bp.LocalDateTime;
         RoutineEntity.class,
         RoutineTaskCrossRef.class
     },
-    version = 1,
+    version = 2,  // Updated from 1 to 2 for elapsed_seconds column
     exportSchema = false
 )
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
     private static final String DATABASE_NAME = "habitizer-db";
+    
+    // Migration from version 1 to 2 - adds elapsed_seconds column to tasks table
+    private static final Migration MIGRATION_1_2 = new Migration(1, 2) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Migrating database from version 1 to 2");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN elapsed_seconds INTEGER NOT NULL DEFAULT 0");
+        }
+    };
     
     // Singleton pattern
     private static volatile AppDatabase INSTANCE;
@@ -56,6 +68,7 @@ public abstract class AppDatabase extends RoomDatabase {
                                 context.getApplicationContext(),
                                 AppDatabase.class,
                                 DATABASE_NAME)
+                                .addMigrations(MIGRATION_1_2)  // Add migration
                                 .fallbackToDestructiveMigration()
                                 .build();
                     }
