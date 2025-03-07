@@ -6,12 +6,14 @@
     android:layout_height="match_parent">
 
     <Button
-        android:id="@+id/fast_forward_button"
-        android:layout_width="wrap_content"
+        android:id="@+id/pause_button"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="15dp"
         android:layout_marginEnd="15dp"
-        android:text="Fast Forward"
+        android:text="Pause"
+        android:background="@drawable/rounded_button_background"
+        android:textColor="#FFFFFF"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toEndOf="@+id/stop_timer_button"
@@ -19,22 +21,26 @@
 
     <Button
         android:id="@+id/stop_timer_button"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="15dp"
         android:text="Stop Timer"
-        app:layout_constraintEnd_toStartOf="@+id/fast_forward_button"
+        android:background="@drawable/rounded_button_background"
+        android:textColor="#FFFFFF"
+        app:layout_constraintEnd_toStartOf="@+id/pause_button"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toEndOf="@+id/home_button"
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/home_button"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="15dp"
         android:layout_marginTop="15dp"
         android:text="Home"
+        android:background="@drawable/rounded_gray_button_background"
+        android:textColor="@android:color/white"
         app:layout_constraintEnd_toStartOf="@+id/stop_timer_button"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
@@ -87,17 +93,27 @@
 
         <TextView
             android:id="@+id/routine_name_task"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginTop="8dp"
             android:text="Routine Name"
             android:textSize="34sp"
             android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/current_task_elapsed_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="2dp"
+            android:text="Elapsed time of the current task: 0m"
+            android:textSize="18sp"
+            android:textStyle="italic"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/routine_name_task" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ListView

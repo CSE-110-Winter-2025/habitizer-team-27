@@ -8,18 +8,28 @@
 
     <TextView
         android:id="@+id/routine_name"
-        android:layout_width="318dp"
+        android:layout_width="260dp"
         android:layout_height="32dp"
         android:layout_marginStart="32dp"
         android:layout_marginTop="32dp"
-        android:layout_marginEnd="13dp"
         android:text="Routine Name"
         android:textSize="24sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageButton
+        android:id="@+id/edit_routine_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Edit routine name"
+        android:src="@android:drawable/ic_menu_edit"
+        app:layout_constraintBottom_toBottomOf="@+id/routine_name"
+        app:layout_constraintStart_toEndOf="@+id/routine_name"
+        app:layout_constraintTop_toTopOf="@+id/routine_name" />
 
     <Button
         android:id="@+id/start_routine_button"
