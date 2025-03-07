@@ -43,7 +43,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         ImageButton moveUpButton;
         ImageButton moveDownButton;
         ImageButton renameButton;
-
+        ImageButton deleteButton;
     }
 
     public TaskAdapter(Context context, int resource, List<Task> tasks,
@@ -92,6 +92,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             holder.renameButton = convertView.findViewById(R.id.rename_button);
             holder.moveUpButton = convertView.findViewById(R.id.move_up_button);
             holder.moveDownButton = convertView.findViewById(R.id.move_down_button);
+            holder.deleteButton = convertView.findViewById(R.id.imageButton4);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -126,10 +127,12 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         holder.moveUpButton.setEnabled(!isFragmentPaused);
         holder.moveDownButton.setEnabled(!isFragmentPaused);
         holder.renameButton.setEnabled(!isFragmentPaused);
+        holder.deleteButton.setEnabled(!isFragmentPaused);
         
         updateTimeDisplay(holder.taskTime, task);
         holder.moveUpButton.setTag(position);
         holder.moveDownButton.setTag(position);
+        holder.deleteButton.setTag(position);
 
         // Set position tag for correct item identification
         holder.checkBox.setTag(position);
@@ -176,6 +179,20 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             if (currentTask != null) {
                 moveTaskDown(currentTask);
                 notifyDataSetChanged();
+            }
+        });
+        
+        // Add click handler for delete button
+        holder.deleteButton.setOnClickListener((buttonView) -> {
+            Object tag = buttonView.getTag();
+            if (tag == null) {
+                Log.e("TaskAdapter", "deleteButton tag is null");
+                return;
+            }
+            int pos = (int) tag;
+            Task currentTask = getItem(pos);
+            if (currentTask != null) {
+                removeTask(currentTask);
             }
         });
 
@@ -327,5 +344,42 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             }
         }
         super.addAll(collection);
+    }
+
+    /**
+     * Remove a task from the routine
+     * @param task The task to remove
+     */
+    private void removeTask(Task task) {
+        if (task == null) {
+            Log.e("TaskAdapter", "Cannot remove null task");
+            return;
+        }
+        
+        Log.d("TaskAdapter", "Removing task: " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
+        
+        // Remove task from the routine
+        boolean removed = routine.removeTask(task);
+        
+        if (removed) {
+            // Use the database method to properly update relationships
+            if (routine.getRoutineId() != null && task.getTaskId() != null) {
+                dataSource.removeTaskFromRoutine(routine.getRoutineId(), task.getTaskId());
+                Log.d("TaskAdapter", "Task removed from database relationship");
+            } else {
+                // Fallback to the old method if IDs are not available
+                dataSource.putRoutine(routine);
+                Log.d("TaskAdapter", "Task removed using routine update");
+            }
+            
+            // Update the adapter
+            clear();
+            addAll(routine.getTasks());
+            notifyDataSetChanged();
+            
+            Log.d("TaskAdapter", "Task removed successfully, now " + routine.getTasks().size() + " tasks in routine");
+        } else {
+            Log.e("TaskAdapter", "Failed to remove task from routine");
+        }
     }
 }
