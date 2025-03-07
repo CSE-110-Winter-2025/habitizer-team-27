@@ -7,6 +7,9 @@ import androidx.lifecycle.viewmodel.ViewModelInitializer;
 
 import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.TaskRepository;
+import edu.ucsd.cse110.habitizer.lib.domain.Routine;
+
+import java.util.List;
 
 public class MainViewModel extends ViewModel {
     private static final String LOG_TAG = "MainViewModel";
@@ -36,5 +39,30 @@ public class MainViewModel extends ViewModel {
 
     public RoutineRepository getRoutineRepository() {
         return routineRepository;
+    }
+
+    /**
+     * Get a routine by its ID
+     * @param routineId The ID of the routine to retrieve
+     * @return The found routine, or null if not found
+     */
+    public Routine getRoutineById(int routineId) {
+        // Use the routineRepository to find the routine by ID
+        if (routineId < 0) {
+            return null;
+        }
+        
+        // First check if we can find it in the current list of routines
+        List<Routine> routines = getRoutineRepository().findAll().getValue();
+        if (routines != null) {
+            for (Routine routine : routines) {
+                if (routine.getRoutineId() == routineId) {
+                    return routine;
+                }
+            }
+        }
+        
+        // If not found in the list, try to get it directly from the repository
+        return getRoutineRepository().find(routineId).getValue();
     }
 }
