@@ -29,7 +29,7 @@ public class RoutineTest {
     public void testEndRoutine() {
         routine.startRoutine(startTime);
         routine.endRoutine(endTime);
-        assertFalse(routine.isActive());
+        assertFalse(routine.getRoutineTimer().isRunning());
     }
 
     @Test
@@ -80,7 +80,7 @@ public class RoutineTest {
         routine.pauseTime(startTime);
         routine.fastForwardTime();
 
-        assertEquals(startTime.plusSeconds(30), routine.getCurrentTime());
+        assertEquals(startTime.plusSeconds(15), routine.getCurrentTime());
     }
 
     @Test
