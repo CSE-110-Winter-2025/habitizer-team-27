@@ -4,6 +4,8 @@ import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
 import static androidx.test.espresso.action.ViewActions.typeText;
+import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
@@ -77,11 +79,15 @@ public class RenameRoutineTests {
         // Click edit routine button
         onView(withId(R.id.edit_routine_button)).perform(click());
 
+        // Click on "Morning" in the list of routines
+        onView(withText("Select Routine to Edit")).check(matches(isDisplayed()));
+        onView(withText("Morning")).perform(click());
 
-        onView(withId(R.id.add_task_button)).perform(click());
-        Espresso.onIdle();
-        onView(withId(R.id.task_name_edit_text)).perform(typeText("Make bed"), closeSoftKeyboard());
-        onView(withText("OK")).perform(click());
-        Espresso.onIdle();
+        // Type in new routine name
+        onView(withText("Edit Routine Name")).check(matches(isDisplayed()));
+        onView(withText("Morning")).perform(typeText("Test"), closeSoftKeyboard());
+        onView(withText("Save")).perform(click());
+
+
     }
 }
