@@ -13,10 +13,7 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="ReorderTasksTests">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="reorderTasks()">
+      <SelectionState runConfigName="testDeleteTask()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

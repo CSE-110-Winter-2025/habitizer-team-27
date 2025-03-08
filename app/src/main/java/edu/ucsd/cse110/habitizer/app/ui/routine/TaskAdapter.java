@@ -106,7 +106,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             holder.renameButton = convertView.findViewById(R.id.rename_button);
             holder.moveUpButton = convertView.findViewById(R.id.move_up_button);
             holder.moveDownButton = convertView.findViewById(R.id.move_down_button);
-            holder.deleteButton = convertView.findViewById(R.id.imageButton4);
+            holder.deleteButton = convertView.findViewById(R.id.delete_task_button);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
