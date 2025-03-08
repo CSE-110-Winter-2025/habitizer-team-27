@@ -166,7 +166,7 @@ public class HomeScreenFragment extends Fragment {
         });
         
         // Set up the Edit Routine button
-        Button editRoutineButton = view.findViewById(R.id.edit_routine_button);
+        Button editRoutineButton = view.findViewById(R.id.rename_routine_button);
         editRoutineButton.setOnClickListener(v -> {
             // Show a dialog to select which routine to edit
             showRoutineSelectionDialog();

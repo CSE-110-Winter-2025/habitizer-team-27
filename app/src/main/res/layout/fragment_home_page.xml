@@ -41,7 +41,7 @@
             android:text="Add Routine" />
 
         <Button
-            android:id="@+id/edit_routine_button"
+            android:id="@+id/rename_routine_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Edit Routine" />
