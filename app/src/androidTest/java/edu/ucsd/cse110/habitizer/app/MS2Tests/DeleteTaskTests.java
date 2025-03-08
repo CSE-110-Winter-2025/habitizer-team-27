@@ -82,7 +82,7 @@ public class DeleteTaskTests {
         // Clicks start on "Morning"
         onData(Matchers.anything())
                 .inAdapterView(withId(R.id.card_list))
-                .atPosition(2)
+                .atPosition(0)
                 .onChildView(withId(R.id.start_routine_button))
                 .perform(click());
         Espresso.onIdle();
@@ -105,5 +105,20 @@ public class DeleteTaskTests {
         // Restart the app
         activityRule.getScenario().close();
         ActivityScenario.launch(MainActivity.class, null);
+
+        // Clicks start on "Morning"
+        onData(Matchers.anything())
+                .inAdapterView(withId(R.id.card_list))
+                .atPosition(0)
+                .onChildView(withId(R.id.start_routine_button))
+                .perform(click());
+        Espresso.onIdle();
+
+        // Check the first task is still not Shower
+        onData(anything())
+                .inAdapterView(withId(R.id.routine_list))
+                .atPosition(0)
+                .onChildView(withId(R.id.task_time))
+                .check(matches(not((withText("Shower")))));
     }
 }
