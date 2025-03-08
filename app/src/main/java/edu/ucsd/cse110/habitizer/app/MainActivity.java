@@ -1,5 +1,6 @@
 package edu.ucsd.cse110.habitizer.app;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -7,20 +8,25 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
+import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
 import edu.ucsd.cse110.habitizer.app.databinding.ActivityMainBinding;
 import edu.ucsd.cse110.habitizer.app.ui.homescreen.HomeScreenFragment;
 import edu.ucsd.cse110.habitizer.app.ui.routine.RoutineFragment;
 import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
-import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
-import edu.ucsd.cse110.habitizer.lib.domain.TaskRepository;
-
-import java.util.List;
-import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
+import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.habitizer.lib.domain.TaskRepository;
 import edu.ucsd.cse110.habitizer.app.HabitizerApplication;
 
 public class MainActivity extends AppCompatActivity {
@@ -45,8 +51,22 @@ public class MainActivity extends AppCompatActivity {
         // Get repository instance
         repository = HabitizerRepository.getInstance(this);
         
-        // Show home screen initially
-        showHomeScreen();
+        // Only show home screen if this is a fresh launch (not a configuration change or restart)
+        if (savedInstanceState == null) {
+            Log.d(TAG, "Fresh launch - showing home screen");
+            showHomeScreen();
+        } else {
+            Log.d(TAG, "App restarted with saved state - preserving current fragment");
+            // Check what fragment is currently being displayed
+            Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+            if (currentFragment instanceof RoutineFragment) {
+                Log.d(TAG, "Restored to RoutineFragment - setting isShowingRoutine to true");
+                isShowingRoutine = true;
+            } else {
+                Log.d(TAG, "Restored to HomeScreenFragment or other - setting isShowingRoutine to false");
+                isShowingRoutine = false;
+            }
+        }
         
         // Verify routines are loaded
         verifyRoutinesLoaded();
@@ -143,20 +163,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Force a refresh of the routines from the repository
+     * Force refresh routines from the repository, useful when the app starts
      */
     private void forceRefreshRoutines() {
-        Log.d(TAG, "Forcing refresh of routines from repository");
         try {
-            // Try to force refresh routines
-            HabitizerRepository repo = HabitizerRepository.getInstance(this);
-            repo.refreshRoutines();
+            Log.d(TAG, "Force refreshing routines from repository");
+            repository.refreshRoutines();
             
-            // Also access the Application instance to ensure initialization is complete
-            HabitizerApplication app = (HabitizerApplication) getApplication();
+            // Check if default routines were already created at least once
+            SharedPreferences prefs = getSharedPreferences("habitizer_prefs", MODE_PRIVATE);
+            boolean defaultRoutinesCreated = prefs.getBoolean("default_routines_created", false);
             
-            // Let's add default routines if none exist
-            if (repository.getRoutines().getValue() == null || 
+            // If we've already created default routines once, don't try to recreate them
+            if (defaultRoutinesCreated) {
+                Log.d(TAG, "Default routines were previously created - not attempting to recreate");
+                return;
+            }
+            
+            // Only for first launch: Check if we need to create default routines
+            if (repository.getRoutines() == null || 
+                repository.getRoutines().getValue() == null || 
                 repository.getRoutines().getValue().isEmpty()) {
                 Log.d(TAG, "No routines found during force refresh, triggering default routine creation");
                 
@@ -176,9 +202,18 @@ public class MainActivity extends AppCompatActivity {
      */
     private void addDefaultRoutines() {
         try {
+            // Check if we've already created default routines before
+            SharedPreferences prefs = getSharedPreferences("habitizer_prefs", MODE_PRIVATE);
+            boolean defaultRoutinesCreated = prefs.getBoolean("default_routines_created", false);
+            
+            if (defaultRoutinesCreated) {
+                Log.d(TAG, "Default routines were already created during a previous launch - skipping emergency creation");
+                return;
+            }
+            
             List<Routine> existingRoutines = repository.getRoutines().getValue();
             if (existingRoutines == null || existingRoutines.isEmpty()) {
-                Log.d(TAG, "Creating emergency default routines");
+                Log.d(TAG, "No routines found, adding emergency default routines");
                 
                 // Create Morning routine
                 Routine morningRoutine = new Routine(0, "Morning");
@@ -197,13 +232,17 @@ public class MainActivity extends AppCompatActivity {
                 eveningRoutine.addTask(new Task(103, "Wash dishes", false));
                 repository.addRoutine(eveningRoutine);
                 
-                Log.d(TAG, "Emergency default routines created");
+                // Mark that we've created default routines
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putBoolean("default_routines_created", true);
+                editor.apply();
+                Log.d(TAG, "Successfully created emergency default routines and marked as complete");
                 
                 // Refresh home screen after a delay
                 handler.postDelayed(this::refreshHomeScreen, 500);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error creating emergency default routines", e);
+            Log.e(TAG, "Error adding default routines", e);
         }
     }
 
@@ -227,5 +266,14 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         Log.d(TAG, "onResume called - app coming to foreground");
         isAppInForeground = true;
+    }
+
+    public boolean isShowingRoutine() {
+        return isShowingRoutine;
+    }
+    
+    public void setShowingRoutine(boolean isShowingRoutine) {
+        this.isShowingRoutine = isShowingRoutine;
+        Log.d(TAG, "isShowingRoutine set to: " + isShowingRoutine);
     }
 }

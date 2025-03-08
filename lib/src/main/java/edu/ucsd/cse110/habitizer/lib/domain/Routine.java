@@ -87,7 +87,10 @@ public class Routine implements Serializable {
     }
 
     public boolean isActive() {
-        return routineTimer.isActive();
+        // A routine is active if either:
+        // 1. The timer is running (for routines with tasks), OR
+        // 2. The timerStopped flag is false (for empty routines marked as active)
+        return routineTimer.isActive() || !timerStopped;
     }
 
     // Add the task
@@ -154,10 +157,9 @@ public class Routine implements Serializable {
         // Store task duration in minutes for compatibility
         task.setDurationAndComplete(elapsedMinutes);
         
-        // Store elapsed seconds for tasks under a minute
-        if (elapsedMinutes < 1 && elapsedSeconds > 0) {
-            task.setElapsedSeconds(elapsedSeconds);
-        }
+        // Always store elapsed seconds for all completed tasks - this allows showing in 
+        // seconds when less than a minute even if duration is rounded to 1
+        task.setElapsedSeconds(elapsedSeconds);
         
         // Start timer for next task automatically
         taskTimer.start(endTimeForTask);
@@ -229,16 +231,16 @@ public class Routine implements Serializable {
         }
     }
 
-    // Fast forward by thirty seconds
+    // Fast forward by fifteen seconds
     public void fastForwardTime() {
         // If timer is still running, update the start time of task and routine to mimic fast-forward
         if (!timerStopped) {
-            routineTimer.updateStartTime(routineTimer.getStartTime().minusSeconds(30));
-            taskTimer.updateStartTime(taskTimer.getStartTime().minusSeconds(30));
+            routineTimer.updateStartTime(routineTimer.getStartTime().minusSeconds(15));
+            taskTimer.updateStartTime(taskTimer.getStartTime().minusSeconds(15));
         }
-        // If timer not running, then we "fast forward" time by 30 seconds
+        // If timer not running, then we "fast forward" time by 15 seconds
         else {
-            currentTime = currentTime.plusSeconds(30);
+            currentTime = currentTime.plusSeconds(15);
         }
     }
 
@@ -335,6 +337,29 @@ public class Routine implements Serializable {
 
     public @Nullable Integer getGoalTime() {
         return goalTime;
+    }
+
+    /**
+     * Sets the active flag for the routine without starting the timer.
+     * This is used for empty routines that should be displayed in the UI
+     * but should not have their timers started.
+     * 
+     * @param isActive Whether to set the routine as active
+     */
+    public void setIsActiveWithoutStartingTimer(boolean isActive) {
+        if (isActive) {
+            // Just set the current time without starting the timers
+            currentTime = LocalDateTime.now();
+            timerStopped = false;
+            
+            // We intentionally don't call routineTimer.start() or taskTimer.start()
+            // because we don't want to start timers for empty routines
+            System.out.println("Routine " + routineName + " marked as active without starting timer");
+        } else {
+            // If setting to inactive, mark as stopped
+            timerStopped = true;
+            System.out.println("Routine " + routineName + " marked as inactive");
+        }
     }
 
 }
