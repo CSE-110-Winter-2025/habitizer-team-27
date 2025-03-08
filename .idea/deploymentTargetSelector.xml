@@ -13,10 +13,13 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="ReorderTasksTests">
+      <SelectionState runConfigName="PauseTest">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="reorderTasks()">
+      <SelectionState runConfigName="testPauseAndRestartRoutine()">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="testAutoPauseOnAppExit()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
