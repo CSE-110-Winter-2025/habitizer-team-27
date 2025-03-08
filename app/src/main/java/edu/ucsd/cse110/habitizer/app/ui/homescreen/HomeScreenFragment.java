@@ -1,5 +1,7 @@
 package edu.ucsd.cse110.habitizer.app.ui.homescreen;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -354,6 +356,18 @@ public class HomeScreenFragment extends Fragment {
      * Check if both default routines (Morning and Evening) are present
      */
     private boolean hasDefaultRoutines() {
+        // Check the default_routines_created flag
+        SharedPreferences prefs = getActivity().getSharedPreferences("habitizer_prefs", Context.MODE_PRIVATE);
+        boolean defaultRoutinesCreated = prefs.getBoolean("default_routines_created", false);
+        
+        // If we've already created default routines once, we don't need to check for them again
+        // This allows users to delete them permanently
+        if (defaultRoutinesCreated) {
+            Log.d(TAG, "Default routines were previously created, not checking for them again");
+            return true; // Pretend we have default routines so we don't trigger recreation
+        }
+        
+        // Only check for default routines on first app launch
         boolean hasMorning = false;
         boolean hasEvening = false;
         
