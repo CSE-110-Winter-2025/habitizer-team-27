@@ -174,4 +174,12 @@ public interface RoutineDao {
     @Transaction
     @Query("SELECT r.* FROM routines r ORDER BY r.id")
     List<RoutineWithTasks> getAllRoutinesWithTasksOrdered();
+    
+    /**
+     * Get all task cross references for a routine
+     * @param routineId The ID of the routine
+     * @return List of task cross references
+     */
+    @Query("SELECT * FROM routine_task_cross_refs WHERE routine_id = :routineId ORDER BY task_position")
+    List<RoutineTaskCrossRef> getTaskCrossRefsForRoutine(int routineId);
 } 

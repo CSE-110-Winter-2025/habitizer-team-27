@@ -12,7 +12,7 @@ public class TaskTimer extends Timer {
 
     /**
      * Get final elapsed time of task once completed
-     * @return total number of minutes since routine started, rounded UP
+     * @return total number of minutes since routine started, rounded UP for tasks >= 30 seconds
      */
     @Override
     public int getElapsedMinutes() {
@@ -20,10 +20,35 @@ public class TaskTimer extends Timer {
 
         // calculating duration includes any fast forward clicks
         long durationSeconds = Duration.between(startTime, endTime).toSeconds();
-        // only occurs if you click multiple tasks at the same paused time, which would in the real world be "1m"
-        if (durationSeconds == 0) {
-            return 1;
+        
+        // Ensure tasks always take at least 5 seconds
+        if (durationSeconds < 5) {
+            durationSeconds = 5;
         }
+        
+        // For tasks under a minute, report 0 minutes to ensure they show in seconds
+        if (durationSeconds < 60) {
+            return 0;
+        }
+        
+        // For tasks over 1 minute, round up as before
         return (int) Math.ceil(durationSeconds / 60.0);
+    }
+    
+    /**
+     * Get elapsed seconds for the task
+     * @return total number of seconds since task started
+     */
+    public int getElapsedSeconds() {
+        if (startTime == null || endTime == null) return 0;
+        
+        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
+        
+        // Ensure tasks always take at least 5 seconds
+        if (durationSeconds < 5) {
+            durationSeconds = 5;
+        }
+        
+        return (int) durationSeconds;
     }
 }

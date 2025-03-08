@@ -1,5 +1,7 @@
 package edu.ucsd.cse110.habitizer.app.ui.homescreen;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -86,11 +88,23 @@ public class HomeScreenFragment extends Fragment {
                     Log.d(TAG, "Routine click: " + (routine != null ? routine.getRoutineName() : "null") + 
                           " with ID: " + routineId + ", is Morning with ID 0: " + isMorningRoutineWithIdZero);
                     
-                    // Only start the routine timer if it has tasks
-                    // We won't even call startRoutine for empty routines
-                    if (routine != null && !routine.getTasks().isEmpty()) {
-                        Log.d(TAG, "Starting routine with tasks: " + routine.getRoutineName());
-                        routine.startRoutine(LocalDateTime.now());
+                    // Start the timer only if the routine has tasks
+                    if (routine != null) {
+                        boolean hasTasks = !routine.getTasks().isEmpty();
+                        
+                        if (hasTasks) {
+                            // Only start the timer for routines with tasks
+                            Log.d(TAG, "Starting routine with tasks: " + routine.getRoutineName() + 
+                                  " (" + routine.getTasks().size() + " tasks)");
+                            routine.startRoutine(LocalDateTime.now());
+                        } else {
+                            // For empty routines, we'll mark it as active but won't start the timer
+                            // The timer will be started automatically when the first task is added
+                            Log.d(TAG, "Routine is empty, marking as active without starting timer: " + routine.getRoutineName());
+                            
+                            // Setting isActive flag without starting timer logic
+                            routine.setIsActiveWithoutStartingTimer(true);
+                        }
                         
                         // For Morning routine with ID 0, update it locally without calling save
                         // This prevents repository from creating a duplicate
@@ -100,8 +114,6 @@ public class HomeScreenFragment extends Fragment {
                         } else {
                             Log.d(TAG, "Morning routine with ID 0 - not saving to prevent duplication");
                         }
-                    } else if (routine != null) {
-                        Log.d(TAG, "Not starting empty routine: " + routine.getRoutineName());
                     }
                     
                     // Navigate to the routine screen regardless
@@ -302,8 +314,22 @@ public class HomeScreenFragment extends Fragment {
             }
         }
 
+        // Create the bundle with additional information for the RoutineFragment
+        Bundle args = new Bundle();
+        args.putInt("routine_id", routineId);
+        
+        // Create fragment instance with arguments
+        RoutineFragment routineFragment = RoutineFragment.newInstance(routineId);
+        
+        // Set a flag in MainActivity to indicate we're showing a routine
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setShowingRoutine(true);
+            Log.d(TAG, "Set isShowingRoutine flag in MainActivity to true");
+        }
+
+        // Use replace instead of add to avoid fragment stack issues
         FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
-        transaction.replace(R.id.fragment_container, RoutineFragment.newInstance(routineId));
+        transaction.replace(R.id.fragment_container, routineFragment);
         transaction.addToBackStack(null);
         transaction.commit();
         
@@ -354,6 +380,18 @@ public class HomeScreenFragment extends Fragment {
      * Check if both default routines (Morning and Evening) are present
      */
     private boolean hasDefaultRoutines() {
+        // Check the default_routines_created flag
+        SharedPreferences prefs = getActivity().getSharedPreferences("habitizer_prefs", Context.MODE_PRIVATE);
+        boolean defaultRoutinesCreated = prefs.getBoolean("default_routines_created", false);
+        
+        // If we've already created default routines once, we don't need to check for them again
+        // This allows users to delete them permanently
+        if (defaultRoutinesCreated) {
+            Log.d(TAG, "Default routines were previously created, not checking for them again");
+            return true; // Pretend we have default routines so we don't trigger recreation
+        }
+        
+        // Only check for default routines on first app launch
         boolean hasMorning = false;
         boolean hasEvening = false;
         
