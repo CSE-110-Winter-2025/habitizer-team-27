@@ -525,10 +525,23 @@ public class HabitizerApplication extends Application {
                 if (existingRoutines != null && !existingRoutines.isEmpty()) {
                     Log.d(TAG, "Checking for default routines among existing routines");
                     for (Routine r : existingRoutines) {
+                        // Check by ID for the default routines (Morning = ID 0, Evening = ID 1)
+                        // This allows renamed default routines to persist
+                        int routineId = r.getRoutineId();
                         String routineName = r.getRoutineName();
-                        if ("Morning".equals(routineName) || "Evening".equals(routineName)) {
+                        
+                        if (routineId == 0) {
+                            // Morning routine with ID 0 exists (possibly renamed)
+                            routinesExist.put("Morning", true);
+                            Log.d(TAG, "  Found Morning routine with ID 0, current name: " + routineName);
+                        } else if (routineId == 1) {
+                            // Evening routine with ID 1 exists (possibly renamed)
+                            routinesExist.put("Evening", true);
+                            Log.d(TAG, "  Found Evening routine with ID 1, current name: " + routineName);
+                        } else if ("Morning".equals(routineName) || "Evening".equals(routineName)) {
+                            // Also consider name-based matches as fallback
                             routinesExist.put(routineName, true);
-                            Log.d(TAG, "  Found existing default routine: " + routineName + " (ID: " + r.getRoutineId() + ")");
+                            Log.d(TAG, "  Found routine by name: " + routineName + " with ID: " + routineId);
                         }
                     }
                 }
@@ -541,15 +554,27 @@ public class HabitizerApplication extends Application {
                 try {
                     Log.d(TAG, "Waiting to ensure database is ready...");
                     Thread.sleep(500);
-                    // Refresh routine list after delay
+                    // Verify one more time after delay
                     existingRoutines = repository.getRoutines().getValue();
                     if (existingRoutines != null) {
-                        Log.d(TAG, "After delay: Found " + existingRoutines.size() + " routines");
+                        Log.d(TAG, "Verification after delay: found " + existingRoutines.size() + " routines");
                         for (Routine r : existingRoutines) {
+                            // Check by ID for default routines (more reliable than names)
+                            int routineId = r.getRoutineId();
                             String routineName = r.getRoutineName();
-                            if ("Morning".equals(routineName) || "Evening".equals(routineName)) {
+                            
+                            if (routineId == 0) {
+                                // Morning routine exists by ID
+                                routinesExist.put("Morning", true);
+                                Log.d(TAG, "  After delay: Found Morning routine by ID 0, current name: " + routineName);
+                            } else if (routineId == 1) {
+                                // Evening routine exists by ID
+                                routinesExist.put("Evening", true);
+                                Log.d(TAG, "  After delay: Found Evening routine by ID 1, current name: " + routineName);
+                            } else if ("Morning".equals(routineName) || "Evening".equals(routineName)) {
+                                // Also check by name as fallback
                                 routinesExist.put(routineName, true);
-                                Log.d(TAG, "  After delay: Found routine: " + routineName);
+                                Log.d(TAG, "  After delay: Found routine by name: " + routineName);
                             }
                         }
                     } else {
