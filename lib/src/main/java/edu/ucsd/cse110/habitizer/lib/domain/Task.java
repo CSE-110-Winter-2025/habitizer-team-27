@@ -22,6 +22,28 @@ public class Task implements Serializable {
     // For storing seconds for tasks < 1 minute
     private int elapsedSeconds = 0;
 
+    // Add this new field
+    private long elapsedTimeMillis;
+
+    // Your existing constructors
+
+    // Add these two new methods
+    /**
+     * Sets the elapsed time for this task in milliseconds
+     * @param elapsedTimeMillis The elapsed time in milliseconds
+     */
+    public void setElapsedTimeMillis(long elapsedTimeMillis) {
+        this.elapsedTimeMillis = elapsedTimeMillis;
+    }
+
+    /**
+     * Gets the elapsed time for this task in milliseconds
+     * @return The elapsed time in milliseconds
+     */
+    public long getElapsedTimeMillis() {
+        return elapsedTimeMillis;
+    }
+
     public Task(@Nullable Integer id, String taskName, boolean isCheckedOff) {
         this.id = id;
         this.taskName = taskName;
