@@ -60,8 +60,20 @@ public class RoutineFragment extends Fragment {
     // Add variable to store time before pause
     private long timeBeforePauseMinutes = 0;
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
     // Add a separate variable to store task elapsed time before pause
     private long taskElapsedTimeBeforePauseMinutes = 0;
+=======
+    // Add a new field to track the current task's elapsed time before pause
+    private long taskTimeBeforePauseMinutes = 0;
+    private int taskSecondsBeforePause = 0;
+>>>>>>> Stashed changes
+=======
+    // Add a new field to track the current task's elapsed time before pause
+    private long taskTimeBeforePauseMinutes = 0;
+    private int taskSecondsBeforePause = 0;
+>>>>>>> Stashed changes
 
     public RoutineFragment() {
         // required empty public constructor
@@ -413,16 +425,36 @@ public class RoutineFragment extends Fragment {
             }
         });
 
-        // Add pause button click listener
+        binding.stopTimerButton.setOnClickListener(v -> {
+            // Only enable fast-forward in active routines
+            if (currentRoutine.isActive()) {
+                currentRoutine.fastForwardTime();
+                updateTimeDisplay();
+                updateCurrentTaskElapsedTime();
+            }
+        });
+        
         binding.pauseButton.setOnClickListener(v -> {
             // Toggle between pause and resume
             if (!isPaused) {
                 // Set pause state first, before any other operations
                 isPaused = true;
                 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 // Save the current task's elapsed time BEFORE pausing the routine timer
                 taskElapsedTimeBeforePauseMinutes = calculateCurrentTaskElapsedTime();
                 Log.d("PauseButton", "Saved task elapsed time before pause: " + taskElapsedTimeBeforePauseMinutes + "m");
+=======
+                // IMPORTANT: Save the current task's elapsed time BEFORE pausing the routine timer
+                // This ensures we capture the correct running time
+                saveCurrentTaskElapsedTime();
+>>>>>>> Stashed changes
+=======
+                // IMPORTANT: Save the current task's elapsed time BEFORE pausing the routine timer
+                // This ensures we capture the correct running time
+                saveCurrentTaskElapsedTime();
+>>>>>>> Stashed changes
                 
                 // Update button text and color
                 binding.pauseButton.setText("Resume");
@@ -437,7 +469,19 @@ public class RoutineFragment extends Fragment {
                     // Log detailed state before pausing
                     Log.d("PauseButton", "Before pause - Routine duration: " + 
                           currentRoutine.getRoutineDurationMinutes() + "m, " +
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
                           "Task duration: " + taskElapsedTimeBeforePauseMinutes + "m, " +
+=======
+                          "Task duration: " + (taskTimeBeforePauseMinutes > 0 ? 
+                            taskTimeBeforePauseMinutes + "m" : 
+                            (taskSecondsBeforePause > 0 ? taskSecondsBeforePause + "s" : "0s")) + ", " +
+>>>>>>> Stashed changes
+=======
+                          "Task duration: " + (taskTimeBeforePauseMinutes > 0 ? 
+                            taskTimeBeforePauseMinutes + "m" : 
+                            (taskSecondsBeforePause > 0 ? taskSecondsBeforePause + "s" : "0s")) + ", " +
+>>>>>>> Stashed changes
                           "isStopTimerPressed: " + isStopTimerPressed);
                     
                     // Store current time for consistent updates
@@ -452,11 +496,11 @@ public class RoutineFragment extends Fragment {
                     // Force update displays
                     updateTimeDisplay();
                     updateCurrentTaskElapsedTime();
-                }
-                
-                // Refresh task list to disable checkboxes
-                if (taskAdapter != null) {
-                    taskAdapter.notifyDataSetChanged();
+                    
+                    // Refresh task list to re-enable checkboxes
+                    if (taskAdapter != null) {
+                        taskAdapter.notifyDataSetChanged();
+                    }
                 }
             } else {
                 // Resume from paused state
@@ -464,8 +508,21 @@ public class RoutineFragment extends Fragment {
                 // Log the state before resuming
                 Log.d("PauseButton", "Before resume - Routine duration: " + 
                       currentRoutine.getRoutineDurationMinutes() + "m, " +
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
                       "Task duration: " + taskElapsedTimeBeforePauseMinutes + "m, " +
                       "Saved routine time: " + timeBeforePauseMinutes + "m");
+=======
+=======
+>>>>>>> Stashed changes
+                      "Task duration: " + (taskTimeBeforePauseMinutes > 0 ? 
+                        taskTimeBeforePauseMinutes + "m" : 
+                        (taskSecondsBeforePause > 0 ? taskSecondsBeforePause + "s" : "0s")) + ", " +
+                        "Saved routine time: " + timeBeforePauseMinutes + "m");
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
                 
                 // Update UI state first
                 binding.pauseButton.setText("Pause");
@@ -487,6 +544,8 @@ public class RoutineFragment extends Fragment {
                         currentRoutine.getRoutineTimer().updateStartTime(adjustedStartTime);
                         Log.d("PauseButton", "Adjusted routine timer start time to: " + adjustedStartTime);
                         
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         // Also adjust the task timer start time to match, but accounting for task elapsed time
                         if (currentRoutine.getTaskTimer() != null) {
                             // For the task timer, we need to adjust based on the task's elapsed time
@@ -499,6 +558,26 @@ public class RoutineFragment extends Fragment {
                             // Ensure the task timer is running
                             if (!currentRoutine.getTaskTimer().isRunning()) {
                                 currentRoutine.getTaskTimer().start(taskAdjustedStartTime);
+=======
+                        // Also adjust the task timer start time to match
+                        if (currentRoutine.getTaskTimer() != null) {
+                            currentRoutine.getTaskTimer().updateStartTime(adjustedStartTime);
+                            Log.d("PauseButton", "Adjusted task timer start time to: " + adjustedStartTime);
+                            
+                            // Ensure the task timer is running
+                            if (!currentRoutine.getTaskTimer().isRunning()) {
+                                currentRoutine.getTaskTimer().start(adjustedStartTime);
+>>>>>>> Stashed changes
+=======
+                        // Also adjust the task timer start time to match
+                        if (currentRoutine.getTaskTimer() != null) {
+                            currentRoutine.getTaskTimer().updateStartTime(adjustedStartTime);
+                            Log.d("PauseButton", "Adjusted task timer start time to: " + adjustedStartTime);
+                            
+                            // Ensure the task timer is running
+                            if (!currentRoutine.getTaskTimer().isRunning()) {
+                                currentRoutine.getTaskTimer().start(adjustedStartTime);
+>>>>>>> Stashed changes
                                 Log.d("PauseButton", "Started task timer with adjusted start time");
                             }
                         }
@@ -514,7 +593,19 @@ public class RoutineFragment extends Fragment {
                 
                 // Clear the saved time now that we've resumed
                 timeBeforePauseMinutes = 0;
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 taskElapsedTimeBeforePauseMinutes = 0;
+=======
+                // Also clear the saved task time
+                taskTimeBeforePauseMinutes = 0;
+                taskSecondsBeforePause = 0;
+>>>>>>> Stashed changes
+=======
+                // Also clear the saved task time
+                taskTimeBeforePauseMinutes = 0;
+                taskSecondsBeforePause = 0;
+>>>>>>> Stashed changes
                 
                 // Log the state after resuming
                 Log.d("PauseButton", "After resume - Routine duration: " + 
@@ -524,11 +615,17 @@ public class RoutineFragment extends Fragment {
                 // Force update displays
                 updateTimeDisplay();
                 updateCurrentTaskElapsedTime();
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 
                 // Refresh task list to re-enable checkboxes
                 if (taskAdapter != null) {
                     taskAdapter.notifyDataSetChanged();
                 }
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
             }
         });
 
@@ -971,11 +1068,35 @@ public class RoutineFragment extends Fragment {
             return;
         }
         
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
         // If we're in paused state, use the saved task elapsed time directly
         if (isPaused && taskElapsedTimeBeforePauseMinutes > 0) {
             Log.d(TAG, "In paused state with saved task elapsed time: " + taskElapsedTimeBeforePauseMinutes + "m");
             binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + taskElapsedTimeBeforePauseMinutes + "m");
             return;
+=======
+=======
+>>>>>>> Stashed changes
+        // If we're in paused state, use the saved task time directly
+        if (isPaused) {
+            if (taskSecondsBeforePause > 0) {
+                // For tasks under a minute, show seconds
+                int roundedSeconds = (int)(taskSecondsBeforePause / 5) * 5; // Round to nearest 5 seconds
+                Log.d(TAG, "In paused state with saved task seconds: " + taskSecondsBeforePause + 
+                      "s (rounded to " + roundedSeconds + "s)");
+                binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + roundedSeconds + "s");
+                return;
+            } else if (taskTimeBeforePauseMinutes > 0) {
+                // For tasks over a minute, show minutes
+                Log.d(TAG, "In paused state with saved task minutes: " + taskTimeBeforePauseMinutes + "m");
+                binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + taskTimeBeforePauseMinutes + "m");
+                return;
+            }
+            // If we don't have saved task time but we're paused, we'll proceed with normal calculation
+            Log.d(TAG, "In paused state but no saved task time values found - calculating normally");
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
         }
         
         // Calculate elapsed time normally
@@ -1022,6 +1143,8 @@ public class RoutineFragment extends Fragment {
         if (isPaused && taskElapsedTimeBeforePauseMinutes > 0) {
             Log.d(TAG, "Using saved task elapsed time: " + taskElapsedTimeBeforePauseMinutes + "m");
             return taskElapsedTimeBeforePauseMinutes;
+=======
+>>>>>>> Stashed changes
         }
         
         // Calculate elapsed time
@@ -1051,8 +1174,241 @@ public class RoutineFragment extends Fragment {
         // For running tasks, round DOWN to minutes (integer division)
         long elapsedMinutes = elapsedTimeSeconds / 60;
         
+<<<<<<< Updated upstream
         Log.d(TAG, "Calculated elapsed time: " + elapsedMinutes + "m (" + elapsedTimeSeconds + "s)");
+=======
+        // For running tasks less than a minute, display in 5-second increments
+        if (elapsedTimeSeconds < 60) {
+            // Round DOWN to nearest 5 seconds for running timer
+            int roundedSeconds = (int)(elapsedTimeSeconds / 5) * 5;
+            
+           
+            
+            timeDisplay = roundedSeconds + "s";
+            Log.d(TAG, "Showing seconds: " + roundedSeconds + "s (original: " + elapsedTimeSeconds + "s) [ROUNDED DOWN]");
+        } else {
+            // For tasks over a minute, show minutes as before
+            long elapsedMinutes = elapsedTimeSeconds / 60;
+            
+            // If we're in paused state and the calculated time is 0, use the saved task time before pause
+            if (isPaused && elapsedMinutes == 0) {
+                if (taskTimeBeforePauseMinutes > 0) {
+                    Log.d(TAG, "Using saved task time before pause: " + 
+                            taskTimeBeforePauseMinutes + "m instead of " + elapsedMinutes + "m");
+                    elapsedMinutes = taskTimeBeforePauseMinutes;
+                }
+            }
+            
+            timeDisplay = elapsedMinutes + "m";
+        }
+>>>>>>> Stashed changes
         
         return elapsedMinutes;
+    }
+
+    /**
+     * Helper method to save the current task's elapsed time before pausing
+     */
+    private void saveCurrentTaskElapsedTime() {
+        final String TAG = "TaskPause";
+        // Find the current active task
+        if (currentRoutine == null) {
+            Log.d(TAG, "No current routine found");
+            return;
+        }
+        
+        // Get all tasks and log their state
+        List<Task> tasks = currentRoutine.getTasks();
+        if (tasks.isEmpty()) {
+            Log.d(TAG, "Task list is empty");
+            return;
+        }
+        
+        Log.d(TAG, "Task list size: " + tasks.size());
+        for (int i = 0; i < tasks.size(); i++) {
+            Task task = tasks.get(i);
+            Log.d(TAG, "Task " + i + ": " + task.getTaskName() 
+                + " - completed: " + task.isCompleted() 
+                + ", skipped: " + task.isSkipped()
+                + ", checked: " + task.isCheckedOff());
+        }
+        
+        // First try to find first uncompleted and unskipped task
+        Task currentTask = null;
+        for (Task task : tasks) {
+            if (!task.isCompleted() && !task.isSkipped()) {
+                currentTask = task;
+                Log.d(TAG, "Found active task (not completed, not skipped): " + task.getTaskName());
+                break;
+            }
+        }
+        
+        // If not found, try to find first unchecked task
+        if (currentTask == null) {
+            for (Task task : tasks) {
+                if (!task.isCheckedOff()) {
+                    currentTask = task;
+                    Log.d(TAG, "Found active task (not checked off): " + task.getTaskName());
+                    break;
+                }
+            }
+        }
+        
+        // If still not found, just use the first task
+        if (currentTask == null && !tasks.isEmpty()) {
+            currentTask = tasks.get(0);
+            Log.d(TAG, "Using first task as fallback: " + currentTask.getTaskName());
+        }
+        
+        if (currentTask == null) {
+            Log.d(TAG, "No current task found even after fallbacks");
+            return;
+        }
+        
+        // Get the task start time from either task timer or routine timer
+        LocalDateTime taskStart = null;
+        if (currentRoutine.getTaskTimer() != null) {
+            taskStart = currentRoutine.getTaskTimer().getStartTime();
+            Log.d(TAG, "Using task timer start time: " + taskStart);
+        }
+        
+        if (taskStart == null && currentRoutine.getRoutineTimer() != null) {
+            taskStart = currentRoutine.getRoutineTimer().getStartTime();
+            Log.d(TAG, "Using routine timer start time: " + taskStart);
+        }
+        
+        if (taskStart == null) {
+            Log.d(TAG, "No valid start time found");
+            return;
+        }
+        
+        // Use current wall time for accurate calculation BEFORE pausing
+        LocalDateTime now = LocalDateTime.now();
+        Log.d(TAG, "Using current wall time for calculation: " + now);
+        
+        // Calculate elapsed time
+        long elapsedTimeSeconds = java.time.Duration.between(taskStart, now).getSeconds();
+        Log.d(TAG, "Raw elapsed seconds: " + elapsedTimeSeconds);
+        
+        // Ensure non-negative time
+        elapsedTimeSeconds = Math.max(0, elapsedTimeSeconds);
+        
+        // Get the routine duration for comparison/logging
+        long routineDuration = currentRoutine.getRoutineDurationMinutes();
+        Log.d(TAG, "Current routine duration: " + routineDuration + "m");
+        
+        // Store seconds directly for tasks under a minute
+        if (elapsedTimeSeconds < 60) {
+            taskSecondsBeforePause = (int) elapsedTimeSeconds;
+            taskTimeBeforePauseMinutes = 0;
+            Log.d(TAG, "Saved task time before pause: " + taskSecondsBeforePause + "s");
+        } else {
+            taskTimeBeforePauseMinutes = elapsedTimeSeconds / 60;
+            taskSecondsBeforePause = 0;
+            Log.d(TAG, "Saved task time before pause: " + taskTimeBeforePauseMinutes + "m");
+        }
+    }
+
+    /**
+     * Helper method to save the current task's elapsed time before pausing
+     */
+    private void saveCurrentTaskElapsedTime() {
+        final String TAG = "TaskPause";
+        // Find the current active task
+        if (currentRoutine == null) {
+            Log.d(TAG, "No current routine found");
+            return;
+        }
+        
+        // Get all tasks and log their state
+        List<Task> tasks = currentRoutine.getTasks();
+        if (tasks.isEmpty()) {
+            Log.d(TAG, "Task list is empty");
+            return;
+        }
+        
+        Log.d(TAG, "Task list size: " + tasks.size());
+        for (int i = 0; i < tasks.size(); i++) {
+            Task task = tasks.get(i);
+            Log.d(TAG, "Task " + i + ": " + task.getTaskName() 
+                + " - completed: " + task.isCompleted() 
+                + ", skipped: " + task.isSkipped()
+                + ", checked: " + task.isCheckedOff());
+        }
+        
+        // First try to find first uncompleted and unskipped task
+        Task currentTask = null;
+        for (Task task : tasks) {
+            if (!task.isCompleted() && !task.isSkipped()) {
+                currentTask = task;
+                Log.d(TAG, "Found active task (not completed, not skipped): " + task.getTaskName());
+                break;
+            }
+        }
+        
+        // If not found, try to find first unchecked task
+        if (currentTask == null) {
+            for (Task task : tasks) {
+                if (!task.isCheckedOff()) {
+                    currentTask = task;
+                    Log.d(TAG, "Found active task (not checked off): " + task.getTaskName());
+                    break;
+                }
+            }
+        }
+        
+        // If still not found, just use the first task
+        if (currentTask == null && !tasks.isEmpty()) {
+            currentTask = tasks.get(0);
+            Log.d(TAG, "Using first task as fallback: " + currentTask.getTaskName());
+        }
+        
+        if (currentTask == null) {
+            Log.d(TAG, "No current task found even after fallbacks");
+            return;
+        }
+        
+        // Get the task start time from either task timer or routine timer
+        LocalDateTime taskStart = null;
+        if (currentRoutine.getTaskTimer() != null) {
+            taskStart = currentRoutine.getTaskTimer().getStartTime();
+            Log.d(TAG, "Using task timer start time: " + taskStart);
+        }
+        
+        if (taskStart == null && currentRoutine.getRoutineTimer() != null) {
+            taskStart = currentRoutine.getRoutineTimer().getStartTime();
+            Log.d(TAG, "Using routine timer start time: " + taskStart);
+        }
+        
+        if (taskStart == null) {
+            Log.d(TAG, "No valid start time found");
+            return;
+        }
+        
+        // Use current wall time for accurate calculation BEFORE pausing
+        LocalDateTime now = LocalDateTime.now();
+        Log.d(TAG, "Using current wall time for calculation: " + now);
+        
+        // Calculate elapsed time
+        long elapsedTimeSeconds = java.time.Duration.between(taskStart, now).getSeconds();
+        Log.d(TAG, "Raw elapsed seconds: " + elapsedTimeSeconds);
+        
+        // Ensure non-negative time
+        elapsedTimeSeconds = Math.max(0, elapsedTimeSeconds);
+        
+        // Get the routine duration for comparison/logging
+        long routineDuration = currentRoutine.getRoutineDurationMinutes();
+        Log.d(TAG, "Current routine duration: " + routineDuration + "m");
+        
+        // Store seconds directly for tasks under a minute
+        if (elapsedTimeSeconds < 60) {
+            taskSecondsBeforePause = (int) elapsedTimeSeconds;
+            taskTimeBeforePauseMinutes = 0;
+            Log.d(TAG, "Saved task time before pause: " + taskSecondsBeforePause + "s");
+        } else {
+            taskTimeBeforePauseMinutes = elapsedTimeSeconds / 60;
+            taskSecondsBeforePause = 0;
+            Log.d(TAG, "Saved task time before pause: " + taskTimeBeforePauseMinutes + "m");
+        }
     }
 }
