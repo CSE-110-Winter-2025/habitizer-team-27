@@ -297,26 +297,60 @@ public class HabitizerApplication extends Application {
                 int maxRetries = 3;
                 for (int attempt = 0; attempt < maxRetries; attempt++) {
                     try {
+                        // Check if this is a rename of the Morning routine (id 0)
+                        // Only generate a new ID if it's actually a new routine that doesn't exist yet
                         if (routine.getRoutineId() == 0) {
-                            // For new routines, avoid ID conflicts by explicitly setting a unique ID
-                            // Get existing routines to find max ID
+                            Log.d(TAG, "Processing routine with ID 0: " + routine.getRoutineName());
+                            
+                            // Check if the Morning routine exists
+                            Routine existingRoutineWithId0 = null;
                             List<Routine> existingRoutines = repository.getRoutines().getValue();
-                            int maxId = 0;
                             if (existingRoutines != null) {
                                 for (Routine r : existingRoutines) {
-                                    if (r.getRoutineId() > maxId) {
-                                        maxId = r.getRoutineId();
+                                    if (r.getRoutineId() == 0) {
+                                        existingRoutineWithId0 = r;
+                                        break;
                                     }
                                 }
                             }
-                            // Create a new routine with the new ID since Routine doesn't have a setter
-                            Routine newRoutine = new Routine(maxId + 1, routine.getRoutineName());
-                            // Copy over tasks
-                            for (Task task : routine.getTasks()) {
-                                newRoutine.addTask(task);
+                            
+                            // If this is a rename of the existing Morning routine, keep the ID as 0
+                            // This will update the existing routine instead of creating a new one
+                            if (existingRoutineWithId0 != null) {
+                                Log.d(TAG, "Found existing routine with ID 0: " + existingRoutineWithId0.getRoutineName() + 
+                                      ", updating to: " + routine.getRoutineName());
+                                
+                                // Use the repository's updateRoutine method directly to enforce an update
+                                // instead of potentially creating a new routine
+                                repository.updateRoutine(routine);
+                                
+                                // Log task details after updating 
+                                Log.d(TAG, "After updating routine with ID 0, task details:");
+                                logTaskDetails(routine);
+                                
+                                // Force refresh and return early
+                                forceRefreshUIAfterSave(routine);
+                                return;
+                            } else {
+                                // This is a new routine (should be rare), generate a new ID
+                                // Get existing routines to find max ID
+                                int maxId = 0;
+                                if (existingRoutines != null) {
+                                    for (Routine r : existingRoutines) {
+                                        if (r.getRoutineId() > maxId) {
+                                            maxId = r.getRoutineId();
+                                        }
+                                    }
+                                }
+                                // Create a new routine with the new ID since Routine doesn't have a setter
+                                Routine newRoutine = new Routine(maxId + 1, routine.getRoutineName());
+                                // Copy over tasks
+                                for (Task task : routine.getTasks()) {
+                                    newRoutine.addTask(task);
+                                }
+                                routine = newRoutine;
+                                Log.d(TAG, "Generated new routine ID: " + routine.getRoutineId());
                             }
-                            routine = newRoutine;
-                            Log.d(TAG, "Generated new routine ID: " + routine.getRoutineId());
                             
                             // Log the task details for the newly created routine
                             logTaskDetails(routine);
@@ -330,44 +364,7 @@ public class HabitizerApplication extends Application {
                         logTaskDetails(routine);
                         
                         // Force an immediate refresh of the routine list to ensure UI is updated
-                        // This is crucial to ensure the UI displays the updated list
-                        final Routine finalRoutine = routine;  // Make it effectively final for the lambda
-                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                            Log.d(TAG, "Forcing repository update after saving routine " + finalRoutine.getRoutineName());
-                            
-                            // Use forceRefreshRoutines instead of direct setValue
-                            if (repository instanceof HabitizerRepository) {
-                                ((HabitizerRepository) repository).refreshRoutines();
-                                Log.d(TAG, "Called refreshRoutines directly");
-                            } else {
-                                // Fallback if we can't access refreshRoutines
-                                try {
-                                    // Get current value
-                                    List<Routine> currentRoutines = repository.getRoutines().getValue();
-                                    if (currentRoutines != null) {
-                                        // Trigger a refresh in MainActivity if possible
-                                        forceRefreshRoutines();
-                                        Log.d(TAG, "Triggered global routine refresh");
-                                    }
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Error refreshing routines", e);
-                                }
-                            }
-                            
-                            // Double-check the UI update after a slightly longer delay
-                            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                // Try again after a delay to ensure update happened
-                                forceRefreshRoutines();
-                                Log.d(TAG, "Second refresh to ensure UI is updated");
-                            }, 300);
-                        }, 100);
-                        
-                        // Wait a moment to ensure persistence on Windows
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                            Log.e(TAG, "Sleep interrupted during routine save", e);
-                        }
+                        forceRefreshUIAfterSave(routine);
                         
                         Log.d(TAG, "Successfully saved routine " + routine.getRoutineName() + " with ID " + routine.getRoutineId());
                         break; // Success, exit loop
@@ -384,6 +381,49 @@ public class HabitizerApplication extends Application {
                         }
                     }
                 }
+            }
+        }
+        
+        /**
+         * Helper method to force refresh UI after saving a routine
+         */
+        private void forceRefreshUIAfterSave(Routine routine) {
+            final Routine finalRoutine = routine;  // Make it effectively final for the lambda
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Log.d(TAG, "Forcing repository update after saving routine " + finalRoutine.getRoutineName());
+                
+                // Use forceRefreshRoutines instead of direct setValue
+                if (repository instanceof HabitizerRepository) {
+                    ((HabitizerRepository) repository).refreshRoutines();
+                    Log.d(TAG, "Called refreshRoutines directly");
+                } else {
+                    // Fallback if we can't access refreshRoutines
+                    try {
+                        // Get current value
+                        List<Routine> currentRoutines = repository.getRoutines().getValue();
+                        if (currentRoutines != null) {
+                            // Trigger a refresh in MainActivity if possible
+                            forceRefreshRoutines();
+                            Log.d(TAG, "Triggered global routine refresh");
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error refreshing routines", e);
+                    }
+                }
+                
+                // Double-check the UI update after a slightly longer delay
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    // Try again after a delay to ensure update happened
+                    forceRefreshRoutines();
+                    Log.d(TAG, "Second refresh to ensure UI is updated");
+                }, 300);
+            }, 100);
+            
+            // Wait a moment to ensure persistence on Windows
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Sleep interrupted during routine save", e);
             }
         }
         

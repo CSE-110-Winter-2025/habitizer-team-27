@@ -84,7 +84,7 @@ public class Milestone1Testing {
 
     public void checkTaskCompleted(double timeTaken, String expectedTime, int position) {
         for (int i = 0; i < timeTaken * 2; i++) {
-            onView(withId(R.id.fast_forward_button)).perform(click());
+            onView(withId(R.id.stop_timer_button)).perform(click());
         }
         Espresso.onIdle();
 

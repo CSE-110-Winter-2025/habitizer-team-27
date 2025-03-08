@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
@@ -704,5 +706,70 @@ public class HabitizerRepository {
                 Log.e(TAG, "Error updating routines in database", e);
             }
         });
+    }
+    
+    /**
+     * Get all routines with their tasks
+     * @return List of routines with their tasks
+     */
+    public List<Routine> getAllRoutinesWithTasks() {
+        try {
+            // Get all routines from database
+            List<RoutineWithTasks> routinesWithTasks = database.routineDao().getAllRoutinesWithTasks();
+            List<Routine> routines = new ArrayList<>();
+
+            for (RoutineWithTasks routineWithTasks : routinesWithTasks) {
+                RoutineEntity routineEntity = routineWithTasks.routine;
+                Routine routine = routineEntity.toRoutine();
+                
+                // Create a map to sort tasks by position
+                SortedMap<Integer, Task> tasksByPosition = new TreeMap<>();
+                
+                // Log the raw task data as received from the database
+                Log.d(TAG, "DATABASE RAW DATA - Routine: " + routine.getRoutineName() + " (ID: " + routine.getRoutineId() + ")");
+                Log.d(TAG, "DATABASE RAW DATA - Found " + routineWithTasks.tasks.size() + " tasks");
+                
+                // Get task positions from database
+                List<RoutineTaskCrossRef> taskPositions = database.routineDao().getTaskPositions(routine.getRoutineId());
+                
+                // Build a map of tasks by their IDs for quick lookup
+                Map<Integer, TaskEntity> tasksById = new HashMap<>();
+                for (TaskEntity taskEntity : routineWithTasks.tasks) {
+                    tasksById.put(taskEntity.getId(), taskEntity);
+                }
+                
+                // Process task references, which include position information
+                for (RoutineTaskCrossRef crossRef : taskPositions) {
+                    TaskEntity taskEntity = tasksById.get(crossRef.taskId);
+                    if (taskEntity != null) {
+                        Task task = taskEntity.toTask();
+                        // Store task at its position
+                        tasksByPosition.put(crossRef.taskPosition, task);
+                        Log.d(TAG, "DATABASE RAW DATA - Task position " + crossRef.taskPosition + 
+                                   ": " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
+                    }
+                }
+                
+                // Add tasks to routine in order of position
+                for (Map.Entry<Integer, Task> entry : tasksByPosition.entrySet()) {
+                    routine.addTask(entry.getValue());
+                }
+                
+                // Log the final task order
+                List<Task> finalTasks = routine.getTasks();
+                Log.d(TAG, "FINAL TASK ORDER - Routine: " + routine.getRoutineName() + " with " + finalTasks.size() + " tasks");
+                for (int i = 0; i < finalTasks.size(); i++) {
+                    Task task = finalTasks.get(i);
+                    Log.d(TAG, "FINAL TASK ORDER - Position " + i + ": " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
+                }
+                
+                routines.add(routine);
+            }
+            
+            return routines;
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting routines with tasks", e);
+            return new ArrayList<>();
+        }
     }
 } 
