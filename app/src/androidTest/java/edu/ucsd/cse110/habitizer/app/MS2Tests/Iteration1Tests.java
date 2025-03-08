@@ -101,7 +101,7 @@ public class Iteration1Tests {
         assertEquals(currentRoutine.getRoutineName(), "New Routine");
 
         // Check that new routine has no tasks
-        assertNull(currentRoutine.getTasks());
+        assertEquals(currentRoutine.getTasks().size(), 0);
 
         // Starts new routine
         onData(anything())
@@ -167,7 +167,6 @@ public class Iteration1Tests {
                 .check(matches(withText("Do laundry")));
 
         // End the routine
-        onData(anything())
-                .inAdapterView(withId(R.id.end_routine_button)).perform(click());
+        onView(withId(R.id.end_routine_button)).perform(click());
     }
 }
