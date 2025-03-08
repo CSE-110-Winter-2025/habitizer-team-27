@@ -8,20 +8,25 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
+import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
 import edu.ucsd.cse110.habitizer.app.databinding.ActivityMainBinding;
 import edu.ucsd.cse110.habitizer.app.ui.homescreen.HomeScreenFragment;
 import edu.ucsd.cse110.habitizer.app.ui.routine.RoutineFragment;
 import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
-import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
-import edu.ucsd.cse110.habitizer.lib.domain.TaskRepository;
-
-import java.util.List;
-import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
+import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.habitizer.lib.domain.TaskRepository;
 import edu.ucsd.cse110.habitizer.app.HabitizerApplication;
 
 public class MainActivity extends AppCompatActivity {
@@ -46,8 +51,22 @@ public class MainActivity extends AppCompatActivity {
         // Get repository instance
         repository = HabitizerRepository.getInstance(this);
         
-        // Show home screen initially
-        showHomeScreen();
+        // Only show home screen if this is a fresh launch (not a configuration change or restart)
+        if (savedInstanceState == null) {
+            Log.d(TAG, "Fresh launch - showing home screen");
+            showHomeScreen();
+        } else {
+            Log.d(TAG, "App restarted with saved state - preserving current fragment");
+            // Check what fragment is currently being displayed
+            Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+            if (currentFragment instanceof RoutineFragment) {
+                Log.d(TAG, "Restored to RoutineFragment - setting isShowingRoutine to true");
+                isShowingRoutine = true;
+            } else {
+                Log.d(TAG, "Restored to HomeScreenFragment or other - setting isShowingRoutine to false");
+                isShowingRoutine = false;
+            }
+        }
         
         // Verify routines are loaded
         verifyRoutinesLoaded();
@@ -247,5 +266,14 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         Log.d(TAG, "onResume called - app coming to foreground");
         isAppInForeground = true;
+    }
+
+    public boolean isShowingRoutine() {
+        return isShowingRoutine;
+    }
+    
+    public void setShowingRoutine(boolean isShowingRoutine) {
+        this.isShowingRoutine = isShowingRoutine;
+        Log.d(TAG, "isShowingRoutine set to: " + isShowingRoutine);
     }
 }

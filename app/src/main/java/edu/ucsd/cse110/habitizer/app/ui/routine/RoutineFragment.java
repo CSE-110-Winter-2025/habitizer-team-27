@@ -127,18 +127,41 @@ public class RoutineFragment extends Fragment {
         int routineId = getArguments().getInt(ARG_ROUTINE_ID);
         isTimerRunning = true;
         Log.d("RoutineFragment", "Routine ID from arguments: " + routineId);
+        
+        // Check if we're restoring from a saved state (app restart)
+        if (savedInstanceState != null) {
+            Log.d("RoutineFragment", "Restoring from saved instance state");
+            
+            // Restore state values
+            boolean savedManuallyStarted = savedInstanceState.getBoolean("MANUALLY_STARTED", false);
+            boolean savedIsTimerRunning = savedInstanceState.getBoolean("IS_TIMER_RUNNING", true);
+            boolean savedIsPaused = savedInstanceState.getBoolean("IS_PAUSED", false);
+            
+            // Apply the restored values
+            manuallyStarted = savedManuallyStarted;
+            isTimerRunning = savedIsTimerRunning;
+            isPaused = savedIsPaused;
+            
+            Log.d("RoutineFragment", "Restored state: manuallyStarted=" + manuallyStarted + 
+                  ", isTimerRunning=" + isTimerRunning + 
+                  ", isPaused=" + isPaused);
+        }
 
         // Get routine
         this.currentRoutine = activityModel.getRoutineRepository().getRoutine(routineId);
         Log.d("RoutineFragment", "Current routine: " + (currentRoutine != null ? currentRoutine.getRoutineName() : "null"));
         
         // Check if the routine is active (was started from the home page)
-        if (currentRoutine != null && currentRoutine.isActive() && !currentRoutine.getTasks().isEmpty()) {
-            Log.d("RoutineFragment", "Routine is active and has tasks, marking as manually started");
-            // If the routine was started from home page and has tasks, mark it as manually started
+        // We need to mark empty routines as manually started too, to prevent redirecting to homescreen
+        // The timer logic elsewhere will still respect the requirement not to start timers for empty routines
+        if (currentRoutine != null && currentRoutine.isActive()) {
+            Log.d("RoutineFragment", "Routine is active, marking as manually started (has " + 
+                   (currentRoutine.getTasks().size()) + " tasks)");
+            // If the routine was started from home page, mark it as manually started
+            // Even empty routines should be considered "manually started" to stay on the screen
             manuallyStarted = true;
         } else {
-            Log.d("RoutineFragment", "Routine is not active or empty, not marking as manually started");
+            Log.d("RoutineFragment", "Routine is not active, not marking as manually started");
             manuallyStarted = false;
         }
     }
@@ -206,13 +229,15 @@ public class RoutineFragment extends Fragment {
         }
         
         // Start fresh - set the proper routine initial state
-        if (!currentRoutine.getTasks().isEmpty()) {
-            Log.d("RoutineFragment", "Starting routine with tasks");
-            // Only auto-start if coming from home screen (was active)
-            if (currentRoutine.isActive()) {
-                manuallyStarted = true;
-                currentRoutine.startRoutine(LocalDateTime.now());
-            }
+        // Only start the timer if the routine has tasks (per requirement)
+        if (!currentRoutine.getTasks().isEmpty() && currentRoutine.isActive()) {
+            Log.d("RoutineFragment", "Starting routine with tasks: " + currentRoutine.getTasks().size());
+            manuallyStarted = true;
+            currentRoutine.startRoutine(LocalDateTime.now());
+        } else if (currentRoutine.isActive()) {
+            // For empty routines, still set manuallyStarted=true but don't start the timer
+            Log.d("RoutineFragment", "Routine is active but empty, setting manuallyStarted without starting timer");
+            manuallyStarted = true;
         }
 
         // Initialize ListView and Adapter
@@ -703,10 +728,14 @@ public class RoutineFragment extends Fragment {
             // Reset button states when starting a routine
             resetButtonStates();
             
-            // Start the routine if it's not already active
-            if (!currentRoutine.isActive()) {
+            // If this was the first task added to an empty routine, start the timer
+            if (wasEmpty) {
+                Log.d("RoutineFragment", "First task added to empty routine - starting timer");
                 currentRoutine.startRoutine(LocalDateTime.now());
-                Log.d("RoutineFragment", "Starting routine after adding task");
+                
+                // Update the UI to reflect that the timer has started
+                updateTimeDisplay();
+                updateCurrentTaskElapsedTime();
             }
         } else {
             // For tasks added after routine has ended, they should be disabled
@@ -822,18 +851,22 @@ public class RoutineFragment extends Fragment {
         
         boolean hasTasks = !currentRoutine.getTasks().isEmpty();
         
-        // Only auto-activate the routine if we've manually started it AND it has tasks
-        // This preserves the user's control over when the routine starts
+        // Only auto-activate the routine timer if it has tasks AND is manually started
+        // This preserves the requirement that empty routines should not have their timers started
         if (hasTasks && manuallyStarted && !currentRoutine.isActive()) {
             // If it has tasks but isn't active, activate it unless explicitly ended
             if (!binding.endRoutineButton.getText().toString().equals("Routine Ended")) {
                 Log.d("RoutineFragment", "Auto-activating routine that has tasks and is manually started");
                 currentRoutine.startRoutine(LocalDateTime.now());
+                
+                // Update task elapsed time to show correct starting values
+                updateCurrentTaskElapsedTime();
             }
         }
         
         boolean routineIsActive = currentRoutine.isActive();
-        Log.d("RoutineFragment", "UpdateTimeDisplay - hasTasks: " + hasTasks + ", isActive: " + routineIsActive + ", manuallyStarted: " + manuallyStarted + ", time: " + minutesDuration + "m");
+        Log.d("RoutineFragment", "UpdateTimeDisplay - hasTasks: " + hasTasks + ", isActive: " + routineIsActive + 
+              ", manuallyStarted: " + manuallyStarted + ", time: " + minutesDuration + "m");
 
         // Modified button logic:
         // 1. Empty routine: "End Routine" text, always disabled
@@ -1290,6 +1323,24 @@ public class RoutineFragment extends Fragment {
         } else {
             taskTimeBeforePauseMinutes = elapsedTimeSeconds / 60;
             Log.d(TAG, "Saved task time before pause: " + taskTimeBeforePauseMinutes + "m");
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Log.d("RoutineFragment", "onSaveInstanceState called");
+        
+        // Save the key state values
+        if (currentRoutine != null) {
+            outState.putInt("ROUTINE_ID", currentRoutine.getRoutineId());
+            outState.putBoolean("MANUALLY_STARTED", manuallyStarted);
+            outState.putBoolean("IS_TIMER_RUNNING", isTimerRunning);
+            outState.putBoolean("IS_PAUSED", isPaused);
+            Log.d("RoutineFragment", "Saved state: routineId=" + currentRoutine.getRoutineId() + 
+                  ", manuallyStarted=" + manuallyStarted + 
+                  ", isTimerRunning=" + isTimerRunning + 
+                  ", isPaused=" + isPaused);
         }
     }
 }

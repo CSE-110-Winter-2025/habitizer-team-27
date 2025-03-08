@@ -87,7 +87,10 @@ public class Routine implements Serializable {
     }
 
     public boolean isActive() {
-        return routineTimer.isActive();
+        // A routine is active if either:
+        // 1. The timer is running (for routines with tasks), OR
+        // 2. The timerStopped flag is false (for empty routines marked as active)
+        return routineTimer.isActive() || !timerStopped;
     }
 
     // Add the task
@@ -334,6 +337,29 @@ public class Routine implements Serializable {
 
     public @Nullable Integer getGoalTime() {
         return goalTime;
+    }
+
+    /**
+     * Sets the active flag for the routine without starting the timer.
+     * This is used for empty routines that should be displayed in the UI
+     * but should not have their timers started.
+     * 
+     * @param isActive Whether to set the routine as active
+     */
+    public void setIsActiveWithoutStartingTimer(boolean isActive) {
+        if (isActive) {
+            // Just set the current time without starting the timers
+            currentTime = LocalDateTime.now();
+            timerStopped = false;
+            
+            // We intentionally don't call routineTimer.start() or taskTimer.start()
+            // because we don't want to start timers for empty routines
+            System.out.println("Routine " + routineName + " marked as active without starting timer");
+        } else {
+            // If setting to inactive, mark as stopped
+            timerStopped = true;
+            System.out.println("Routine " + routineName + " marked as inactive");
+        }
     }
 
 }
