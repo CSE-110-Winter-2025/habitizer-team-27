@@ -18,6 +18,9 @@ public class Task implements Serializable {
     private boolean isSkipped = false;
 
     private int duration = 0;
+    
+    // For storing seconds for tasks < 1 minute
+    private int elapsedSeconds = 0;
 
     public Task(@Nullable Integer id, String taskName, boolean isCheckedOff) {
         this.id = id;
@@ -40,6 +43,7 @@ public class Task implements Serializable {
     public void reset() {
         this.isCompleted = false;
         this.duration = 0;
+        this.elapsedSeconds = 0;
         this.isCheckedOff = false;
         this.isSkipped = false;
     }
@@ -51,6 +55,23 @@ public class Task implements Serializable {
 
     public void setDuration(int duration) {
         this.duration = duration;
+    }
+    
+    public int getElapsedSeconds() {
+        return elapsedSeconds;
+    }
+    
+    public void setElapsedSeconds(int seconds) {
+        this.elapsedSeconds = seconds;
+    }
+    
+    /**
+     * Returns true if this task should display time in seconds rather than minutes
+     */
+    public boolean shouldShowInSeconds() {
+        // Show in seconds if task is completed and took less than 60 seconds 
+        // OR if duration is less than 1 minute and elapsedSeconds is recorded
+        return isCompleted && (elapsedSeconds > 0 && elapsedSeconds < 60);
     }
 
     public void setDurationAndComplete(int duration) {
@@ -99,5 +120,4 @@ public class Task implements Serializable {
     public boolean isSkipped() {
         return isSkipped;
     }
-
 }

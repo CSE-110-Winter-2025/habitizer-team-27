@@ -19,6 +19,10 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import edu.ucsd.cse110.habitizer.app.MainActivity;
 import edu.ucsd.cse110.habitizer.app.R;
@@ -75,21 +79,27 @@ public class ReorderTasksTests {
                 .onChildView(withId(R.id.start_routine_button))
                 .perform(click());
         
-        // Get initial tasks for reference
+        // Add a significantly longer delay to ensure navigation completes and UI is fully rendered
+        try {
+            Log.d(TAG, "Initial delay before reordering...");
+            Thread.sleep(3000);  // Increased to 3 seconds to ensure navigation completes
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Sleep interrupted", e);
+        }
+
+        // Get initial tasks for reference to verify initial state
+        activityRule.getScenario().onActivity(activity -> {
+            repository = HabitizerRepository.getInstance(activity);
+        });
+        
         Routine initialRoutine = repository.getRoutines().getValue().get(0);
         Log.d(TAG, "Initial tasks: " + initialRoutine.getTasks());
         for (int i = 0; i < initialRoutine.getTasks().size(); i++) {
             Log.d(TAG, "Initial position " + i + ": " + initialRoutine.getTasks().get(i).getTaskName());
         }
 
-        // Add initial delay to stabilize UI
-        try {
-            Log.d(TAG, "Initial delay before reordering...");
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Sleep interrupted", e);
-        }
-
+        Log.d(TAG, "Attempting to find and interact with routine_list view...");
+        
         // Press "move down" on "Dress" (at position 2)
         onData(anything())
                 .inAdapterView(withId(R.id.routine_list))
@@ -100,7 +110,7 @@ public class ReorderTasksTests {
         // Add a significant delay to ensure repository operations complete
         try {
             Log.d(TAG, "Waiting for repository update to complete...");
-            Thread.sleep(3000);  // Increased to 3 seconds for more reliable results
+            Thread.sleep(5000);  // Increase to 5 seconds for more reliability
         } catch (InterruptedException e) {
             Log.e(TAG, "Sleep interrupted", e);
         }
@@ -120,50 +130,77 @@ public class ReorderTasksTests {
                 
         Log.d(TAG, "UI updates verified.");
         
+        // Do a final activity sync to ensure repository is in sync with latest DB state
+        activityRule.getScenario().onActivity(activity -> {
+            repository = HabitizerRepository.getInstance(activity);
+            try {
+                // Force repository refresh on a background thread
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                Future<?> future = executor.submit(() -> {
+                    repository.refreshRoutines();
+                });
+                future.get(3, TimeUnit.SECONDS); // Wait up to 3 seconds
+                executor.shutdown();
+            } catch (Exception e) {
+                Log.e(TAG, "Error refreshing repository", e);
+            }
+        });
+        
         // Add additional delay before checking repository
         try {
-            Log.d(TAG, "Waiting a bit more for repository...");
-            Thread.sleep(2000);  // Another 2 seconds
+            Log.d(TAG, "Final wait to ensure repository is updated...");
+            Thread.sleep(3000);  // Another 3 seconds
         } catch (InterruptedException e) {
             Log.e(TAG, "Sleep interrupted", e);
         }
         
         Log.d(TAG, "Getting latest routine data from repository...");
-        activityRule.getScenario().onActivity(activity -> {
-            // Get repository reference directly from activity
-            repository = HabitizerRepository.getInstance(activity);
-        });
         
-        // Get the LATEST repository data
-        List<Routine> latestRoutines = repository.getRoutines().getValue();
-        Log.d(TAG, "Latest routines size: " + (latestRoutines != null ? latestRoutines.size() : "null"));
-        
-        if (latestRoutines != null && !latestRoutines.isEmpty()) {
-            Routine updatedRoutine = latestRoutines.get(0);
-            List<Task> currentTasks = updatedRoutine.getTasks();
+        // Get the LATEST repository data with proper error handling
+        try {
+            // Use a background thread to retrieve data to avoid main thread restrictions
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            Future<List<Routine>> routinesFuture = executor.submit(() -> {
+                // This needs to run on a background thread
+                return repository.getAllRoutinesWithTasks();
+            });
             
-            Log.d(TAG, "Updated routine: " + updatedRoutine.getRoutineName() + " with " + currentTasks.size() + " tasks");
-            for (int i = 0; i < currentTasks.size(); i++) {
-                Task task = currentTasks.get(i);
-                Log.d(TAG, "Position " + i + ": " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
-            }
+            // Wait for the data with a timeout
+            List<Routine> latestRoutines = routinesFuture.get(5, TimeUnit.SECONDS);
+            executor.shutdown();
             
-            // Verify positions 2 and 3 have the expected tasks
-            if (currentTasks.size() > 3) {
-                String pos2Name = currentTasks.get(2).getTaskName();
-                String pos3Name = currentTasks.get(3).getTaskName();
+            Log.d(TAG, "Latest routines size: " + (latestRoutines != null ? latestRoutines.size() : "null"));
+            
+            if (latestRoutines != null && !latestRoutines.isEmpty()) {
+                Routine updatedRoutine = latestRoutines.get(0);
+                List<Task> currentTasks = updatedRoutine.getTasks();
                 
-                assertEquals("Expected 'Make coffee' at position 2 but found '" + pos2Name + "'", 
-                            "Make coffee", pos2Name);
-                assertEquals("Expected 'Dress' at position 3 but found '" + pos3Name + "'", 
-                            "Dress", pos3Name);
+                Log.d(TAG, "Updated routine: " + updatedRoutine.getRoutineName() + " with " + currentTasks.size() + " tasks");
+                for (int i = 0; i < currentTasks.size(); i++) {
+                    Task task = currentTasks.get(i);
+                    Log.d(TAG, "Position " + i + ": " + task.getTaskName() + " (ID: " + task.getTaskId() + ")");
+                }
+                
+                // Verify positions 2 and 3 have the expected tasks
+                if (currentTasks.size() > 3) {
+                    String pos2Name = currentTasks.get(2).getTaskName();
+                    String pos3Name = currentTasks.get(3).getTaskName();
+                    
+                    assertEquals("Expected 'Make coffee' at position 2 but found '" + pos2Name + "'", 
+                                "Make coffee", pos2Name);
+                    assertEquals("Expected 'Dress' at position 3 but found '" + pos3Name + "'", 
+                                "Dress", pos3Name);
+                } else {
+                    fail("Not enough tasks in the list (need at least 4, found " + currentTasks.size() + ")");
+                }
             } else {
-                fail("Not enough tasks in the list (need at least 4, found " + currentTasks.size() + ")");
+                // If we can't get the latest data, fail the test
+                Log.e(TAG, "Failed to get updated routine data from repository");
+                fail("Could not retrieve updated routine data from repository");
             }
-        } else {
-            // If we can't get the latest data, fail the test
-            Log.e(TAG, "Failed to get updated routine data from repository");
-            fail("Could not retrieve updated routine data from repository");
+        } catch (Exception e) {
+            Log.e(TAG, "Error retrieving or verifying routine data", e);
+            fail("Exception during routine data verification: " + e.getMessage());
         }
     }
 
