@@ -20,6 +20,7 @@ import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 
 import edu.ucsd.cse110.habitizer.app.R;
+import edu.ucsd.cse110.habitizer.app.ui.dialog.DeleteRoutineDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.EditRoutineNameDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
@@ -67,6 +68,7 @@ public class HomeAdapter extends BaseAdapter {
         TextView routineNameText = convertView.findViewById(R.id.routine_name);
         Button startRoutineButton = convertView.findViewById(R.id.start_routine_button);
         ImageButton editRoutineButton = convertView.findViewById(R.id.edit_routine_button);
+        ImageButton deleteRoutineButton = convertView.findViewById(R.id.delete_routine_button);
 
         Routine routine = routines.get(position);
         routineNameText.setText(routine.getRoutineName());
@@ -91,6 +93,11 @@ public class HomeAdapter extends BaseAdapter {
             );
             
             dialog.show(fragmentManager, "EditRoutineNameDialog");
+        });
+
+        deleteRoutineButton.setOnClickListener(v -> {
+            DeleteRoutineDialogFragment dialog = DeleteRoutineDialogFragment.newInstance(routine.getRoutineId());
+            dialog.show(fragmentManager, "DeleteRoutineDialog");
         });
 
         return convertView;
