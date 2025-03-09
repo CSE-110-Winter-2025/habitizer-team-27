@@ -103,7 +103,7 @@
         app:srcCompat="@android:drawable/arrow_down_float" />
 
     <ImageButton
-        android:id="@+id/imageButton4"
+        android:id="@+id/delete_task_button"
         android:layout_width="37dp"
         android:layout_height="39dp"
         android:layout_marginStart="390dp"
