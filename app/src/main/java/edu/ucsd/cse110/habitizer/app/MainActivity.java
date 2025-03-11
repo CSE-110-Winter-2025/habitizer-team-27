@@ -22,6 +22,7 @@ import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
 import edu.ucsd.cse110.habitizer.app.databinding.ActivityMainBinding;
 import edu.ucsd.cse110.habitizer.app.ui.homescreen.HomeScreenFragment;
 import edu.ucsd.cse110.habitizer.app.ui.routine.RoutineFragment;
+import edu.ucsd.cse110.habitizer.app.util.RoutineStateManager;
 import edu.ucsd.cse110.habitizer.lib.data.InMemoryDataSource;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.RoutineRepository;
@@ -35,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isShowingRoutine = false;
     private HabitizerRepository repository;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private RoutineStateManager routineStateManager;
     
     // Static flag to track if app is in foreground
     public static boolean isAppInForeground = true;
@@ -51,10 +53,15 @@ public class MainActivity extends AppCompatActivity {
         // Get repository instance
         repository = HabitizerRepository.getInstance(this);
         
+        // Initialize routine state manager
+        routineStateManager = new RoutineStateManager(this);
+        
         // Only show home screen if this is a fresh launch (not a configuration change or restart)
         if (savedInstanceState == null) {
-            Log.d(TAG, "Fresh launch - showing home screen");
-            showHomeScreen();
+            Log.d(TAG, "Fresh launch - checking for active routines");
+            
+            // Check if we have an active routine to restore
+            checkForActiveRoutine();
         } else {
             Log.d(TAG, "App restarted with saved state - preserving current fragment");
             // Check what fragment is currently being displayed
@@ -70,6 +77,74 @@ public class MainActivity extends AppCompatActivity {
         
         // Verify routines are loaded
         verifyRoutinesLoaded();
+    }
+    
+    /**
+     * Check for active routines and navigate to them if found
+     */
+    private void checkForActiveRoutine() {
+        // Check if we have an active routine saved in preferences
+        if (routineStateManager.hasRunningRoutine()) {
+            int routineId = routineStateManager.getRunningRoutineId();
+            Log.d(TAG, "Found active routine with ID: " + routineId);
+            
+            // Navigate to active routine
+            if (routineId >= 0) {
+                // Delay slightly to ensure repository is initialized
+                handler.postDelayed(() -> {
+                    Log.d(TAG, "Navigating to active routine: " + routineId);
+                    // Specify this is NOT from home screen (should restore state)
+                    navigateToRoutine(routineId, false);
+                }, 500);
+                return;
+            }
+        }
+        
+        // Default to showing home screen if no active routine
+        Log.d(TAG, "No active routine found - showing home screen");
+        showHomeScreen();
+    }
+    
+    /**
+     * Navigate to a specific routine by ID
+     * @param routineId The ID of the routine to navigate to
+     * @param fromHomeScreen Whether this navigation is from the home screen (start fresh) or from auto-restore
+     */
+    public void navigateToRoutine(int routineId, boolean fromHomeScreen) {
+        Log.d(TAG, "Navigating to routine: " + routineId + (fromHomeScreen ? " from home screen" : " from auto-restore"));
+        
+        // Set the isShowingRoutine flag to true
+        isShowingRoutine = true;
+        
+        // If coming from home screen, clear any existing saved state for this routine
+        if (fromHomeScreen && routineStateManager != null) {
+            // Check if there's a saved state for this specific routine
+            if (routineStateManager.hasRunningRoutine() && routineStateManager.getRunningRoutineId() == routineId) {
+                Log.d(TAG, "Clearing saved state for routine " + routineId + " when starting fresh from home screen");
+                routineStateManager.clearRunningRoutineState();
+            }
+        }
+        
+        // Create fragment instance with arguments
+        RoutineFragment routineFragment = RoutineFragment.newInstance(routineId);
+        
+        // Use replace to avoid fragment stack issues
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, routineFragment)
+                .commit();
+        
+        Log.d(TAG, "Navigated to routine: " + routineId + 
+              (fromHomeScreen ? " - routine will start fresh" : " - routine will be automatically paused"));
+    }
+    
+    /**
+     * Navigate to a specific routine by ID (backwards compatibility)
+     * @param routineId The ID of the routine to navigate to
+     */
+    public void navigateToRoutine(int routineId) {
+        // Default to assuming this is not from home screen (preserving old behavior)
+        navigateToRoutine(routineId, false);
     }
     
     /**
@@ -126,14 +201,15 @@ public class MainActivity extends AppCompatActivity {
     }
     
     /**
-     * Show home screen
+     * Show the home screen in the fragment container
      */
-    private void showHomeScreen() {
+    public void showHomeScreen() {
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragment_container, HomeScreenFragment.newInstance())
                 .commit();
         isShowingRoutine = false;
+        Log.d(TAG, "Navigated to home screen from routine");
     }
     
     /**
@@ -257,15 +333,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        Log.d(TAG, "onPause called - app going to background");
-        isAppInForeground = false;
+        MainActivity.isAppInForeground = false;
+        Log.d(TAG, "App entered background state");
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d(TAG, "onResume called - app coming to foreground");
-        isAppInForeground = true;
+        MainActivity.isAppInForeground = true;
+        Log.d(TAG, "App returned to foreground state");
     }
 
     public boolean isShowingRoutine() {

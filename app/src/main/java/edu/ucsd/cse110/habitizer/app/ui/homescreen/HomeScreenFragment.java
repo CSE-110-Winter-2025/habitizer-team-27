@@ -300,7 +300,7 @@ public class HomeScreenFragment extends Fragment {
     }
 
     private void navigateToRoutine(int routineId) {
-        Log.d(TAG, "Navigating to routine with ID: " + routineId);
+        Log.d(TAG, "Navigating to routine with ID: " + routineId + " from home screen");
         Routine routine = activityModel.getRoutineRepository().getRoutine(routineId);
         Log.d(TAG, "Routine found: " + (routine != null ? routine.getRoutineName() : "null") + 
               " with " + (routine != null ? routine.getTasks().size() : 0) + " tasks");
@@ -314,26 +314,24 @@ public class HomeScreenFragment extends Fragment {
             }
         }
 
-        // Create the bundle with additional information for the RoutineFragment
-        Bundle args = new Bundle();
-        args.putInt("routine_id", routineId);
-        
-        // Create fragment instance with arguments
-        RoutineFragment routineFragment = RoutineFragment.newInstance(routineId);
-        
-        // Set a flag in MainActivity to indicate we're showing a routine
+        // Use the MainActivity's navigateToRoutine method with fromHomeScreen=true to ensure a fresh start
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setShowingRoutine(true);
-            Log.d(TAG, "Set isShowingRoutine flag in MainActivity to true");
+            // Use the new method that specifies this is from home screen (should start fresh)
+            ((MainActivity) getActivity()).navigateToRoutine(routineId, true);
+            Log.d(TAG, "Navigated to routine with fresh start from home screen");
+        } else {
+            // Fallback to manual navigation if MainActivity is not available
+            // Create fragment instance with arguments
+            RoutineFragment routineFragment = RoutineFragment.newInstance(routineId);
+            
+            // Use replace instead of add to avoid fragment stack issues
+            FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
+            transaction.replace(R.id.fragment_container, routineFragment);
+            transaction.addToBackStack(null);
+            transaction.commit();
+            
+            Log.d(TAG, "FragmentTransaction committed (fallback method)");
         }
-
-        // Use replace instead of add to avoid fragment stack issues
-        FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
-        transaction.replace(R.id.fragment_container, routineFragment);
-        transaction.addToBackStack(null);
-        transaction.commit();
-        
-        Log.d(TAG, "FragmentTransaction committed");
     }
 
     /**

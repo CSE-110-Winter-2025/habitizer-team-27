@@ -340,6 +340,14 @@ public class Routine implements Serializable {
     }
 
     /**
+     * Check if the timer is stopped
+     * @return true if the timer is stopped
+     */
+    public boolean isTimerStopped() {
+        return timerStopped;
+    }
+
+    /**
      * Sets the active flag for the routine without starting the timer.
      * This is used for empty routines that should be displayed in the UI
      * but should not have their timers started.
