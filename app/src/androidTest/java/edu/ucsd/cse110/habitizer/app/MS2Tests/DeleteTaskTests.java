@@ -102,6 +102,9 @@ public class DeleteTaskTests {
                 .onChildView(withId(R.id.task_time))
                 .check(matches(not((withText("Shower")))));
 
+        // End the routine
+        onView(withId(R.id.end_routine_button)).perform(click());
+
         // Restart the app
         activityRule.getScenario().close();
         ActivityScenario.launch(MainActivity.class, null);
