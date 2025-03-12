@@ -45,7 +45,9 @@ public class RoutineStateManager {
     // New keys for enhanced state saving
     private static final String KEY_GOAL_TIME = "goal_time";
     private static final String KEY_CURRENT_TASK_ELAPSED_TIME = "current_task_elapsed_time";
+
     private static final String KEY_TASK_ELAPSED_TIME = "task_elapsed_time";
+
     private static final String KEY_TASKS_JSON = "tasks_json";
     
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -114,6 +116,7 @@ public class RoutineStateManager {
         editor.putBoolean(KEY_IS_TIMER_STOPPED, isTimerStopped);
         
         // Save elapsed time explicitly for more reliability
+
         // IMPORTANT: In mock mode, always use timeBeforePauseMinutes as elapsedMinutes
         // This is crucial for persistence across restarts
         long elapsedMinutesToSave = routine.getRoutineDurationMinutes();
@@ -140,6 +143,19 @@ public class RoutineStateManager {
         
         // Save current task elapsed time explicitly
         editor.putInt(KEY_CURRENT_TASK_ELAPSED_TIME, Math.max(0, currentTaskElapsedTime));
+
+        long routineElapsedMinutes = routine.getRoutineDurationMinutes();
+        editor.putLong(KEY_ELAPSED_MINUTES, routineElapsedMinutes);
+        Log.d(TAG, "Saved routine elapsed minutes: " + routineElapsedMinutes);
+        
+        editor.putLong(KEY_TIME_BEFORE_PAUSE_MINUTES, timeBeforePauseMinutes);
+        editor.putLong(KEY_TASK_TIME_BEFORE_PAUSE_MINUTES, taskTimeBeforePauseMinutes);
+        editor.putInt(KEY_TASK_SECONDS_BEFORE_PAUSE, taskSecondsBeforePause);
+        editor.putInt(KEY_CURRENT_TASK_INDEX, currentTaskIndex);
+        
+        // Save current task elapsed time explicitly
+        editor.putInt(KEY_CURRENT_TASK_ELAPSED_TIME, currentTaskElapsedTime);
+
         Log.d(TAG, "Saved current task elapsed time: " + currentTaskElapsedTime + " seconds");
         
         // Save goal time
@@ -262,6 +278,7 @@ public class RoutineStateManager {
         state.isPaused = prefs.getBoolean(KEY_IS_PAUSED, false);
         state.isManuallyStarted = prefs.getBoolean(KEY_IS_MANUALLY_STARTED, false);
         state.isTimerStopped = prefs.getBoolean(KEY_IS_TIMER_STOPPED, false);
+
         state.timeBeforePauseMinutes = Math.max(0, prefs.getLong(KEY_TIME_BEFORE_PAUSE_MINUTES, 0));
         state.taskTimeBeforePauseMinutes = Math.max(0, prefs.getLong(KEY_TASK_TIME_BEFORE_PAUSE_MINUTES, 0));
         state.taskSecondsBeforePause = Math.max(0, prefs.getInt(KEY_TASK_SECONDS_BEFORE_PAUSE, 0));
@@ -273,6 +290,15 @@ public class RoutineStateManager {
         if (prefs.contains(KEY_GOAL_TIME)) {
             state.goalTime = prefs.getInt(KEY_GOAL_TIME, 0);
         }
+
+        state.timeBeforePauseMinutes = prefs.getLong(KEY_TIME_BEFORE_PAUSE_MINUTES, 0);
+        state.taskTimeBeforePauseMinutes = prefs.getLong(KEY_TASK_TIME_BEFORE_PAUSE_MINUTES, 0);
+        state.taskSecondsBeforePause = prefs.getInt(KEY_TASK_SECONDS_BEFORE_PAUSE, 0);
+        state.currentTaskIndex = prefs.getInt(KEY_CURRENT_TASK_INDEX, 0);
+        state.elapsedMinutes = prefs.getLong(KEY_ELAPSED_MINUTES, 0);
+        state.goalTime = prefs.contains(KEY_GOAL_TIME) ? prefs.getInt(KEY_GOAL_TIME, 0) : null;
+        state.currentTaskElapsedTime = prefs.getInt(KEY_CURRENT_TASK_ELAPSED_TIME, 0);
+
         
         // Load saved tasks
         state.savedTasks = loadSavedTasks();
@@ -447,6 +473,7 @@ public class RoutineStateManager {
         public int duration;
         public int elapsedSeconds;
     }
+
     
     /**
      * Get the elapsed time in seconds for the current task before pause
@@ -476,4 +503,5 @@ public class RoutineStateManager {
         // Nothing found, return 0
         return 0;
     }
+
 } 

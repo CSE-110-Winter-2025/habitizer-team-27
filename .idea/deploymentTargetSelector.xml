@@ -13,13 +13,8 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="testImmediateFinish()">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="testSecondDisplay()">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="testCompletedOverMinute()">
+
+      <SelectionState runConfigName="MS2Test1()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

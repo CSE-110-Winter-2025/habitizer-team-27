@@ -32,6 +32,7 @@ import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 import edu.ucsd.cse110.habitizer.lib.domain.timer.Timer;
 import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
+
 import edu.ucsd.cse110.habitizer.app.util.RoutineStateManager;
 
 public class RoutineFragment extends Fragment {
@@ -1449,8 +1450,13 @@ public class RoutineFragment extends Fragment {
             String timeDisplay;
             
             if (taskTimeBeforePauseMinutes > 0) {
+
                 timeDisplay = taskTimeBeforePauseMinutes + "m";
                 Log.d("TIMER_DEBUG", "Using minutes for display: " + timeDisplay);
+
+                Log.d(TAG, "In paused state with saved task minutes: " + taskTimeBeforePauseMinutes + "m");
+                binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + taskTimeBeforePauseMinutes + "m");
+
             } else if (taskSecondsBeforePause > 0) {
                 // For seconds in paused state, round DOWN to the nearest 5 seconds for display
                 // Integer division automatically rounds down, so we can use taskSecondsBeforePause / 5 * 5
@@ -1677,6 +1683,7 @@ public class RoutineFragment extends Fragment {
             }
             
             // Get the current task elapsed time
+
             long currentTaskElapsedTime = 0;
             if (currentRoutine.getTaskTimer() != null) {
                 // Get current task elapsed time in seconds
@@ -1740,6 +1747,21 @@ public class RoutineFragment extends Fragment {
                 Log.d("TIMER_DEBUG", "Using timeBeforePauseMinutes as elapsedMinutes in paused state: " + elapsedMinutesToSave + "m");
             }
             
+
+            int currentTaskElapsedTime = 0;
+            if (currentRoutine.getTaskTimer() != null && 
+                currentRoutine.getTaskTimer().isRunning()) {
+                // Get current task elapsed time in seconds
+                if (isPaused && taskSecondsBeforePause > 0) {
+                    // Use stored seconds if we're paused
+                    currentTaskElapsedTime = taskSecondsBeforePause;
+                } else {
+                    // Otherwise calculate it from the timer
+                    currentTaskElapsedTime = currentRoutine.getTaskTimer().getElapsedSeconds();
+                }
+            }
+            
+
             // Make sure current time is updated in the routine if paused
             if (isPaused) {
                 // Ensure the routine knows it's paused (check safely for isTimerStopped)
@@ -1762,11 +1784,19 @@ public class RoutineFragment extends Fragment {
                 isPaused,
                 manuallyStarted,
                 isStopTimerPressed,
+
                 timeBeforePauseMinutes,  // CRITICAL FIX: Always use timeBeforePauseMinutes directly
                 taskTimeBeforePauseMinutes,
                 taskSecondsBeforePause,
                 currentTaskIndex,
                 (int) Math.min(currentTaskElapsedTime, Integer.MAX_VALUE)
+
+                timeBeforePauseMinutes,
+                taskTimeBeforePauseMinutes,
+                taskSecondsBeforePause,
+                currentTaskIndex,
+                currentTaskElapsedTime
+
             );
             
             Log.d("RoutineFragment", "Saved routine state: " + 
@@ -1774,8 +1804,10 @@ public class RoutineFragment extends Fragment {
                   ", isPaused=" + isPaused + 
                   ", manuallyStarted=" + manuallyStarted +
                   ", isTimerStopped=" + isStopTimerPressed +
+
                   ", timeBeforePauseMinutes=" + timeBeforePauseMinutes +
                   ", elapsedMinutes=" + elapsedMinutesToSave +
+
                   ", currentTaskElapsedTime=" + currentTaskElapsedTime + "s" +
                   ", goalTime=" + (currentRoutine.getGoalTime() != null ? currentRoutine.getGoalTime() : "null"));
         } else {
@@ -1806,6 +1838,7 @@ public class RoutineFragment extends Fragment {
                 // Keep manual start status and time values, but ALWAYS pause the routine on restart
                 manuallyStarted = uiState.isManuallyStarted;
                 
+
                 // CRITICAL FIX: Load and verify timeBeforePauseMinutes from saved UI state
                 // Directly use the saved value from uiState.timeBeforePauseMinutes
                 if (uiState.timeBeforePauseMinutes > 0) {
@@ -1821,6 +1854,16 @@ public class RoutineFragment extends Fragment {
                     timeBeforePauseMinutes = currentRoutine.getRoutineDurationMinutes();
                     Log.d("MockMode-DEBUG", "LOADED STATE: timeBeforePauseMinutes = " + timeBeforePauseMinutes + 
                           " from current routine duration (last resort)");
+
+                // Explicitly set the time before pause to the saved elapsed minutes
+                // Use the saved value if available, otherwise use the current duration
+                if (uiState.elapsedMinutes > 0) {
+                    timeBeforePauseMinutes = uiState.elapsedMinutes;
+                    Log.d("RoutineFragment", "Loaded elapsed time from saved state: " + timeBeforePauseMinutes + "m");
+                } else {
+                    timeBeforePauseMinutes = currentRoutine.getRoutineDurationMinutes();
+                    Log.d("RoutineFragment", "Using current routine duration as elapsed time: " + timeBeforePauseMinutes + "m");
+
                 }
                 
                 // Load task time values
@@ -1838,6 +1881,7 @@ public class RoutineFragment extends Fragment {
                 // Force pause state regardless of previous state
                 isPaused = true;
                 isTimerRunning = false;
+
                 
                 // Restore the mock mode state from saved state
                 isStopTimerPressed = uiState.isTimerStopped;
@@ -1919,6 +1963,12 @@ public class RoutineFragment extends Fragment {
                 }
                 
                 // Now pause the routine
+
+                  isStopTimerPressed = false;
+                
+                // Save the current time for the pause
+                LocalDateTime pauseTime = LocalDateTime.now();
+
                 currentRoutine.pauseTime(pauseTime);
                 
                 // Restore goal time if available
@@ -2009,6 +2059,24 @@ public class RoutineFragment extends Fragment {
                 // Use the exact same format as during normal operation
                 binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + timeDisplay);
                 Log.d("TIMER_DEBUG", "Set elapsed time display after restart: " + timeDisplay);
+                
+                
+                // Update the task elapsed time display
+                if (taskSecondsBeforePause > 0) {
+                    // Format the time display based on saved task seconds
+                    int minutes = taskSecondsBeforePause / 60;
+                    int seconds = taskSecondsBeforePause % 60;
+                    
+                    // Display the time in the right format based on duration
+                    if (minutes > 0) {
+                        binding.currentTaskElapsedTime.setText(String.format("%d:%02d", minutes, seconds));
+                    } else {
+                        binding.currentTaskElapsedTime.setText(String.format("%ds", seconds));
+                    }
+                    
+                    Log.d("RoutineFragment", "Updated task elapsed time display: " + 
+                          (minutes > 0 ? String.format("%d:%02d", minutes, seconds) : String.format("%ds", seconds)));
+                }
                 
                 // Save the state with the new pause info
                 saveRoutineState();
