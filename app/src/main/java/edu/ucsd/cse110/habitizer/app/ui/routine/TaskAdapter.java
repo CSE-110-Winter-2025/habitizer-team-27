@@ -35,13 +35,12 @@ import edu.ucsd.cse110.habitizer.app.ui.dialog.RenameTaskDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 
-import androidx.fragment.app.FragmentActivity;
-
 public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
     private final LegacyLogicAdapter dataSource;
     private final FragmentManager fragmentManager;
     private RoutineFragment routineFragment;
+    private boolean isMockModeActive = false; // Add flag for mock mode state
 
     // ViewHolder pattern for better performance
     static class ViewHolder {
@@ -63,7 +62,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         Log.d("TaskAdapter", "TaskAdapter created for routine: " +
                 (routine != null ? routine.getRoutineName() : "null") +
                 " with " + (tasks != null ? tasks.size() : 0) + " tasks");
-        if (tasks != null && !tasks.isEmpty()) {
+        if (!tasks.isEmpty()) {
             for (int i = 0; i < tasks.size(); i++) {
                 Task task = tasks.get(i);
                 Log.d("TaskAdapter", "Initial task " + i + ": " +
@@ -74,6 +73,15 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
     public void setRoutineFragment(RoutineFragment fragment) {
         this.routineFragment = fragment;
+    }
+
+    /**
+     * Sets whether mock mode is active, which affects task interaction logic
+     * @param isActive True if mock mode is active, false otherwise
+     */
+    public void setMockModeActive(boolean isActive) {
+        this.isMockModeActive = isActive;
+        Log.d("TaskAdapter", "Mock mode set to: " + isActive);
     }
 
     @NonNull
@@ -128,20 +136,49 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         holder.taskName.setText(task.getTaskName());
         holder.checkBox.setChecked(task.isCheckedOff());
         
-        // Check if the fragment is paused
+        // Check if the fragment is paused or the routine has ended
         boolean isFragmentPaused = (routineFragment != null && routineFragment.isPaused());
+        boolean isRoutineEnded = false;
+        
+        // Check if the routine has ended using the helper method
+        if (routineFragment != null) {
+            isRoutineEnded = routineFragment.isRoutineEnded();
+            Log.d("TaskAdapter", "Routine ended check: " + isRoutineEnded);
+        } else {
+            // Fallback: check if the routine's timer has ended
+            if (routine != null && routine.getRoutineTimer() != null) {
+                isRoutineEnded = !routine.isActive() || routine.getRoutineTimer().getEndTime() != null;
+                Log.d("TaskAdapter", "Using routine timer state as fallback: isRoutineEnded=" + isRoutineEnded);
+            }
+        }
         
         // Disable checkbox if:
         // 1. The task is already checked off, OR
         // 2. The routine is not active, OR
-        // 3. The fragment is paused (new condition to prevent task checking when paused)
-        holder.checkBox.setEnabled(!task.isCheckedOff() && routine.isActive() && !isFragmentPaused);
+        // 3. The routine has ended, OR
+        // 4. The fragment is paused AND in mock mode
+        boolean canCheckOffTask = !task.isCheckedOff() && 
+                                  routine.isActive() && 
+                                  !isRoutineEnded && 
+                                  !(isFragmentPaused && isMockModeActive);
         
-        // Also disable up/down buttons and rename button when paused
-        holder.moveUpButton.setEnabled(!isFragmentPaused);
-        holder.moveDownButton.setEnabled(!isFragmentPaused);
-        holder.renameButton.setEnabled(!isFragmentPaused);
-        holder.deleteButton.setEnabled(!isFragmentPaused);
+        holder.checkBox.setEnabled(canCheckOffTask);
+        
+        if (isRoutineEnded) {
+            Log.d("TaskAdapter", "Routine has ended - disabling task interactions");
+        }
+        
+        if (isFragmentPaused && isMockModeActive) {
+            Log.d("TaskAdapter", "App is in mock mode and paused - disabling task checkboxes");
+        }
+        
+        // Also disable all other buttons when routine is ended or paused in mock mode
+        boolean canInteractWithTask = !isRoutineEnded && 
+                                     !(isFragmentPaused && isMockModeActive);
+        holder.moveUpButton.setEnabled(canInteractWithTask);
+        holder.moveDownButton.setEnabled(canInteractWithTask);
+        holder.renameButton.setEnabled(canInteractWithTask);
+        holder.deleteButton.setEnabled(canInteractWithTask);
         
         updateTimeDisplay(holder.taskTime, task);
         holder.moveUpButton.setTag(position);
@@ -151,13 +188,30 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         // Set position tag for correct item identification
         holder.checkBox.setTag(position);
 
+        // Create a final reference to the holder for use in lambdas
+        final ViewHolder finalHolder = holder;
+        // Keep track of the final value of isRoutineEnded
+        final boolean finalIsRoutineEnded = isRoutineEnded;
+
         // Checkbox click handler
         holder.checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
             int pos = (int) buttonView.getTag();
             Task currentTask = getItem(pos);
 
             if (currentTask != null && isChecked && !currentTask.isCheckedOff()) {
-                handleTaskCompletion(currentTask, holder);
+                // Double-check we're not in an ended state before handling task completion
+                if (!finalIsRoutineEnded) {
+                    handleTaskCompletion(currentTask, finalHolder);
+                } else {
+                    // Reset checkbox if the routine is ended
+                    Log.d("TaskAdapter", "Preventing task checkoff - routine has ended");
+                    final CheckBox checkBox = finalHolder.checkBox;
+                    buttonView.post(() -> {
+                        checkBox.setOnCheckedChangeListener(null);
+                        checkBox.setChecked(false);
+                        checkBox.setEnabled(false);
+                    });
+                }
             }
         });
 
@@ -220,6 +274,25 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         // Update business logic
         routine.completeTask(task.getTaskName());
         
+        // IMPORTANT: Check if the task completion time is less than the current saved task time
+        // If it's less, set the completion time equal to the saved task time
+        if (routineFragment != null) {
+            // Get current saved task time in seconds
+            long taskTimeInSeconds = routineFragment.getCurrentTaskElapsedTimeInSeconds();
+            int taskCompletionTime = task.getElapsedSeconds();
+            
+            // Check if completion time is less than current saved task time
+            if (taskCompletionTime > 0 && taskCompletionTime < taskTimeInSeconds) {
+                Log.d("TaskCompletion", "Task completion time (" + taskCompletionTime + 
+                      "s) is less than current saved task time (" + taskTimeInSeconds + 
+                      "s). Setting completion time equal to saved task time.");
+                
+                // Set completion time equal to saved task time
+                task.setElapsedSeconds((int)taskTimeInSeconds);
+                Log.d("TaskCompletion", "Updated task completion time: " + task.getElapsedSeconds() + "s");
+            }
+        }
+        
         // Log task completion details
         Log.d("TaskCompletion", "Task completed: " + task.getTaskName() +
               " - Minutes: " + task.getDuration() +
@@ -228,6 +301,13 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
         // Update data source
         dataSource.putRoutine(routine);
+
+        // If in mock mode, reset the task timer to 0
+        if (routineFragment != null) {
+            // Call the new method to reset timer in mock mode
+            routineFragment.resetTaskTimeInMockMode();
+            Log.d("TaskCompletion", "Checked for mock mode timer reset");
+        }
 
         // Handle auto-complete
         if (routine.autoCompleteRoutine()) {
@@ -425,6 +505,13 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     }
 
     private void updateTimeDisplay(TextView taskTime, Task task) {
+        // Check if the routine has ended - if so, don't show any task times
+        if (routineFragment != null && routineFragment.isRoutineEnded()) {
+            taskTime.setText("");
+            Log.d("TaskAdapter", "Hiding task time because routine has ended");
+            return;
+        }
+
         if (!task.isCompleted()) {
             taskTime.setText("");
             return;
@@ -463,7 +550,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         
         Log.d("TaskAdapter", "Formatting task time in seconds: " + seconds);
         
-        // Round UP to nearest 5-second increment for completed tasks
+        // Round UP to nearest 5-second interval
         int roundedSeconds;
         
         // Calculate how many seconds into the current 5-second interval

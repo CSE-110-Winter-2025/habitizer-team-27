@@ -30,6 +30,8 @@ import edu.ucsd.cse110.habitizer.app.ui.dialog.CreateTaskDialogFragment;
 import edu.ucsd.cse110.habitizer.app.ui.dialog.SetRoutineTimeDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.Timer;
+import edu.ucsd.cse110.habitizer.lib.domain.timer.TaskTimer;
 import edu.ucsd.cse110.habitizer.app.util.RoutineStateManager;
 
 public class RoutineFragment extends Fragment {
@@ -387,6 +389,35 @@ public class RoutineFragment extends Fragment {
             } else {
                 // Second press = end the routine
                 isTimerRunning = false;
+                
+                // IMPORTANT: In mock mode, save the current mock time as the routine time
+                // This ensures the correct time is shown when the routine ends
+                if (isStopTimerPressed && timeBeforePauseMinutes > 0) {
+                    // Before ending, record the current mock time in the routine
+                    long routineDurationSeconds = timeBeforePauseMinutes * 60;
+                    
+                    // IMPORTANT: When ending routine in mock mode after a restart, add an additional 1 minute
+                    boolean isAfterRestart = isPaused; // If we're in paused state, it means we're after a restart
+                    if (isAfterRestart) {
+                        Log.d("EndRoutine", "Adding 1 additional minute to routine duration since we're ending after a restart");
+                        routineDurationSeconds += 60; // Add 60 seconds (1 minute)
+                        timeBeforePauseMinutes += 1; // Update timeBeforePauseMinutes for consistency
+                    }
+                    
+                    LocalDateTime mockStartTime = LocalDateTime.now().minusSeconds(routineDurationSeconds);
+                    LocalDateTime mockEndTime = LocalDateTime.now();
+                    
+                    // Adjust the routine's timer to match our mock values
+                    if (currentRoutine.getRoutineTimer() != null) {
+                        currentRoutine.getRoutineTimer().updateStartTime(mockStartTime);
+                        Log.d("EndRoutine", "Updated routine start time to match mock duration: " + 
+                               mockStartTime + " (for " + timeBeforePauseMinutes + "m)");
+                    }
+                    
+                    Log.d("EndRoutine", "Ending routine in mock mode with saved time: " + 
+                           timeBeforePauseMinutes + "m" + (isAfterRestart ? " (including +1m bonus)" : ""));
+                }
+                
                 currentRoutine.endRoutine(LocalDateTime.now());
                 manuallyStarted = false;  // Reset the manually started flag when ending
                 
@@ -405,6 +436,10 @@ public class RoutineFragment extends Fragment {
                 binding.stopTimerButton.setEnabled(false);
                 binding.pauseButton.setEnabled(false);
                 binding.homeButton.setEnabled(true);
+                
+                // Clear the task elapsed time display when routine ends
+                binding.currentTaskElapsedTime.setText("");
+                Log.d("RoutineFragment", "Cleared task elapsed time display when ending routine");
                 
                 // Refresh adapter to update checkbox states for any unchecked tasks
                 if (taskAdapter != null) {
@@ -441,17 +476,90 @@ public class RoutineFragment extends Fragment {
                 isStopTimerPressed = true;
                 binding.stopTimerButton.setText("Advance Mock Timer");
                 
+                // Store current time for consistent updates
+                LocalDateTime mockStartTime = LocalDateTime.now();
+                
                 // Stop real timer functionality
                 if (currentRoutine.isActive()) {
                     // Save the current time before switching to mock
-                    if (timeBeforePauseMinutes == 0) {
-                        timeBeforePauseMinutes = currentRoutine.getRoutineDurationMinutes();
+                    // CRITICAL FIX: Always get the current routine duration when entering mock mode
+                    // This ensures we start from the correct time on first entry
+                    timeBeforePauseMinutes = currentRoutine.getRoutineDurationMinutes();
+                    Log.d("MockMode-DEBUG", "ENTERING MOCK MODE: Setting initial timeBeforePauseMinutes = " + 
+                          timeBeforePauseMinutes + "m from routine duration");
+                    
+                    // IMPORTANT: Make sure task timer is completely stopped when entering mock mode
+                    if (currentRoutine.getTaskTimer() != null) {
+                        // Get the actual elapsed time before stopping the timer
+                        long elapsedSeconds = 0;
+                        if (currentRoutine.getTaskTimer() instanceof TaskTimer) {
+                            TaskTimer specificTaskTimer = (TaskTimer) currentRoutine.getTaskTimer();
+                            elapsedSeconds = specificTaskTimer.getElapsedSecondsRoundedDown();
+                            Log.d("MockMode", "Using actual elapsed time (rounded down): " + elapsedSeconds + "s");
+                        } else {
+                            // Fallback if casting fails - manually round down
+                            elapsedSeconds = currentRoutine.getTaskTimer().getElapsedSeconds();
+                            elapsedSeconds = (elapsedSeconds / 5) * 5; // Manual round down to nearest 5s
+                            Log.d("MockMode", "Manual rounding DOWN to: " + elapsedSeconds + "s");
+                        }
+                        
+                        // End the timer first
+                        if (currentRoutine.getTaskTimer().isRunning()) {
+                            Log.d("MockMode", "Explicitly stopping task timer when entering mock mode");
+                            currentRoutine.getTaskTimer().end(mockStartTime);
+                        }
+                        
+                        // Explicitly reset internal state to ensure timer doesn't continue running in background
+                        try {
+                            // Force reset the timer's state by stopping and starting it at the current time
+                            currentRoutine.getTaskTimer().end(mockStartTime); // Make sure it's stopped
+                            currentRoutine.getTaskTimer().start(mockStartTime); // Create a fresh timer
+                            currentRoutine.getTaskTimer().end(mockStartTime); // Then immediately stop it
+                            
+                            Log.d("MockMode", "Full task timer reset performed to ensure clean state");
+                        } catch (Exception e) {
+                            Log.e("MockMode", "Error while resetting task timer: " + e.getMessage());
+                        }
+                        
+                        // Store the elapsed time into our mock mode variables
+                        if (elapsedSeconds >= 60) {
+                            taskTimeBeforePauseMinutes = elapsedSeconds / 60;
+                            taskSecondsBeforePause = (int)(elapsedSeconds % 60);
+                            Log.d("MockMode", "Storing elapsed time in minutes and seconds: " + 
+                                taskTimeBeforePauseMinutes + "m " + taskSecondsBeforePause + "s");
+                        } else {
+                            taskTimeBeforePauseMinutes = 0;
+                            taskSecondsBeforePause = (int)elapsedSeconds;
+                            Log.d("MockMode", "Storing elapsed time in seconds only: " + taskSecondsBeforePause + "s");
+                        }
                     }
                     
                     // Pause at current simulated time, but don't affect the pause state
                     // This allows separate tracking of pause button vs stop timer button
-                    currentRoutine.pauseTime(LocalDateTime.now());
+                    currentRoutine.pauseTime(mockStartTime);
+                    
+                    // Save the current task's elapsed time for the mock mode
+                    // IMPORTANT: Save this AFTER stopping the timer to get accurate values
+                    saveCurrentTaskElapsedTime();
+                    
+                    // We don't need to reset to 15 seconds since we're now using the actual elapsed time
+                    // The values have already been set correctly in the timer stop code above
+                    
+                    Log.d("MockMode", "Entered mock mode - task timer running: " + 
+                          (currentRoutine.getTaskTimer() != null ? currentRoutine.getTaskTimer().isRunning() : "null timer") +
+                          ", using actual elapsed time: " + 
+                          (taskTimeBeforePauseMinutes > 0 ? 
+                            taskTimeBeforePauseMinutes + "m" : 
+                            taskSecondsBeforePause + "s"));
+                    
+                    // IMPORTANT: Update task adapter with mock mode status
+                    if (taskAdapter != null) {
+                        taskAdapter.setMockModeActive(true);
+                        Log.d("MockMode", "Updated TaskAdapter with mock mode status");
+                    }
+                    
                     updateTimeDisplay();
+                    updateCurrentTaskElapsedTime();
                 }
                 
                 // We don't set isTimerRunning to false here to allow mockup testing
@@ -469,14 +577,62 @@ public class RoutineFragment extends Fragment {
                     
                     // Advance mock timer by 15 seconds
                     currentRoutine.fastForwardTime();
+                    
+                    // Get total seconds by combining minutes and seconds
+                    long totalSeconds = taskTimeBeforePauseMinutes * 60 + taskSecondsBeforePause + 15;
+                    
+                    // Update minutes and seconds
+                    taskTimeBeforePauseMinutes = totalSeconds / 60;
+                    taskSecondsBeforePause = (int)(totalSeconds % 60);
+                    
+                    Log.d("AdvanceTimer", "Advanced task timer: original=" + 
+                          (totalSeconds - 15) + "s, new=" + totalSeconds + "s (" +
+                          taskTimeBeforePauseMinutes + "m " + taskSecondsBeforePause + "s)");
 
-                    // If we have any saved task times from previous pause, clear them
-                    // This ensures we'll calculate fresh times based on the advanced timer
-                    taskTimeBeforePauseMinutes = 0;
-                    taskSecondsBeforePause = 0;
-
+                    // Also update the timeBeforePauseMinutes to move the routine timer forward
+                    // This is crucial for updating the routine time display after restart
+                    if (timeBeforePauseMinutes > 0) {
+                        // Save the original value for logging
+                        long oldValue = timeBeforePauseMinutes;
+                        
+                        // CRITICAL FIX: Use a more explicit calculation to avoid integer division issues
+                        // Convert minutes to seconds, add 15, convert back to minutes
+                        totalSeconds = timeBeforePauseMinutes * 60;
+                        totalSeconds += 15;
+                        timeBeforePauseMinutes = totalSeconds / 60;
+                        
+                        Log.d("AdvanceTimer", "Advanced mock time increments: old=" + oldValue + 
+                              "m, new=" + timeBeforePauseMinutes + "m (added 15s)");
+                        
+                        // Get the routine's actual duration for calculating the combined time
+                        long routineDuration = currentRoutine.getRoutineDurationMinutes();
+                        long combinedTime = routineDuration + timeBeforePauseMinutes;
+                        
+                        // CRITICAL FIX: Force an update to the UI with the combined value
+                        binding.actualTime.setText(String.valueOf(combinedTime) + "m");
+                        
+                        // Log the combined time that will be displayed
+                        Log.d("MockMode-DEBUG", "ADVANCE TIMER: Combined time for display: " + combinedTime + 
+                              "m (routineDuration=" + routineDuration + "m + mockTimeIncrements=" + 
+                              timeBeforePauseMinutes + "m)");
+                    }
+                    
                     // Force immediate UI update
                     updateTimeDisplay();
+                    
+                    // CRITICAL FIX: Save the updated state to ensure it persists across app restarts
+                    // This is the key fix - we must save state AFTER updating timeBeforePauseMinutes
+                    saveRoutineState();
+                    
+                    // Verify what values were actually saved by immediately retrieving them
+                    if (routineStateManager != null) {
+                        RoutineStateManager.RoutineUIState savedState = routineStateManager.getUIState();
+                        if (savedState != null) {
+                            Log.d("MockMode-DEBUG", "VERIFICATION: Saved values - timeBeforePauseMinutes: " + 
+                                  savedState.timeBeforePauseMinutes + "m, elapsedMinutes: " + 
+                                  savedState.elapsedMinutes + "m");
+                        }
+                    }
                     
                     // If routine completed via fast forward, update state
                     if (currentRoutine.autoCompleteRoutine()) {
@@ -552,12 +708,23 @@ public class RoutineFragment extends Fragment {
                     
                     // Store current time for consistent updates
                     LocalDateTime pauseTime = LocalDateTime.now();
+                    
+                    // IMPORTANT: Explicitly end the task timer before pausing the routine
+                    // This ensures the task timer is properly paused
+                    if (currentRoutine.getTaskTimer() != null && currentRoutine.getTaskTimer().isRunning()) {
+                        Log.d("PauseButton", "Explicitly ending task timer before pausing routine");
+                        currentRoutine.getTaskTimer().end(pauseTime);
+                    }
+                    
+                    // Now pause the routine
                     currentRoutine.pauseTime(pauseTime);
                     
                     // Log the state after pausing
                     Log.d("PauseButton", "After pause - Routine duration: " + 
                           currentRoutine.getRoutineDurationMinutes() + "m, " +
-                          "Current time: " + currentRoutine.getCurrentTime());
+                          "Current time: " + currentRoutine.getCurrentTime() + 
+                          ", Task timer running: " + 
+                          (currentRoutine.getTaskTimer() != null ? currentRoutine.getTaskTimer().isRunning() : "null timer"));
                     
                     // Force update displays
                     updateTimeDisplay();
@@ -595,13 +762,33 @@ public class RoutineFragment extends Fragment {
                             (taskSecondsBeforePause > 0 ? taskSecondsBeforePause + "s" : "0s")) +
                           ", Routine time: " + currentRoutine.getRoutineDurationMinutes() + "m");
                     
-                    // Reset saved task times to allow immediate updates when advancing timer
-                    taskTimeBeforePauseMinutes = 0;
-                    taskSecondsBeforePause = 0;
+                    // DEBUG: Log the timeBeforePauseMinutes value being used for the display
+                    Log.d("MockMode-DEBUG", "RESUME IN MOCK MODE - timeBeforePauseMinutes: " + timeBeforePauseMinutes + 
+                          ", taskTimeBeforePauseMinutes: " + taskTimeBeforePauseMinutes + 
+                          ", taskSecondsBeforePause: " + taskSecondsBeforePause);
                     
-                    // Force update displays with current times (not saved times)
+                    // IMPORTANT: In mock mode, DO NOT reset task time values
+                    // This was causing the timer to reset after resume
+                    // We want to keep the current mock values to continue from where we left off
+                    Log.d("PauseButton", "Preserving mock mode timer values after resume: " +
+                          taskTimeBeforePauseMinutes + "m " + taskSecondsBeforePause + "s");
+                    
+                    // Force update displays with current times
                     updateTimeDisplay();
                     updateCurrentTaskElapsedTime();
+                    
+                    // Force an explicit update of the routine time text to ensure it's displaying correctly
+                    if (timeBeforePauseMinutes > 0) {
+                        binding.actualTime.setText(String.valueOf(timeBeforePauseMinutes) + "m");
+                        Log.d("MockMode-DEBUG", "Forcing UI update with timeBeforePauseMinutes: " + timeBeforePauseMinutes + "m");
+                    }
+                    
+                    // IMPORTANT: Make sure we refresh adapter to enable task checkboxes again
+                    if (taskAdapter != null) {
+                        taskAdapter.setMockModeActive(true); // Signal adapter that we're in mock mode
+                        taskAdapter.notifyDataSetChanged();
+                        Log.d("PauseButton", "Refreshed task adapter after resuming in mock mode to enable checkboxes");
+                    }
                     
                     Log.d("PauseButton", "Resumed in mock mode - keeping mock timer active");
                 } else {
@@ -639,6 +826,31 @@ public class RoutineFragment extends Fragment {
                     
                     // Resume with the current time only for real timer mode
                     currentRoutine.resumeTime(resumeTime);
+                    
+                    // Explicitly restart the task timer after resuming with the correct elapsed time
+                    if (currentRoutine.getTaskTimer() != null && !currentRoutine.getTaskTimer().isRunning()) {
+                        // Calculate total saved elapsed seconds by combining minutes and seconds
+                        long totalElapsedSeconds = taskTimeBeforePauseMinutes * 60 + taskSecondsBeforePause;
+                        
+                        // Round down to nearest 5 seconds for consistency
+                        totalElapsedSeconds = (totalElapsedSeconds / 5) * 5;
+                        
+                        Log.d("PauseButton", "Resuming task timer with total elapsed seconds: " + 
+                               totalElapsedSeconds + " (from " + taskTimeBeforePauseMinutes + 
+                               "m and " + taskSecondsBeforePause + "s)");
+                        
+                        // If we have saved elapsed time, adjust the start time accordingly
+                        if (totalElapsedSeconds > 0) {
+                            LocalDateTime adjustedStartTime = resumeTime.minusSeconds(totalElapsedSeconds);
+                            Log.d("PauseButton", "Starting task timer with adjusted start time: " + 
+                                   adjustedStartTime + " (total elapsed seconds: " + totalElapsedSeconds + ")");
+                            currentRoutine.getTaskTimer().start(adjustedStartTime);
+                        } else {
+                            // Just start with current time if no elapsed time
+                            Log.d("PauseButton", "Starting task timer with current time");
+                            currentRoutine.getTaskTimer().start(resumeTime);
+                        }
+                    }
                     
                     // Update timer state after resuming the routine timer
                     isPaused = false;
@@ -866,18 +1078,26 @@ public class RoutineFragment extends Fragment {
             return;
         }
 
-        // In mock mode with paused state, preserve the original time
-        if (isStopTimerPressed && isPaused) {
-            // Use the saved routine time directly in mock mode when paused
-            if (timeBeforePauseMinutes > 0) {
-                binding.actualTime.setText(String.valueOf(timeBeforePauseMinutes) + "m");
-                Log.d("RoutineFragment", "Using saved time in mock mode: " + timeBeforePauseMinutes + "m");
-            } else {
-                // If no saved time (unlikely), show current routine time but don't update it
-                binding.actualTime.setText(String.valueOf(currentRoutine.getRoutineDurationMinutes()) + "m");
-                Log.d("RoutineFragment", "No saved time found in paused mock mode, using current: " + 
-                    currentRoutine.getRoutineDurationMinutes() + "m");
-            }
+        // In mock mode, always preserve the original time regardless of pause state
+        if (isStopTimerPressed) {
+            // CRITICAL FIX: In mock mode, ALWAYS combine routine duration with the mock time
+            // Get the routine's actual duration (from timer)
+            long routineDuration = currentRoutine.getRoutineDurationMinutes();
+            
+            // Calculate the total time to display by combining both values
+            long combinedTimeMinutes = routineDuration + timeBeforePauseMinutes;
+            
+            // Log the time values for debugging
+            Log.d("MockMode-DEBUG", "COMBINED TIME VALUES: routineDuration=" + routineDuration + 
+                  "m + timeBeforePauseMinutes=" + timeBeforePauseMinutes + 
+                  "m = combinedTimeMinutes=" + combinedTimeMinutes + "m");
+            
+            // Always display the combined time in mock mode
+            binding.actualTime.setText(String.valueOf(combinedTimeMinutes) + "m");
+            Log.d("MockMode-DEBUG", "DISPLAY UPDATE: Showing combined time: " + combinedTimeMinutes + 
+                  "m in mock mode (routineDuration=" + routineDuration + 
+                  "m, timeBeforePauseMinutes=" + timeBeforePauseMinutes + "m)");
+            
             return;
         }
         
@@ -1007,6 +1227,24 @@ public class RoutineFragment extends Fragment {
         
         Log.d("RoutineFragment", "Updating UI for automatically ended routine");
         
+        // IMPORTANT: In mock mode, preserve the mock time when ending the routine
+        if (isStopTimerPressed && timeBeforePauseMinutes > 0) {
+            // If in mock mode, make sure we preserve the mock time for display
+            Log.d("RoutineFragment", "Auto-ending routine in mock mode with time: " + timeBeforePauseMinutes + "m");
+            
+            // Check if we're after a restart (indicated by paused state)
+            boolean isAfterRestart = isPaused;
+            if (isAfterRestart) {
+                // Add 1 additional minute for consistency with manual ending
+                timeBeforePauseMinutes += 1;
+                Log.d("RoutineFragment", "Adding +1 minute bonus for restarted mock mode, new time: " + 
+                      timeBeforePauseMinutes + "m");
+            }
+            
+            // Make sure to update the display with the mock time directly
+            binding.actualTime.setText(timeBeforePauseMinutes + "m");
+        }
+        
         // Set the routine as ended
         isTimerRunning = false;
         manuallyStarted = false;
@@ -1023,6 +1261,9 @@ public class RoutineFragment extends Fragment {
         
         // Force update the time display
         updateTimeDisplay();
+        
+        // Clear the elapsed time display when routine ends
+        binding.currentTaskElapsedTime.setText("");
         
         // Ensure task adapter refreshes to update checkbox states
         if (taskAdapter != null) {
@@ -1056,6 +1297,20 @@ public class RoutineFragment extends Fragment {
         }
     }
 
+    // Reset task time in mock mode when a task is checked off
+    public void resetTaskTimeInMockMode() {
+        // Only reset time if in mock mode
+        if (isStopTimerPressed) {
+            Log.d("TIMER_DEBUG", "Task checked off in mock mode - resetting task time to 0");
+            // Reset the task time values
+            taskTimeBeforePauseMinutes = 0;
+            taskSecondsBeforePause = 0;
+            
+            // Update the display immediately to show the reset
+            updateCurrentTaskElapsedTime();
+        }
+    }
+
     private void resetButtonStates() {
         // Reset pause state if it was paused
         boolean wasPaused = isPaused;
@@ -1065,13 +1320,51 @@ public class RoutineFragment extends Fragment {
             binding.pauseButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
         }
         
-        // Reset stop timer state
-        isStopTimerPressed = false;
-        binding.stopTimerButton.setText("Switch to Mock");
-        binding.stopTimerButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+        // Reset stop timer (mock mode) state if it was active
+        boolean wasMockMode = isStopTimerPressed;
+        if (isStopTimerPressed) {
+            isStopTimerPressed = false;
+            binding.stopTimerButton.setText("Switch to Mock");
+            binding.stopTimerButton.setBackground(getResources().getDrawable(R.drawable.rounded_button_background));
+            
+            // Also reset the mock mode flag in TaskAdapter
+            if (taskAdapter != null) {
+                taskAdapter.setMockModeActive(false);
+                Log.d("MockMode", "Reset mock mode flag in TaskAdapter when exiting mock mode");
+            }
+            
+            // If we're exiting mock mode and the routine is active, we need to restart the real timers
+            if (currentRoutine != null && currentRoutine.isActive() && !wasPaused) {
+                LocalDateTime now = LocalDateTime.now();
+                Log.d("MockMode", "Exiting mock mode - restarting real timers at " + now);
+                
+                // Calculate adjusted start time based on the elapsed time in mock mode
+                long elapsedSeconds = 0;
+                if (taskTimeBeforePauseMinutes > 0) {
+                    elapsedSeconds = taskTimeBeforePauseMinutes * 60;
+                } else if (taskSecondsBeforePause > 0) {
+                    // Round down to nearest 5 seconds for consistency
+                    elapsedSeconds = (taskSecondsBeforePause / 5) * 5;
+                }
+                
+                // Restart the routine timer with the current time
+                currentRoutine.resumeTime(now);
+                
+                // If we have accurate task elapsed time, restart the task timer with an adjusted start time
+                if (elapsedSeconds > 0 && currentRoutine.getTaskTimer() != null) {
+                    // Calculate an adjusted start time based on elapsed seconds
+                    LocalDateTime adjustedStartTime = now.minusSeconds(elapsedSeconds);
+                    
+                    // Restart the task timer with the adjusted start time
+                    currentRoutine.getTaskTimer().start(adjustedStartTime);
+                    Log.d("MockMode", "Restarted task timer with adjusted start time: " + 
+                          adjustedStartTime + " (elapsed seconds: " + elapsedSeconds + ")");
+                }
+            }
+        }
         
-        // Refresh task list if pause state changed
-        if (wasPaused && taskAdapter != null) {
+        // Refresh task list if any state changed
+        if ((wasPaused || wasMockMode) && taskAdapter != null) {
             taskAdapter.notifyDataSetChanged();
         }
     }
@@ -1085,202 +1378,145 @@ public class RoutineFragment extends Fragment {
      * Update the display of the current task's elapsed time
      */
     private void updateCurrentTaskElapsedTime() {
-        final String TAG = "ELAPSED_TIME_DEBUG";
+        Log.d("TIMER_DEBUG", "======= UPDATE CURRENT TASK ELAPSED TIME =======");
+        logTimerState("UPDATE_TASK_TIME - Start of method");
         
-        // Early exit if no routine
-        if (currentRoutine == null) {
-            Log.d(TAG, "Routine is null, clearing elapsed time text");
-            binding.currentTaskElapsedTime.setText("");
-            return;
-        }
-
-        // Find the first uncompleted task (current active task)
-        List<Task> tasks = currentRoutine.getTasks();
-        if (tasks.isEmpty()) {
-            Log.d(TAG, "Task list is empty, clearing elapsed time text");
+        // Don't show elapsed time if routine has ended
+        if (isRoutineEnded()) {
+            Log.d("TIMER_DEBUG", "Routine has ended, hiding elapsed time display");
             binding.currentTaskElapsedTime.setText("");
             return;
         }
         
-        // First try to find a task that is not completed and not skipped
-        Task currentTask = null;
-        for (Task task : tasks) {
-            if (!task.isCompleted() && !task.isSkipped()) {
-                currentTask = task;
-                Log.d(TAG, "Found active task: " + task.getTaskName());
-                break;
-            }
-        }
-        
-        // If not found, try to find first unchecked task
+        // Get the current task
+        Task currentTask = getCurrentTask();
         if (currentTask == null) {
-            for (Task task : tasks) {
-                if (!task.isCheckedOff()) {
-                    currentTask = task;
-                    Log.d(TAG, "Found unchecked task: " + task.getTaskName());
-                    break;
-                }
-            }
-        }
-        
-        // If still no active task found but routine has tasks, use first task
-        if (currentTask == null && !tasks.isEmpty()) {
-            Task firstTask = tasks.get(0);
-            // Make sure it's not marked as skipped for display purposes
-            firstTask.setSkipped(false);
-            currentTask = firstTask;
-            Log.d(TAG, "Using first task as fallback: " + firstTask.getTaskName());
-            
-            // Save the change
-            if (repository != null) {
-                repository.updateRoutine(currentRoutine);
-            }
-        }
-        
-        // If still no active task, show empty elapsed time
-        if (currentTask == null) {
-            Log.d(TAG, "No viable task found, clearing elapsed time text");
-            binding.currentTaskElapsedTime.setText("");
+            Log.d("TIMER_DEBUG", "No current task, returning");
             return;
         }
         
-        // IMPORTANT: If we're in paused state, use the saved task time directly
-        // Mock mode should show the saved time when paused
-        if (isPaused) {
-            // In mock mode with paused state - always use saved values and show exact minutes
-            if (taskTimeBeforePauseMinutes > 0) {
-                Log.d(TAG, "In paused state with saved task minutes: " + taskTimeBeforePauseMinutes + "m");
-                binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + taskTimeBeforePauseMinutes + "m");
-            } else if (taskSecondsBeforePause > 0) {
-                // For tasks under a minute, show seconds
-                int roundedSeconds = (int)(taskSecondsBeforePause / 5) * 5; // Round to nearest 5 seconds
-                Log.d(TAG, "In paused state with saved task seconds: " + taskSecondsBeforePause + 
-                      "s (rounded to " + roundedSeconds + "s)");
-                binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + roundedSeconds + "s");
-                return;
-            }
-            // If we don't have saved task time but we're paused, we should compute and save it now
-            if (isPaused && (taskTimeBeforePauseMinutes == 0 && taskSecondsBeforePause == 0)) {
-                saveCurrentTaskElapsedTime();
-                Log.d(TAG, "Saved task time on demand: " + 
-                    (taskTimeBeforePauseMinutes > 0 ? taskTimeBeforePauseMinutes + "m" : 
-                    (taskSecondsBeforePause > 0 ? taskSecondsBeforePause + "s" : "0s")));
+        // Log the current saved values
+        Log.d("TIMER_DEBUG", "Current saved values - taskTimeBeforePauseMinutes: " + 
+              taskTimeBeforePauseMinutes + ", taskSecondsBeforePause: " + taskSecondsBeforePause);
+        Log.d("TIMER_DEBUG", "isPaused: " + isPaused + ", isTimerRunning: " + isTimerRunning + 
+              ", isStopTimerPressed (mock mode): " + isStopTimerPressed);
+        
+        // Check if we're in mock mode
+        if (isStopTimerPressed) {
+            Log.d("TIMER_DEBUG", "In mock mode, using saved values or mock timer values");
+            
+            // In mock mode, use the saved values for display
+            String timeDisplay;
+            
+            // Calculate total seconds by combining minutes and seconds
+            long totalSeconds = taskTimeBeforePauseMinutes * 60 + taskSecondsBeforePause;
+            Log.d("TIMER_DEBUG", "Mock mode - calculating total time: " + taskTimeBeforePauseMinutes + 
+                  "m + " + taskSecondsBeforePause + "s = " + totalSeconds + "s");
+            
+            if (totalSeconds >= 60) {
+                // First round down total seconds to nearest 5 for consistency
+                long roundedSeconds = (totalSeconds / 5) * 5;
                 
-                // Now try to display saved values again
-                if (taskTimeBeforePauseMinutes > 0) {
-                    binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + taskTimeBeforePauseMinutes + "m");
-                } else if (taskSecondsBeforePause > 0) {
-                    int roundedSeconds = (int)(taskSecondsBeforePause / 5) * 5;
-                    binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + roundedSeconds + "s");
-                } else {
-                    binding.currentTaskElapsedTime.setText("Elapsed time of the current task: 0s");
-                }
-                
-                // Now return to avoid continuing with time calculation which could be incorrect in paused state
-                return;
-            }
-            Log.d(TAG, "In paused state but no saved task time values found - calculating normally");
-        }
-        
-        // Calculate elapsed time
-        long elapsedTimeSeconds = 0;
-        LocalDateTime taskStart = null;
-        
-        // Try to get task timer start time
-        if (currentRoutine.getTaskTimer() != null) {
-            taskStart = currentRoutine.getTaskTimer().getStartTime();
-            Log.d(TAG, "Task timer start time: " + taskStart);
-        }
-        
-        // If task timer isn't initialized but routine timer is, use routine start time
-        if (taskStart == null && currentRoutine.getRoutineTimer() != null && 
-            currentRoutine.getRoutineTimer().getStartTime() != null) {
-            taskStart = currentRoutine.getRoutineTimer().getStartTime();
-            Log.d(TAG, "Using routine timer start time: " + taskStart);
-            
-            // Force start the task timer if needed
-            if (currentRoutine.getTaskTimer() != null && !currentRoutine.getTaskTimer().isRunning() && 
-                currentRoutine.isActive() && isTimerRunning && !isPaused) {
-                currentRoutine.getTaskTimer().start(taskStart);
-                Log.d(TAG, "Started task timer with routine start time");
-            }
-        }
-        
-        // If we still don't have a valid start time, show initial elapsed time as 0m
-        if (taskStart == null) {
-            Log.d(TAG, "No valid start time found, showing 0m");
-            binding.currentTaskElapsedTime.setText("Elapsed time of the current task: 0m");
-            return;
-        }
-        
-        // Calculate elapsed time based on timer state
-        LocalDateTime now = currentRoutine.getCurrentTime();
-        LocalDateTime currentDateTime = LocalDateTime.now();
-        
-        Log.d(TAG, "Current routine time: " + now);
-        Log.d(TAG, "Current wall time: " + currentDateTime);
-        
-        // Always use the more accurate time based on routine state
-        // - If timer is stopped via Stop Timer OR paused via Pause Button, use routine's current time
-        // - Otherwise use the actual wall clock time
-        if (isPaused || isStopTimerPressed || !isTimerRunning) {
-            // In mock mode or when paused, use the current time from the routine
-            elapsedTimeSeconds = java.time.Duration.between(taskStart, now).getSeconds();
-            Log.d(TAG, "Using routine's current time for elapsed time calculation: " + now);
-        } else {
-            // If timer is running normally, use the current wall time
-            elapsedTimeSeconds = java.time.Duration.between(taskStart, currentDateTime).getSeconds();
-            Log.d(TAG, "Using wall clock time for elapsed time calculation: " + currentDateTime);
-        }
-        
-        // Ensure non-negative time
-        elapsedTimeSeconds = Math.max(0, elapsedTimeSeconds);
-        
-        String timeDisplay;
-        
-        // For running tasks less than a minute, display in 5-second increments
-        if (elapsedTimeSeconds < 60) {
-            // Round DOWN to nearest 5 seconds for running timer
-            int roundedSeconds = (int)(elapsedTimeSeconds / 5) * 5;
-            
-            timeDisplay = roundedSeconds + "s";
-            Log.d(TAG, "Showing seconds: " + roundedSeconds + "s (original: " + elapsedTimeSeconds + "s) [ROUNDED DOWN]");
-        } else {
-            // For tasks over a minute
-            long elapsedMinutes;
-            
-            // If we're in mock mode with saved task time, use that value directly
-            if (isStopTimerPressed && taskTimeBeforePauseMinutes > 0) {
-                elapsedMinutes = taskTimeBeforePauseMinutes;
-                Log.d(TAG, "Using saved task time in mock mode: " + elapsedMinutes + "m");
+                // Convert to minutes
+                long minutes = roundedSeconds / 60;
+                timeDisplay = minutes + "m";
+                Log.d("TIMER_DEBUG", "Mock mode - rounded and converted to minutes: " + 
+                      totalSeconds + "s → " + roundedSeconds + "s → " + minutes + "m");
+            } else if (totalSeconds > 0) {
+                // If less than 60 seconds, round down to nearest 5
+                long roundedSeconds = (totalSeconds / 5) * 5;
+                timeDisplay = roundedSeconds + "s";
+                Log.d("TIMER_DEBUG", "Mock mode - rounded seconds: " + 
+                      totalSeconds + "s → " + roundedSeconds + "s");
             } else {
-                // Apply rounding based on the task/routine state
-                // If task timer is running, round DOWN (floor)
-                // If task timer has ended, round UP (ceil)
-                if (currentRoutine.getTaskTimer().isRunning()) {
-                    // For running timers, round DOWN as per requirement
-                    elapsedMinutes = elapsedTimeSeconds / 60;
-                    Log.d(TAG, "Task timer running - using FLOOR rounding: " + elapsedMinutes + "m");
-                } else {
-                    // For ended timers, round UP as per requirement
-                    elapsedMinutes = (long)Math.ceil(elapsedTimeSeconds / 60.0);
-                    Log.d(TAG, "Task timer ended - using CEILING rounding: " + elapsedMinutes + "m");
-                }
+                // Default to 0s if no saved time
+                timeDisplay = "0s";
+                Log.d("TIMER_DEBUG", "Mock mode - no saved time, defaulting to 0s");
             }
             
-            timeDisplay = elapsedMinutes + "m";
+            // Use consistent format and update display
+            binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + timeDisplay);
+            Log.d("TIMER_DEBUG", "Set elapsed time display (mock mode): " + timeDisplay);
+            
+            return; // Exit early since we've handled the mock mode case
         }
         
-        // Update the text view with the final result
-        binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + timeDisplay);
+        // Check if the timer is running or paused
+        if (isPaused) {
+            Log.d("TIMER_DEBUG", "Timer is paused, using saved values");
+            
+            // We're in a paused state, so use the saved values for display
+            String timeDisplay;
+            
+            if (taskTimeBeforePauseMinutes > 0) {
+                timeDisplay = taskTimeBeforePauseMinutes + "m";
+                Log.d("TIMER_DEBUG", "Using minutes for display: " + timeDisplay);
+            } else if (taskSecondsBeforePause > 0) {
+                // For seconds in paused state, round DOWN to the nearest 5 seconds for display
+                // Integer division automatically rounds down, so we can use taskSecondsBeforePause / 5 * 5
+                int roundedSeconds = (taskSecondsBeforePause / 5) * 5;
+                timeDisplay = roundedSeconds + "s";
+                Log.d("TIMER_DEBUG", "Paused state - rounded DOWN from " + taskSecondsBeforePause + 
+                      "s to " + roundedSeconds + "s");
+            } else {
+                timeDisplay = "0s";
+                Log.d("TIMER_DEBUG", "No saved time, using 0s");
+            }
+            
+            binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + timeDisplay);
+            Log.d("TIMER_DEBUG", "Set elapsed time display (paused): " + timeDisplay);
+            
+            logTimerState("UPDATE_TASK_TIME - After updating display");
+        } else {
+            Log.d("TIMER_DEBUG", "Timer is running, calculating current elapsed time");
+            logTimerState("UPDATE_TASK_TIME - Before calculating elapsed time (running state)");
+            
+            // Get the task timer
+            Timer taskTimer = currentRoutine.getTaskTimer();
+            if (taskTimer == null) {
+                Log.e("RoutineFragment", "Task timer is null");
+                binding.currentTaskElapsedTime.setText("Elapsed time of the current task: 0s");
+                Log.d("TIMER_DEBUG", "Task timer is null, defaulting to 0s");
+                return;
+            }
+            
+            // Print current task timer state
+            Log.d("TIMER_DEBUG", "Task timer state: startTime=" + taskTimer.getStartTime() + 
+                  ", isRunning=" + taskTimer.isRunning() +
+                  ", elapsedSeconds=" + taskTimer.getElapsedSeconds());
+            
+            // Get the elapsed seconds using round DOWN function since timer is running
+            long elapsedSeconds;
+            if (taskTimer instanceof TaskTimer) {
+                TaskTimer specificTaskTimer = (TaskTimer) taskTimer;
+                elapsedSeconds = specificTaskTimer.getElapsedSecondsRoundedDown();
+                Log.d("TIMER_DEBUG", "Using TaskTimer.getElapsedSecondsRoundedDown(): raw=" + 
+                      specificTaskTimer.getElapsedSeconds() + "s, rounded DOWN=" + elapsedSeconds + "s");
+            } else {
+                // Fallback if casting fails - manually round down
+                elapsedSeconds = taskTimer.getElapsedSeconds();
+                elapsedSeconds = (elapsedSeconds / 5) * 5; // Manual round down to nearest 5s
+                Log.d("TIMER_DEBUG", "Manual rounding DOWN to: " + elapsedSeconds + "s");
+            }
         
-        // Log for debugging
-        Log.d(TAG, "Task: " + currentTask.getTaskName() + 
-              " - Elapsed time display: " + timeDisplay +
-              " - Raw seconds: " + elapsedTimeSeconds +
-              " - isPaused: " + isPaused + 
-              " - isStopTimerPressed: " + isStopTimerPressed + 
-              " - isTimerRunning: " + isTimerRunning);
+            String timeDisplay;
+        
+            if (elapsedSeconds >= 60) {
+                // Convert to minutes for display if >= 60 seconds
+                long minutes = elapsedSeconds / 60;
+                timeDisplay = minutes + "m";
+                Log.d("TIMER_DEBUG", "Converting " + elapsedSeconds + "s to " + minutes + "m for display");
+            } else {
+                // For seconds, we already have the rounded down value
+                timeDisplay = elapsedSeconds + "s";
+                Log.d("TIMER_DEBUG", "Using seconds for display (already rounded down): " + timeDisplay);
+            }
+            
+            binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + timeDisplay);
+            Log.d("TIMER_DEBUG", "Set elapsed time display (running): " + timeDisplay);
+            
+            logTimerState("UPDATE_TASK_TIME - After updating display");
+        }
     }
 
     /**
@@ -1291,6 +1527,14 @@ public class RoutineFragment extends Fragment {
         // Find the current active task
         if (currentRoutine == null) {
             Log.d(TAG, "No current routine found");
+            return;
+        }
+        
+        // In mock mode, we don't need to recalculate elapsed time from real timer
+        // Because we're explicitly tracking it with taskSecondsBeforePause and taskTimeBeforePauseMinutes
+        if (isStopTimerPressed) {
+            Log.d(TAG, "In mock mode - using existing values instead of recalculating: " +
+                  taskTimeBeforePauseMinutes + "m " + taskSecondsBeforePause + "s");
             return;
         }
         
@@ -1433,17 +1677,67 @@ public class RoutineFragment extends Fragment {
             }
             
             // Get the current task elapsed time
-            int currentTaskElapsedTime = 0;
-            if (currentRoutine.getTaskTimer() != null && 
-                currentRoutine.getTaskTimer().isRunning()) {
+            long currentTaskElapsedTime = 0;
+            if (currentRoutine.getTaskTimer() != null) {
                 // Get current task elapsed time in seconds
-                if (isPaused && taskSecondsBeforePause > 0) {
-                    // Use stored seconds if we're paused
-                    currentTaskElapsedTime = taskSecondsBeforePause;
-                } else {
-                    // Otherwise calculate it from the timer
-                    currentTaskElapsedTime = currentRoutine.getTaskTimer().getElapsedSeconds();
+                if (isPaused) {
+                    // If we're paused, calculate total seconds by combining minutes and seconds
+                    long totalSeconds = taskTimeBeforePauseMinutes * 60 + taskSecondsBeforePause;
+                    if (totalSeconds > 0) {
+                        // Round DOWN to nearest 5 seconds for consistency
+                        currentTaskElapsedTime = (totalSeconds / 5) * 5;
+                        Log.d("TIMER_DEBUG", "Saving total task time in paused state: " + 
+                              taskTimeBeforePauseMinutes + "m + " + taskSecondsBeforePause + "s = " + 
+                              totalSeconds + "s → rounded to " + currentTaskElapsedTime + "s");
+                    }
+                } else if (currentRoutine.getTaskTimer().isRunning()) {
+                    // Get rounded DOWN seconds from running timer if available
+                    if (currentRoutine.getTaskTimer() instanceof TaskTimer) {
+                        TaskTimer taskTimer = (TaskTimer) currentRoutine.getTaskTimer();
+                        currentTaskElapsedTime = taskTimer.getElapsedSecondsRoundedDown();
+                        Log.d("TIMER_DEBUG", "Saving task time using getElapsedSecondsRoundedDown: " + 
+                              currentTaskElapsedTime + "s");
+                    } else {
+                        // Otherwise manually round down
+                        currentTaskElapsedTime = currentRoutine.getTaskTimer().getElapsedSeconds();
+                        currentTaskElapsedTime = (currentTaskElapsedTime / 5) * 5; // Round DOWN
+                        Log.d("TIMER_DEBUG", "Saving task time with manual rounding: " + 
+                              currentTaskElapsedTime + "s");
+                    }
                 }
+            }
+            
+            // IMPORTANT: In mock mode, we want to use timeBeforePauseMinutes directly as elapsedMinutes
+            // This ensures mock time values persist across restarts
+            long elapsedMinutesToSave = currentRoutine.getRoutineDurationMinutes();
+            
+            // CRITICAL FIX: Always use current timeBeforePauseMinutes if in mock mode
+            // This ensures the updated time value is saved properly after each click of "Advance Mock Timer"
+            if (isStopTimerPressed) {
+                // Get the routine's actual duration
+                long routineDuration = currentRoutine.getRoutineDurationMinutes();
+                
+                // IMPORTANT: In mock mode, we specifically save:
+                // 1. The routine's actual duration (elapsedMinutesToSave)
+                // 2. The mock time increments (timeBeforePauseMinutes)
+                // This allows us to reconstruct the total time after restart
+                elapsedMinutesToSave = routineDuration;
+                
+                // DO NOT change timeBeforePauseMinutes here - it tracks only the mock time increments
+                
+                // Log the values being saved
+                Log.d("MockMode-DEBUG", "SAVING STATE: Mock mode with routineDuration=" + routineDuration + 
+                      "m, mockTimeIncrements=" + timeBeforePauseMinutes + "m");
+                
+                // Log the combined time that will be displayed
+                long combinedTime = routineDuration + timeBeforePauseMinutes;
+                Log.d("MockMode-DEBUG", "SAVING STATE: Combined time for display will be: " + combinedTime + 
+                      "m (routineDuration=" + routineDuration + "m + timeBeforePauseMinutes=" + 
+                      timeBeforePauseMinutes + "m)");
+            } else if (isPaused && timeBeforePauseMinutes > 0) {
+                // Also use saved time if we're paused
+                elapsedMinutesToSave = timeBeforePauseMinutes;
+                Log.d("TIMER_DEBUG", "Using timeBeforePauseMinutes as elapsedMinutes in paused state: " + elapsedMinutesToSave + "m");
             }
             
             // Make sure current time is updated in the routine if paused
@@ -1468,11 +1762,11 @@ public class RoutineFragment extends Fragment {
                 isPaused,
                 manuallyStarted,
                 isStopTimerPressed,
-                timeBeforePauseMinutes,
+                timeBeforePauseMinutes,  // CRITICAL FIX: Always use timeBeforePauseMinutes directly
                 taskTimeBeforePauseMinutes,
                 taskSecondsBeforePause,
                 currentTaskIndex,
-                currentTaskElapsedTime
+                (int) Math.min(currentTaskElapsedTime, Integer.MAX_VALUE)
             );
             
             Log.d("RoutineFragment", "Saved routine state: " + 
@@ -1480,6 +1774,8 @@ public class RoutineFragment extends Fragment {
                   ", isPaused=" + isPaused + 
                   ", manuallyStarted=" + manuallyStarted +
                   ", isTimerStopped=" + isStopTimerPressed +
+                  ", timeBeforePauseMinutes=" + timeBeforePauseMinutes +
+                  ", elapsedMinutes=" + elapsedMinutesToSave +
                   ", currentTaskElapsedTime=" + currentTaskElapsedTime + "s" +
                   ", goalTime=" + (currentRoutine.getGoalTime() != null ? currentRoutine.getGoalTime() : "null"));
         } else {
@@ -1510,14 +1806,21 @@ public class RoutineFragment extends Fragment {
                 // Keep manual start status and time values, but ALWAYS pause the routine on restart
                 manuallyStarted = uiState.isManuallyStarted;
                 
-                // Explicitly set the time before pause to the saved elapsed minutes
-                // Use the saved value if available, otherwise use the current duration
-                if (uiState.elapsedMinutes > 0) {
+                // CRITICAL FIX: Load and verify timeBeforePauseMinutes from saved UI state
+                // Directly use the saved value from uiState.timeBeforePauseMinutes
+                if (uiState.timeBeforePauseMinutes > 0) {
+                    timeBeforePauseMinutes = uiState.timeBeforePauseMinutes;
+                    Log.d("MockMode-DEBUG", "LOADED STATE: timeBeforePauseMinutes = " + timeBeforePauseMinutes + 
+                          " directly from saved UI state");
+                } else if (uiState.elapsedMinutes > 0) {
+                    // Fallback to elapsedMinutes if timeBeforePauseMinutes is not saved
                     timeBeforePauseMinutes = uiState.elapsedMinutes;
-                    Log.d("RoutineFragment", "Loaded elapsed time from saved state: " + timeBeforePauseMinutes + "m");
+                    Log.d("MockMode-DEBUG", "LOADED STATE: timeBeforePauseMinutes = " + timeBeforePauseMinutes + 
+                          " from elapsedMinutes fallback");
                 } else {
                     timeBeforePauseMinutes = currentRoutine.getRoutineDurationMinutes();
-                    Log.d("RoutineFragment", "Using current routine duration as elapsed time: " + timeBeforePauseMinutes + "m");
+                    Log.d("MockMode-DEBUG", "LOADED STATE: timeBeforePauseMinutes = " + timeBeforePauseMinutes + 
+                          " from current routine duration (last resort)");
                 }
                 
                 // Load task time values
@@ -1535,10 +1838,87 @@ public class RoutineFragment extends Fragment {
                 // Force pause state regardless of previous state
                 isPaused = true;
                 isTimerRunning = false;
-                isStopTimerPressed = false;
+                
+                // Restore the mock mode state from saved state
+                isStopTimerPressed = uiState.isTimerStopped;
+                Log.d("RoutineFragment", "Restored mock mode state from isTimerStopped: " + isStopTimerPressed);
+                
+                // CRITICAL FIX: When in mock mode after restart, combine routine duration with saved elapsed time
+                // This ensures we continue from the right time after restart
+                if (isStopTimerPressed) {
+                    // When restarting in mock mode, we need to understand what timeBeforePauseMinutes represents:
+                    // It should ONLY represent the mock time increments, not the total time
+                    // We'll display the combined time (routineDuration + timeBeforePauseMinutes) in updateTimeDisplay
+                    
+                    // Log the values for debugging
+                    long routineDuration = currentRoutine.getRoutineDurationMinutes();
+                    Log.d("MockMode-DEBUG", "RESTART: Mock mode active with routineDuration=" + routineDuration + 
+                          "m, mockTimeIncrements=" + timeBeforePauseMinutes + "m");
+                    
+                    // Calculate the combined time for logging purposes
+                    long combinedTime = routineDuration + timeBeforePauseMinutes;
+                    Log.d("MockMode-DEBUG", "RESTART: Combined time for display will be: " + combinedTime + 
+                          "m (routineDuration=" + routineDuration + "m + mockTimeIncrements=" + 
+                          timeBeforePauseMinutes + "m)");
+                    
+                    // We don't modify timeBeforePauseMinutes here - updateTimeDisplay will combine the values
+                }
+                
+                // Update the button text based on mock mode state
+                if (isStopTimerPressed) {
+                    binding.stopTimerButton.setText("Advance Mock Timer");
+                    binding.stopTimerButton.setEnabled(true);
+                    
+                    // Also update TaskAdapter with mock mode state
+                    if (taskAdapter != null) {
+                        taskAdapter.setMockModeActive(true);
+                        Log.d("RoutineFragment", "Updated TaskAdapter with mock mode status after restart");
+                    }
+                    
+                    Log.d("RoutineFragment", "Restored mock mode UI: button text set to 'Advance Mock Timer'");
+                } else {
+                    binding.stopTimerButton.setText("Switch to Mock");
+                    
+                    // Make sure mock mode is disabled in TaskAdapter
+                    if (taskAdapter != null) {
+                        taskAdapter.setMockModeActive(false);
+                    }
+                }
                 
                 // Save the current time for the pause
                 LocalDateTime pauseTime = LocalDateTime.now();
+                
+                // IMPORTANT: Explicitly ensure the task timer is paused
+                if (currentRoutine.getTaskTimer() != null && currentRoutine.getTaskTimer().isRunning()) {
+                    Log.d("TIMER_DEBUG", "Explicitly ending task timer during app restart");
+                    currentRoutine.getTaskTimer().end(pauseTime);
+                }
+                
+                // Adjust the task timer's start time based on saved elapsed time if needed
+                if (currentRoutine.getTaskTimer() != null && taskSecondsBeforePause > 0) {
+                    // Round DOWN to nearest 5 seconds for consistent display
+                    int roundedSeconds = (taskSecondsBeforePause / 5) * 5;
+                    
+                    // Create an adjusted start time that would give us the correct elapsed time
+                    // Start time = current time - elapsed seconds
+                    LocalDateTime adjustedStartTime = pauseTime.minusSeconds(roundedSeconds);
+                    
+                    // First, make sure to end any running timer
+                    if (currentRoutine.getTaskTimer().isRunning()) {
+                        currentRoutine.getTaskTimer().end(pauseTime);
+                    }
+                    
+                    // Then start with the adjusted time
+                    currentRoutine.getTaskTimer().start(adjustedStartTime);
+                    
+                    // Then pause it immediately to keep it in a consistent state
+                    currentRoutine.getTaskTimer().end(pauseTime);
+                    
+                    Log.d("TIMER_DEBUG", "Reset task timer with adjusted start time for " + 
+                           roundedSeconds + "s display: " + adjustedStartTime);
+                }
+                
+                // Now pause the routine
                 currentRoutine.pauseTime(pauseTime);
                 
                 // Restore goal time if available
@@ -1598,23 +1978,37 @@ public class RoutineFragment extends Fragment {
                 
                 // Explicitly update the elapsed time display with the restored value
                 binding.actualTime.setText(timeBeforePauseMinutes + "m");
+
+                // Update the task elapsed time display with same format as during normal operation
+                // Calculate total seconds by combining minutes and seconds for proper display
+                long totalSeconds = taskTimeBeforePauseMinutes * 60 + taskSecondsBeforePause;
+                Log.d("TIMER_DEBUG", "Restart - calculating total seconds: " + 
+                      taskTimeBeforePauseMinutes + "m + " + taskSecondsBeforePause + "s = " + totalSeconds + "s");
                 
-                // Update the task elapsed time display
-                if (taskSecondsBeforePause > 0) {
-                    // Format the time display based on saved task seconds
-                    int minutes = taskSecondsBeforePause / 60;
-                    int seconds = taskSecondsBeforePause % 60;
-                    
-                    // Display the time in the right format based on duration
-                    if (minutes > 0) {
-                        binding.currentTaskElapsedTime.setText(String.format("%d:%02d", minutes, seconds));
-                    } else {
-                        binding.currentTaskElapsedTime.setText(String.format("%ds", seconds));
-                    }
-                    
-                    Log.d("RoutineFragment", "Updated task elapsed time display: " + 
-                          (minutes > 0 ? String.format("%d:%02d", minutes, seconds) : String.format("%ds", seconds)));
+                String timeDisplay;
+                if (totalSeconds >= 60) {
+                    // Convert to minutes for display if >= 60 seconds
+                    // Round DOWN to nearest 5 seconds first
+                    long roundedSeconds = (totalSeconds / 5) * 5;
+                    long minutes = roundedSeconds / 60;
+                    timeDisplay = minutes + "m";
+                    Log.d("TIMER_DEBUG", "Restart - converting to minutes: " + 
+                          totalSeconds + "s → " + roundedSeconds + "s → " + minutes + "m");
+                } else if (totalSeconds > 0) {
+                    // Round DOWN to nearest 5 seconds for seconds display
+                    long roundedSeconds = (totalSeconds / 5) * 5;
+                    timeDisplay = roundedSeconds + "s";
+                    Log.d("TIMER_DEBUG", "Restart - using seconds (rounded down): " + 
+                          totalSeconds + "s → " + roundedSeconds + "s");
+                } else {
+                    // Default to 0s if no saved time
+                    timeDisplay = "0s";
+                    Log.d("TIMER_DEBUG", "Restart - no saved time, defaulting to 0s");
                 }
+                
+                // Use the exact same format as during normal operation
+                binding.currentTaskElapsedTime.setText("Elapsed time of the current task: " + timeDisplay);
+                Log.d("TIMER_DEBUG", "Set elapsed time display after restart: " + timeDisplay);
                 
                 // Save the state with the new pause info
                 saveRoutineState();
@@ -1641,5 +2035,138 @@ public class RoutineFragment extends Fragment {
                                          !currentRoutine.getTasks().isEmpty();
                                          
         binding.pauseButton.setEnabled(shouldEnablePauseButton);
+    }
+
+    /**
+     * Helper method to get the current active task
+     * @return The current active task, or null if none found
+     */
+    private Task getCurrentTask() {
+        final String TAG = "GET_CURRENT_TASK";
+        
+        // Early exit if no routine
+        if (currentRoutine == null) {
+            Log.d(TAG, "Routine is null");
+            return null;
+        }
+        
+        // Find the first uncompleted task (current active task)
+        List<Task> tasks = currentRoutine.getTasks();
+        if (tasks.isEmpty()) {
+            Log.d(TAG, "Task list is empty");
+            return null;
+        }
+        
+        // First try to find a task that is not completed and not skipped
+        Task currentTask = null;
+        for (Task task : tasks) {
+            if (!task.isCompleted() && !task.isSkipped()) {
+                currentTask = task;
+                Log.d(TAG, "Found active task: " + task.getTaskName());
+                break;
+            }
+        }
+        
+        // If not found, try to find first unchecked task
+        if (currentTask == null) {
+            for (Task task : tasks) {
+                if (!task.isCheckedOff()) {
+                    currentTask = task;
+                    Log.d(TAG, "Found unchecked task: " + task.getTaskName());
+                    break;
+                }
+            }
+        }
+        
+        // If still no active task found but routine has tasks, use first task
+        if (currentTask == null && !tasks.isEmpty()) {
+            Task firstTask = tasks.get(0);
+            // Make sure it's not marked as skipped for display purposes
+            firstTask.setSkipped(false);
+            currentTask = firstTask;
+            Log.d(TAG, "Using first task as fallback: " + firstTask.getTaskName());
+            
+            // Save the change
+            if (repository != null) {
+                repository.updateRoutine(currentRoutine);
+            }
+        }
+        
+        return currentTask;
+    }
+
+    /**
+     * Helper method to log timer state for debugging
+     * @param context Context message to include in the log
+     */
+    private void logTimerState(String context) {
+        if (currentRoutine == null) {
+            Log.d("TIMER_DEBUG", context + " - Routine is null");
+            return;
+        }
+        
+        Log.d("TIMER_DEBUG", "=== " + context + " ===");
+        Log.d("TIMER_DEBUG", "isPaused: " + isPaused);
+        Log.d("TIMER_DEBUG", "isTimerRunning: " + isTimerRunning);
+        Log.d("TIMER_DEBUG", "isStopTimerPressed: " + isStopTimerPressed);
+        Log.d("TIMER_DEBUG", "taskTimeBeforePauseMinutes: " + taskTimeBeforePauseMinutes);
+        Log.d("TIMER_DEBUG", "taskSecondsBeforePause: " + taskSecondsBeforePause);
+        
+        if (currentRoutine.getRoutineTimer() != null) {
+            Log.d("TIMER_DEBUG", "Routine timer - startTime: " + currentRoutine.getRoutineTimer().getStartTime());
+            Log.d("TIMER_DEBUG", "Routine timer - isRunning: " + currentRoutine.getRoutineTimer().isRunning());
+        }
+        
+        if (currentRoutine.getTaskTimer() != null) {
+            Log.d("TIMER_DEBUG", "Task timer - startTime: " + currentRoutine.getTaskTimer().getStartTime());
+            Log.d("TIMER_DEBUG", "Task timer - isRunning: " + currentRoutine.getTaskTimer().isRunning());
+            Log.d("TIMER_DEBUG", "Task timer - elapsedSeconds: " + currentRoutine.getTaskTimer().getElapsedSeconds());
+            
+            if (currentRoutine.getTaskTimer() instanceof TaskTimer) {
+                TaskTimer taskTimer = (TaskTimer) currentRoutine.getTaskTimer();
+                Log.d("TIMER_DEBUG", "Task timer - elapsedSecondsRoundedDown: " + taskTimer.getElapsedSecondsRoundedDown());
+                Log.d("TIMER_DEBUG", "Task timer - elapsedSecondsRoundedUp: " + taskTimer.getElapsedSecondsRoundedUp());
+            }
+        }
+    }
+
+    /**
+     * Check if the routine has ended
+     * @return true if the routine has ended
+     */
+    public boolean isRoutineEnded() {
+        return binding != null && 
+               binding.endRoutineButton != null && 
+               binding.endRoutineButton.getText().toString().equals("Routine Ended");
+    }
+
+    /**
+     * Get the current task elapsed time in seconds
+     * This is used by TaskAdapter to check if we need to increment task completion time
+     * @return The current task elapsed time in seconds
+     */
+    public long getCurrentTaskElapsedTimeInSeconds() {
+        // Calculate total seconds by combining minutes and seconds
+        long totalSeconds = taskTimeBeforePauseMinutes * 60 + taskSecondsBeforePause;
+        
+        // If we're not in mock mode and the timer is running, get the actual elapsed time
+        if (!isStopTimerPressed && currentRoutine != null && currentRoutine.getTaskTimer() != null) {
+            if (currentRoutine.getTaskTimer().isRunning()) {
+                // Get elapsed seconds from the timer
+                if (currentRoutine.getTaskTimer() instanceof TaskTimer) {
+                    TaskTimer taskTimer = (TaskTimer) currentRoutine.getTaskTimer();
+                    totalSeconds = taskTimer.getElapsedSecondsRoundedDown();
+                    Log.d("TIMER_DEBUG", "Getting elapsed time from running timer: " + totalSeconds + "s");
+                } else {
+                    // Fallback if casting fails - manually round down
+                    totalSeconds = currentRoutine.getTaskTimer().getElapsedSeconds();
+                    totalSeconds = (totalSeconds / 5) * 5; // Round DOWN to nearest 5s
+                    Log.d("TIMER_DEBUG", "Manual rounding DOWN to: " + totalSeconds + "s");
+                }
+            }
+        }
+        
+        Log.d("TIMER_DEBUG", "Current task elapsed time: " + totalSeconds + "s");
+        return totalSeconds;
     }
 }
