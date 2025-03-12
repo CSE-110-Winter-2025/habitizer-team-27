@@ -1,5 +1,6 @@
 package edu.ucsd.cse110.habitizer.app.MS2Tests;
 
+
 import static androidx.test.espresso.Espresso.onData;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
@@ -15,12 +16,14 @@ import android.util.Log;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.espresso.Espresso;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.List;
 
@@ -30,8 +33,9 @@ import edu.ucsd.cse110.habitizer.app.TestHelper;
 import edu.ucsd.cse110.habitizer.app.data.db.HabitizerRepository;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 
-public class DeleteTaskTests {
-    private static final String TAG = "DeleteTaskTest";
+@RunWith(AndroidJUnit4.class)
+public class DeleteRoutineTests {
+    private static final String TAG = "DeleteRoutineTests";
     HabitizerRepository repository;
 
     // Initialize test data before any tests run
@@ -66,10 +70,9 @@ public class DeleteTaskTests {
         });
     }
 
-    // This test deletes a task and checks that it remains deleted
     @Test
-    public void testDeleteTask() {
-        Log.d(TAG, "Running testDeleteTask");
+    public void testDeleteRoutine(){
+        Log.d(TAG, "Running testDeleteRoutine");
 
         // Wait a moment to ensure UI is fully loaded
         try {
@@ -79,49 +82,49 @@ public class DeleteTaskTests {
         }
         Espresso.onIdle();
 
-        // Clicks start on "Morning"
+        // Clicks remove button
         onData(Matchers.anything())
                 .inAdapterView(withId(R.id.card_list))
                 .atPosition(0)
+                .onChildView(withId(R.id.delete_routine_button))
+                .perform(click());
+        Espresso.onIdle();
+
+        // Wait a bit more after clicking delete a routine
+        try {
+            Thread.sleep(1000); // Wait for 1 second (adjust as needed)
+        } catch (InterruptedException e) {
+            // Ignore
+        }
+        Espresso.onIdle(); // Wait again after sleep
+
+        Espresso.onView(withText("DELETE"))
+                .perform(click());
+
+        Espresso.onIdle();
+
+        // Wait a bit more after clicking delete a routine
+        try {
+            Thread.sleep(1000); // Wait for 1 second (adjust as needed)
+        } catch (InterruptedException e) {
+            // Ignore
+        }
+        Espresso.onIdle(); // Wait again after sleep
+
+        onData(anything())
+                .inAdapterView(withId(R.id.card_list))
+                .atPosition(0)
                 .onChildView(withId(R.id.start_routine_button))
-                .perform(click());
-        Espresso.onIdle();
-
-        // Delete the first task (Shower)
-        onData(anything())
-                .inAdapterView(withId(R.id.routine_list))
-                .atPosition(0)
-                .onChildView(withId(R.id.delete_task_button))
-                .perform(click());
-        Espresso.onIdle();
-
-        // Check the first task is no longer Shower
-        onData(anything())
-                .inAdapterView(withId(R.id.routine_list))
-                .atPosition(0)
-                .onChildView(withId(R.id.task_time))
-                .check(matches(not((withText("Shower")))));
-
-        // End the routine
-        onView(withId(R.id.end_routine_button)).perform(click());
+                .check(matches(not((withText("Morning")))));
 
         // Restart the app
         activityRule.getScenario().close();
         ActivityScenario.launch(MainActivity.class, null);
 
-        // Clicks start on "Morning"
-        onData(Matchers.anything())
+        onData(anything())
                 .inAdapterView(withId(R.id.card_list))
                 .atPosition(0)
                 .onChildView(withId(R.id.start_routine_button))
-                .perform(click());
-        Espresso.onIdle();
-
-        // Check the first task is still not Shower
-        onData(anything())
-                .inAdapterView(withId(R.id.routine_list))
-                .atPosition(0)
-                .onChildView(withId(R.id.task_time))
-                .check(matches(not((withText("Shower")))));
+                .check(matches(not((withText("Morning")))));
     }
 }
