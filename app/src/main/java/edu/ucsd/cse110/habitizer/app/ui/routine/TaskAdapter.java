@@ -35,13 +35,12 @@ import edu.ucsd.cse110.habitizer.app.ui.dialog.RenameTaskDialogFragment;
 import edu.ucsd.cse110.habitizer.lib.domain.Routine;
 import edu.ucsd.cse110.habitizer.lib.domain.Task;
 
-import androidx.fragment.app.FragmentActivity;
-
 public class TaskAdapter extends ArrayAdapter<Task> {
     private final Routine routine;
     private final LegacyLogicAdapter dataSource;
     private final FragmentManager fragmentManager;
     private RoutineFragment routineFragment;
+    private boolean isMockModeActive = false; // Add flag for mock mode state
 
     // ViewHolder pattern for better performance
     static class ViewHolder {
@@ -63,7 +62,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         Log.d("TaskAdapter", "TaskAdapter created for routine: " +
                 (routine != null ? routine.getRoutineName() : "null") +
                 " with " + (tasks != null ? tasks.size() : 0) + " tasks");
-        if (tasks != null && !tasks.isEmpty()) {
+        if (!tasks.isEmpty()) {
             for (int i = 0; i < tasks.size(); i++) {
                 Task task = tasks.get(i);
                 Log.d("TaskAdapter", "Initial task " + i + ": " +
@@ -74,6 +73,15 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
     public void setRoutineFragment(RoutineFragment fragment) {
         this.routineFragment = fragment;
+    }
+
+    /**
+     * Sets whether mock mode is active, which affects task interaction logic
+     * @param isActive True if mock mode is active, false otherwise
+     */
+    public void setMockModeActive(boolean isActive) {
+        this.isMockModeActive = isActive;
+        Log.d("TaskAdapter", "Mock mode set to: " + isActive);
     }
 
     @NonNull
@@ -106,7 +114,7 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             holder.renameButton = convertView.findViewById(R.id.rename_button);
             holder.moveUpButton = convertView.findViewById(R.id.move_up_button);
             holder.moveDownButton = convertView.findViewById(R.id.move_down_button);
-            holder.deleteButton = convertView.findViewById(R.id.imageButton4);
+            holder.deleteButton = convertView.findViewById(R.id.delete_task_button);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -128,20 +136,49 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         holder.taskName.setText(task.getTaskName());
         holder.checkBox.setChecked(task.isCheckedOff());
         
-        // Check if the fragment is paused
+        // Check if the fragment is paused or the routine has ended
         boolean isFragmentPaused = (routineFragment != null && routineFragment.isPaused());
+        boolean isRoutineEnded = false;
+        
+        // Check if the routine has ended using the helper method
+        if (routineFragment != null) {
+            isRoutineEnded = routineFragment.isRoutineEnded();
+            Log.d("TaskAdapter", "Routine ended check: " + isRoutineEnded);
+        } else {
+            // Fallback: check if the routine's timer has ended
+            if (routine != null && routine.getRoutineTimer() != null) {
+                isRoutineEnded = !routine.isActive() || routine.getRoutineTimer().getEndTime() != null;
+                Log.d("TaskAdapter", "Using routine timer state as fallback: isRoutineEnded=" + isRoutineEnded);
+            }
+        }
         
         // Disable checkbox if:
         // 1. The task is already checked off, OR
         // 2. The routine is not active, OR
-        // 3. The fragment is paused (new condition to prevent task checking when paused)
-        holder.checkBox.setEnabled(!task.isCheckedOff() && routine.isActive() && !isFragmentPaused);
+        // 3. The routine has ended, OR
+        // 4. The fragment is paused AND in mock mode
+        boolean canCheckOffTask = !task.isCheckedOff() && 
+                                  routine.isActive() && 
+                                  !isRoutineEnded && 
+                                  !(isFragmentPaused && isMockModeActive);
         
-        // Also disable up/down buttons and rename button when paused
-        holder.moveUpButton.setEnabled(!isFragmentPaused);
-        holder.moveDownButton.setEnabled(!isFragmentPaused);
-        holder.renameButton.setEnabled(!isFragmentPaused);
-        holder.deleteButton.setEnabled(!isFragmentPaused);
+        holder.checkBox.setEnabled(canCheckOffTask);
+        
+        if (isRoutineEnded) {
+            Log.d("TaskAdapter", "Routine has ended - disabling task interactions");
+        }
+        
+        if (isFragmentPaused && isMockModeActive) {
+            Log.d("TaskAdapter", "App is in mock mode and paused - disabling task checkboxes");
+        }
+        
+        // Also disable all other buttons when routine is ended or paused in mock mode
+        boolean canInteractWithTask = !isRoutineEnded && 
+                                     !(isFragmentPaused && isMockModeActive);
+        holder.moveUpButton.setEnabled(canInteractWithTask);
+        holder.moveDownButton.setEnabled(canInteractWithTask);
+        holder.renameButton.setEnabled(canInteractWithTask);
+        holder.deleteButton.setEnabled(canInteractWithTask);
         
         updateTimeDisplay(holder.taskTime, task);
         holder.moveUpButton.setTag(position);
@@ -151,13 +188,30 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         // Set position tag for correct item identification
         holder.checkBox.setTag(position);
 
+        // Create a final reference to the holder for use in lambdas
+        final ViewHolder finalHolder = holder;
+        // Keep track of the final value of isRoutineEnded
+        final boolean finalIsRoutineEnded = isRoutineEnded;
+
         // Checkbox click handler
         holder.checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
             int pos = (int) buttonView.getTag();
             Task currentTask = getItem(pos);
 
             if (currentTask != null && isChecked && !currentTask.isCheckedOff()) {
-                handleTaskCompletion(currentTask, holder);
+                // Double-check we're not in an ended state before handling task completion
+                if (!finalIsRoutineEnded) {
+                    handleTaskCompletion(currentTask, finalHolder);
+                } else {
+                    // Reset checkbox if the routine is ended
+                    Log.d("TaskAdapter", "Preventing task checkoff - routine has ended");
+                    final CheckBox checkBox = finalHolder.checkBox;
+                    buttonView.post(() -> {
+                        checkBox.setOnCheckedChangeListener(null);
+                        checkBox.setChecked(false);
+                        checkBox.setEnabled(false);
+                    });
+                }
             }
         });
 
@@ -220,6 +274,32 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         // Update business logic
         routine.completeTask(task.getTaskName());
         
+        // IMPORTANT: Check if the task completion time is less than the current saved task time
+        // If it's less, set the completion time equal to the saved task time
+        if (routineFragment != null) {
+            // Get current saved task time in seconds
+            long taskTimeInSeconds = routineFragment.getCurrentTaskElapsedTimeInSeconds();
+            int taskCompletionTime = task.getElapsedSeconds();
+            
+            // Check if completion time is less than current saved task time
+            if (taskCompletionTime > 0 && taskCompletionTime < taskTimeInSeconds) {
+                Log.d("TaskCompletion", "Task completion time (" + taskCompletionTime + 
+                      "s) is less than current saved task time (" + taskTimeInSeconds + 
+                      "s). Setting completion time equal to saved task time.");
+                
+                // Set completion time equal to saved task time
+                task.setElapsedSeconds((int)taskTimeInSeconds);
+                
+                // IMPORTANT: Also update the task's duration in minutes to match the seconds
+                // This ensures minutes and seconds remain consistent
+                long updatedMinutes = taskTimeInSeconds / 60;
+                task.setDuration((int)updatedMinutes);  // Cast to int for setDuration method
+                
+                Log.d("TaskCompletion", "Updated task completion time: " + task.getElapsedSeconds() + 
+                      "s (" + updatedMinutes + "m)");
+            }
+        }
+        
         // Log task completion details
         Log.d("TaskCompletion", "Task completed: " + task.getTaskName() +
               " - Minutes: " + task.getDuration() +
@@ -228,6 +308,45 @@ public class TaskAdapter extends ArrayAdapter<Task> {
 
         // Update data source
         dataSource.putRoutine(routine);
+
+        // If in mock mode, reset the task timer to 0
+        if (routineFragment != null) {
+            // Call the new method to reset timer in mock mode
+            routineFragment.resetTaskTimeInMockMode();
+            Log.d("TaskCompletion", "Checked for mock mode timer reset");
+            
+            // IMPORTANT: If we're in mock mode, always convert completed task time to minutes (rounded down)
+            if (isMockModeActive) {
+                // Get the current task's elapsed seconds
+                int elapsedSeconds = task.getElapsedSeconds();
+                
+                // Calculate whole minutes and remainder seconds
+                int wholeMinutes = elapsedSeconds / 60;
+                int remainderSeconds = elapsedSeconds % 60;
+                
+                // For mock mode: if there are ANY remainder seconds, round UP to next minute
+                if (wholeMinutes > 0) {
+                    // For times >= 1 minute, round UP if there are any remainder seconds
+                    int roundedMinutes = (remainderSeconds > 0) ? wholeMinutes + 1 : wholeMinutes;
+                    
+                    // Update the task's duration with ROUNDED UP minutes
+                    task.setDuration(roundedMinutes);
+                    
+                    // For display purposes, make elapsedSeconds match the rounded minutes
+                    task.setElapsedSeconds(roundedMinutes * 60);
+                    
+                    Log.d("TaskCompletion", "Mock mode: Converted task time from " + 
+                          elapsedSeconds + "s to " + roundedMinutes + "m (rounded UP)");
+                } else {
+                    // For times < 1 minute, keep the original seconds
+                    // and make sure the duration is 0 to force seconds display
+                    task.setDuration(0);
+                    
+                    Log.d("TaskCompletion", "Mock mode with small time: Keeping " + 
+                          elapsedSeconds + "s for display as seconds (will be rounded to 5s intervals)");
+                }
+            }
+        }
 
         // Handle auto-complete
         if (routine.autoCompleteRoutine()) {
@@ -425,6 +544,13 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     }
 
     private void updateTimeDisplay(TextView taskTime, Task task) {
+        // Check if the routine has ended - if so, don't show any task times
+        if (routineFragment != null && routineFragment.isRoutineEnded()) {
+            taskTime.setText("");
+            Log.d("TaskAdapter", "Hiding task time because routine has ended");
+            return;
+        }
+
         if (!task.isCompleted()) {
             taskTime.setText("");
             return;
@@ -433,23 +559,57 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         Log.d("TaskAdapter", "Updating time display for task: " + task.getTaskName() + 
               " - Minutes: " + task.getDuration() + 
               " - Seconds: " + task.getElapsedSeconds() + 
-              " - Should show in seconds: " + task.shouldShowInSeconds());
+              " - Should show in seconds: " + task.shouldShowInSeconds() +
+              " - Mock mode: " + isMockModeActive);
         
-        if (task.shouldShowInSeconds()) {
+        // Special case for mock mode
+        if (isMockModeActive) {
+            // In mock mode:
+            // - If minutes <= 0, display time in seconds (rounded up to nearest 5s interval)
+            // - Otherwise, display time in minutes (rounded down)
+            if (task.getDuration() <= 0) {
+                // Display in seconds, rounded up to nearest 5s interval
+                String formattedTime = formatTimeInSeconds(task.getElapsedSeconds());
+                taskTime.setText(formattedTime);
+                Log.d("TaskAdapter", "Mock mode with 0 minutes: Displaying task time in seconds: " + formattedTime);
+            } else {
+                // Display in minutes
+                String formattedTime = formatTime(task.getDuration());
+                taskTime.setText(formattedTime);
+                Log.d("TaskAdapter", "Mock mode with positive minutes: Displaying task time in minutes: " + formattedTime);
+            }
+            return;
+        }
+        
+        // For normal mode, use the improved logic
+        // 1. If shouldShowInSeconds is true OR
+        // 2. If elapsedSeconds is not divisible evenly by 60 (has remainder seconds)
+        // then show in seconds format
+        if (task.shouldShowInSeconds() || task.getElapsedSeconds() % 60 != 0) {
             // Format time in 5-second increments
             String formattedTime = formatTimeInSeconds(task.getElapsedSeconds());
             taskTime.setText(formattedTime);
-            Log.d("TaskAdapter", "Displaying task in seconds: " + formattedTime);
+            Log.d("TaskAdapter", "Displaying task in seconds: " + formattedTime + 
+                  (task.shouldShowInSeconds() ? " (set to show in seconds)" : " (has remainder seconds)"));
         } else {
-            // Format time in minutes as before
+            // Format time in minutes only when it's an exact minute value
             String formattedTime = formatTime(task.getDuration());
             taskTime.setText(formattedTime);
-            Log.d("TaskAdapter", "Displaying task in minutes: " + formattedTime);
+            Log.d("TaskAdapter", "Displaying task in minutes: " + formattedTime + " (exact minute value)");
         }
     }
 
     private String formatTime(long minutes) {
-        return minutes > 0 ? String.format("%dm", minutes) : "";
+        // For completed tasks with minute values <= 0, show at least 1 minute
+        // Note: We should rarely hit this case since we've already handled duration=0
+        // cases to display in seconds, but this ensures we never show empty values
+        if (minutes <= 0) {
+            Log.d("TaskAdapter", "Minute value was 0 or negative, displaying minimum 1m");
+            return "1m";  // Always show at least 1 minute for completed tasks
+        }
+        
+        Log.d("TaskAdapter", "Formatting task time in minutes: " + minutes + "m");
+        return String.format("%dm", minutes);
     }
     
     /**
@@ -457,13 +617,15 @@ public class TaskAdapter extends ArrayAdapter<Task> {
      * Rounds UP to the nearest 5-second increment for completed tasks
      */
     private String formatTimeInSeconds(int seconds) {
+        // For completed tasks with zero or very small seconds, always show at least 5s
         if (seconds <= 0) {
-            return "";
+            Log.d("TaskAdapter", "Formatting zero or negative seconds, showing minimum 5s");
+            return "5s";
         }
         
         Log.d("TaskAdapter", "Formatting task time in seconds: " + seconds);
         
-        // Round UP to nearest 5-second increment for completed tasks
+        // Round UP to nearest 5-second interval
         int roundedSeconds;
         
         // Calculate how many seconds into the current 5-second interval
@@ -475,14 +637,17 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         } else {
             // Round up to next 5-second interval
             roundedSeconds = seconds + (5 - remainder);
+            Log.d("TaskAdapter", "Rounding up from " + seconds + "s to " + roundedSeconds + 
+                  "s (next 5s interval)");
         }
         
         // Make sure we show at least 5s
         if (roundedSeconds < 5) {
             roundedSeconds = 5;
+            Log.d("TaskAdapter", "Value too small, setting minimum to 5s");
         }
         
-        Log.d("TaskAdapter", "Formatting seconds: " + seconds + " → rounded UP to: " + roundedSeconds + "s");
+        Log.d("TaskAdapter", "Final formatted seconds: " + roundedSeconds + "s");
         return String.format("%ds", roundedSeconds);
     }
 
