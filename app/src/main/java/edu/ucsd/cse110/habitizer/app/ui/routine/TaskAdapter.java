@@ -289,7 +289,14 @@ public class TaskAdapter extends ArrayAdapter<Task> {
                 
                 // Set completion time equal to saved task time
                 task.setElapsedSeconds((int)taskTimeInSeconds);
-                Log.d("TaskCompletion", "Updated task completion time: " + task.getElapsedSeconds() + "s");
+                
+                // IMPORTANT: Also update the task's duration in minutes to match the seconds
+                // This ensures minutes and seconds remain consistent
+                long updatedMinutes = taskTimeInSeconds / 60;
+                task.setDuration((int)updatedMinutes);  // Cast to int for setDuration method
+                
+                Log.d("TaskCompletion", "Updated task completion time: " + task.getElapsedSeconds() + 
+                      "s (" + updatedMinutes + "m)");
             }
         }
         
@@ -307,6 +314,25 @@ public class TaskAdapter extends ArrayAdapter<Task> {
             // Call the new method to reset timer in mock mode
             routineFragment.resetTaskTimeInMockMode();
             Log.d("TaskCompletion", "Checked for mock mode timer reset");
+            
+            // IMPORTANT: If we're in mock mode, always convert completed task time to minutes (rounded down)
+            if (isMockModeActive) {
+                // Get the current task's elapsed seconds
+                int elapsedSeconds = task.getElapsedSeconds();
+                
+                // Convert to minutes (round down) by integer division
+                int minutes = elapsedSeconds / 60;
+                
+                // Update the task's duration in minutes
+                task.setDuration(minutes);
+                
+                // Force the task to display in minutes (not seconds)
+                // We can do this by making elapsedSeconds a multiple of 60
+                task.setElapsedSeconds(minutes * 60);
+                
+                Log.d("TaskCompletion", "Mock mode: Converted task time from " + 
+                      elapsedSeconds + "s to " + minutes + "m (rounded down)");
+            }
         }
 
         // Handle auto-complete
@@ -520,18 +546,33 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         Log.d("TaskAdapter", "Updating time display for task: " + task.getTaskName() + 
               " - Minutes: " + task.getDuration() + 
               " - Seconds: " + task.getElapsedSeconds() + 
-              " - Should show in seconds: " + task.shouldShowInSeconds());
+              " - Should show in seconds: " + task.shouldShowInSeconds() +
+              " - Mock mode: " + isMockModeActive);
         
-        if (task.shouldShowInSeconds()) {
+        // Special case for mock mode - always show in minutes for completed tasks
+        if (isMockModeActive) {
+            // In mock mode, always display time in minutes (rounded down) for completed tasks
+            String formattedTime = formatTime(task.getDuration());
+            taskTime.setText(formattedTime);
+            Log.d("TaskAdapter", "Mock mode: Displaying task time in minutes: " + formattedTime);
+            return;
+        }
+        
+        // For normal mode, use the improved logic
+        // 1. If shouldShowInSeconds is true OR
+        // 2. If elapsedSeconds is not divisible evenly by 60 (has remainder seconds)
+        // then show in seconds format
+        if (task.shouldShowInSeconds() || task.getElapsedSeconds() % 60 != 0) {
             // Format time in 5-second increments
             String formattedTime = formatTimeInSeconds(task.getElapsedSeconds());
             taskTime.setText(formattedTime);
-            Log.d("TaskAdapter", "Displaying task in seconds: " + formattedTime);
+            Log.d("TaskAdapter", "Displaying task in seconds: " + formattedTime + 
+                  (task.shouldShowInSeconds() ? " (set to show in seconds)" : " (has remainder seconds)"));
         } else {
-            // Format time in minutes as before
+            // Format time in minutes only when it's an exact minute value
             String formattedTime = formatTime(task.getDuration());
             taskTime.setText(formattedTime);
-            Log.d("TaskAdapter", "Displaying task in minutes: " + formattedTime);
+            Log.d("TaskAdapter", "Displaying task in minutes: " + formattedTime + " (exact minute value)");
         }
     }
 
