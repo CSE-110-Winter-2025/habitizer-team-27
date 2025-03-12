@@ -20,6 +20,8 @@
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
       <SelectionState runConfigName="testAutoPauseOnAppExit()">
+
+      <SelectionState runConfigName="MS2Test1()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

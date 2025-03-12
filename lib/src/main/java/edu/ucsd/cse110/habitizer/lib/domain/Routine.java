@@ -60,16 +60,22 @@ public class Routine implements Serializable {
         
         // If the timer was stopped, ignore the actual system time and use
         // our adjusted time
-        if (timerStopped) {
-            routineTimer.end(currentTime);
+        LocalDateTime effectiveEndTime = timerStopped ? currentTime : endTime;
+        
+        // End both routine timer and task timer
+        routineTimer.end(effectiveEndTime);
+        
+        // Make sure to also end the task timer
+        if (taskTimer.isRunning()) {
+            System.out.println("Explicitly ending task timer as part of routine end");
+            taskTimer.end(effectiveEndTime);
         }
-        routineTimer.end(endTime);
 
         markSkippedTasks();
         
-        // If the timer is still running for some reason, force it to end
+        // If the routine timer is still running for some reason, force it to end
         if (routineTimer.isRunning()) {
-            routineTimer.end(endTime);
+            routineTimer.end(effectiveEndTime);
         }
     }
 
@@ -87,7 +93,10 @@ public class Routine implements Serializable {
     }
 
     public boolean isActive() {
-        return routineTimer.isActive();
+        // A routine is active if either:
+        // 1. The timer is running (for routines with tasks), OR
+        // 2. The timerStopped flag is false (for empty routines marked as active)
+        return routineTimer.isActive() || !timerStopped;
     }
 
     // Add the task
@@ -134,7 +143,15 @@ public class Routine implements Serializable {
         taskTimer.end(endTimeForTask);
 
         // Calculate elapsed minutes and seconds
-        int elapsedSeconds = taskTimer.getElapsedSeconds();
+        // For completed tasks, we round UP the seconds to nearest 5
+        long elapsedSecondsLong = taskTimer.getElapsedSecondsRoundedUp();
+        
+        // Ensure the value fits within an int
+        if (elapsedSecondsLong > Integer.MAX_VALUE) {
+            System.out.println("Warning: Task elapsed time exceeds maximum int value: " + elapsedSecondsLong);
+            elapsedSecondsLong = Integer.MAX_VALUE;
+        }
+        int elapsedSeconds = (int) elapsedSecondsLong;
         int elapsedMinutes = taskTimer.getElapsedMinutes();
         
         // Calculate raw duration for debugging
@@ -148,8 +165,9 @@ public class Routine implements Serializable {
         System.out.println("- Start time: " + taskTimer.getStartTime());
         System.out.println("- End time: " + taskTimer.getEndTime());
         System.out.println("- Raw duration: " + rawMinutes + " minutes");
+        System.out.println("- Raw seconds: " + taskTimer.getElapsedSeconds() + " seconds");
+        System.out.println("- Rounded UP seconds: " + elapsedSeconds + " seconds");
         System.out.println("- Rounded duration: " + elapsedMinutes + " minutes");
-        System.out.println("- Elapsed seconds: " + elapsedSeconds + " seconds");
         
         // Store task duration in minutes for compatibility
         task.setDurationAndComplete(elapsedMinutes);
@@ -213,18 +231,33 @@ public class Routine implements Serializable {
         
         // Only adjust if we were paused
         if (timerStopped) {
-            // Update the start times of both timers to account for the time the app was in background
-            if (routineTimer.isActive()) {
-                routineTimer.updateStartTime(routineTimer.getStartTime().plusSeconds(secondsDifference));
-            }
-            
-            if (taskTimer.isRunning()) {
-                taskTimer.updateStartTime(taskTimer.getStartTime().plusSeconds(secondsDifference));
-            }
-            
-            // Update current time to the resume time
+            // Update the current time to the resume time first
             currentTime = resumeTime;
             timerStopped = false;
+            
+            // For the routine timer, we need to update the start time to account for the paused duration
+            if (routineTimer.isActive()) {
+                if (routineTimer.getStartTime() != null) {
+                    // Only update if we have a valid start time
+                    LocalDateTime adjustedRoutineStartTime = routineTimer.getStartTime().plusSeconds(secondsDifference);
+                    routineTimer.updateStartTime(adjustedRoutineStartTime);
+                    System.out.println("Routine timer start time adjusted to: " + adjustedRoutineStartTime);
+                }
+            }
+            
+            // For the task timer, proper handling is critical
+            if (taskTimer != null) {
+                if (taskTimer.getStartTime() != null) {
+                    // Note: We don't adjust the task timer's start time here because that's handled
+                    // in the RoutineFragment when resuming, which adjusts it based on saved elapsed time
+                    // Just ensure it's running
+                    if (!taskTimer.isRunning()) {
+                        // If not running, ensure it starts again
+                        taskTimer.start(taskTimer.getStartTime());
+                        System.out.println("Task timer restarted with existing start time: " + taskTimer.getStartTime());
+                    }
+                }
+            }
         }
     }
 
@@ -334,6 +367,37 @@ public class Routine implements Serializable {
 
     public @Nullable Integer getGoalTime() {
         return goalTime;
+    }
+
+    /**
+     * Check if the timer is stopped
+     * @return true if the timer is stopped
+     */
+    public boolean isTimerStopped() {
+        return timerStopped;
+    }
+
+    /**
+     * Sets the active flag for the routine without starting the timer.
+     * This is used for empty routines that should be displayed in the UI
+     * but should not have their timers started.
+     * 
+     * @param isActive Whether to set the routine as active
+     */
+    public void setIsActiveWithoutStartingTimer(boolean isActive) {
+        if (isActive) {
+            // Just set the current time without starting the timers
+            currentTime = LocalDateTime.now();
+            timerStopped = false;
+            
+            // We intentionally don't call routineTimer.start() or taskTimer.start()
+            // because we don't want to start timers for empty routines
+            System.out.println("Routine " + routineName + " marked as active without starting timer");
+        } else {
+            // If setting to inactive, mark as stopped
+            timerStopped = true;
+            System.out.println("Routine " + routineName + " marked as inactive");
+        }
     }
 
 }

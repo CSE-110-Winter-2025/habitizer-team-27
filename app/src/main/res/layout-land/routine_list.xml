@@ -19,6 +19,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Edit button is hidden in landscape mode -->
     <ImageButton
         android:id="@+id/edit_routine_button"
         android:layout_width="40dp"
@@ -27,6 +28,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Edit routine name"
         android:src="@android:drawable/ic_menu_edit"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/routine_name"
         app:layout_constraintStart_toEndOf="@+id/routine_name"
         app:layout_constraintTop_toTopOf="@+id/routine_name" />
@@ -59,4 +61,4 @@
         app:layout_constraintVertical_bias="0.0"
         app:srcCompat="@android:drawable/btn_dialog" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout> 

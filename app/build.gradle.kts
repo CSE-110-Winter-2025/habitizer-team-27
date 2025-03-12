@@ -45,6 +45,9 @@ android {
         viewBinding = true
     }
 
+    testOptions {
+        animationsDisabled = true
+    }
 }
 
 dependencies {
