@@ -14,13 +14,13 @@ public abstract class Timer {
 
     // Starts timer
     public void start(LocalDateTime startTime) {
-        // Update start time regardless of whether the timer is already running
-        // This allows for adjusting the start time when resuming a paused timer
-        this.startTime = startTime;
-        isRunning = true;
-        
-        // Reset end time when starting/restarting the timer
-        this.endTime = null;
+        // Only set start time if the timer isn't already running
+        if (!isRunning) {
+            this.startTime = startTime;
+            isRunning = true;
+            // Reset end time when starting/restarting the timer
+            this.endTime = null;
+        }
     }
 
     // Ends timer
