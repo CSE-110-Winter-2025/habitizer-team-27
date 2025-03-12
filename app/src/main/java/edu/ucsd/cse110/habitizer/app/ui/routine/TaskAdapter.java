@@ -320,18 +320,31 @@ public class TaskAdapter extends ArrayAdapter<Task> {
                 // Get the current task's elapsed seconds
                 int elapsedSeconds = task.getElapsedSeconds();
                 
-                // Convert to minutes (round down) by integer division
-                int minutes = elapsedSeconds / 60;
+                // Calculate whole minutes and remainder seconds
+                int wholeMinutes = elapsedSeconds / 60;
+                int remainderSeconds = elapsedSeconds % 60;
                 
-                // Update the task's duration in minutes
-                task.setDuration(minutes);
-                
-                // Force the task to display in minutes (not seconds)
-                // We can do this by making elapsedSeconds a multiple of 60
-                task.setElapsedSeconds(minutes * 60);
-                
-                Log.d("TaskCompletion", "Mock mode: Converted task time from " + 
-                      elapsedSeconds + "s to " + minutes + "m (rounded down)");
+                // For mock mode: if there are ANY remainder seconds, round UP to next minute
+                if (wholeMinutes > 0) {
+                    // For times >= 1 minute, round UP if there are any remainder seconds
+                    int roundedMinutes = (remainderSeconds > 0) ? wholeMinutes + 1 : wholeMinutes;
+                    
+                    // Update the task's duration with ROUNDED UP minutes
+                    task.setDuration(roundedMinutes);
+                    
+                    // For display purposes, make elapsedSeconds match the rounded minutes
+                    task.setElapsedSeconds(roundedMinutes * 60);
+                    
+                    Log.d("TaskCompletion", "Mock mode: Converted task time from " + 
+                          elapsedSeconds + "s to " + roundedMinutes + "m (rounded UP)");
+                } else {
+                    // For times < 1 minute, keep the original seconds
+                    // and make sure the duration is 0 to force seconds display
+                    task.setDuration(0);
+                    
+                    Log.d("TaskCompletion", "Mock mode with small time: Keeping " + 
+                          elapsedSeconds + "s for display as seconds (will be rounded to 5s intervals)");
+                }
             }
         }
 
@@ -549,12 +562,22 @@ public class TaskAdapter extends ArrayAdapter<Task> {
               " - Should show in seconds: " + task.shouldShowInSeconds() +
               " - Mock mode: " + isMockModeActive);
         
-        // Special case for mock mode - always show in minutes for completed tasks
+        // Special case for mock mode
         if (isMockModeActive) {
-            // In mock mode, always display time in minutes (rounded down) for completed tasks
-            String formattedTime = formatTime(task.getDuration());
-            taskTime.setText(formattedTime);
-            Log.d("TaskAdapter", "Mock mode: Displaying task time in minutes: " + formattedTime);
+            // In mock mode:
+            // - If minutes <= 0, display time in seconds (rounded up to nearest 5s interval)
+            // - Otherwise, display time in minutes (rounded down)
+            if (task.getDuration() <= 0) {
+                // Display in seconds, rounded up to nearest 5s interval
+                String formattedTime = formatTimeInSeconds(task.getElapsedSeconds());
+                taskTime.setText(formattedTime);
+                Log.d("TaskAdapter", "Mock mode with 0 minutes: Displaying task time in seconds: " + formattedTime);
+            } else {
+                // Display in minutes
+                String formattedTime = formatTime(task.getDuration());
+                taskTime.setText(formattedTime);
+                Log.d("TaskAdapter", "Mock mode with positive minutes: Displaying task time in minutes: " + formattedTime);
+            }
             return;
         }
         
@@ -577,7 +600,16 @@ public class TaskAdapter extends ArrayAdapter<Task> {
     }
 
     private String formatTime(long minutes) {
-        return minutes > 0 ? String.format("%dm", minutes) : "";
+        // For completed tasks with minute values <= 0, show at least 1 minute
+        // Note: We should rarely hit this case since we've already handled duration=0
+        // cases to display in seconds, but this ensures we never show empty values
+        if (minutes <= 0) {
+            Log.d("TaskAdapter", "Minute value was 0 or negative, displaying minimum 1m");
+            return "1m";  // Always show at least 1 minute for completed tasks
+        }
+        
+        Log.d("TaskAdapter", "Formatting task time in minutes: " + minutes + "m");
+        return String.format("%dm", minutes);
     }
     
     /**
@@ -585,8 +617,10 @@ public class TaskAdapter extends ArrayAdapter<Task> {
      * Rounds UP to the nearest 5-second increment for completed tasks
      */
     private String formatTimeInSeconds(int seconds) {
+        // For completed tasks with zero or very small seconds, always show at least 5s
         if (seconds <= 0) {
-            return "";
+            Log.d("TaskAdapter", "Formatting zero or negative seconds, showing minimum 5s");
+            return "5s";
         }
         
         Log.d("TaskAdapter", "Formatting task time in seconds: " + seconds);
@@ -603,14 +637,17 @@ public class TaskAdapter extends ArrayAdapter<Task> {
         } else {
             // Round up to next 5-second interval
             roundedSeconds = seconds + (5 - remainder);
+            Log.d("TaskAdapter", "Rounding up from " + seconds + "s to " + roundedSeconds + 
+                  "s (next 5s interval)");
         }
         
         // Make sure we show at least 5s
         if (roundedSeconds < 5) {
             roundedSeconds = 5;
+            Log.d("TaskAdapter", "Value too small, setting minimum to 5s");
         }
         
-        Log.d("TaskAdapter", "Formatting seconds: " + seconds + " → rounded UP to: " + roundedSeconds + "s");
+        Log.d("TaskAdapter", "Final formatted seconds: " + roundedSeconds + "s");
         return String.format("%ds", roundedSeconds);
     }
 
