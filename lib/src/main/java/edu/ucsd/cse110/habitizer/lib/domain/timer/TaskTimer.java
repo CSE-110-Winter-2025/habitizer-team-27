@@ -39,60 +39,16 @@ public class TaskTimer extends Timer {
      * Get elapsed seconds for the task
      * @return total number of seconds since task started
      */
-    @Override
-    public long getElapsedSeconds() {
-        if (startTime == null) return 0;
+    public int getElapsedSeconds() {
+        if (startTime == null || endTime == null) return 0;
         
-        // If timer is not running, use endTime. Otherwise use current time.
-        LocalDateTime endPoint = isRunning ? LocalDateTime.now() : endTime;
-        if (endPoint == null) {
-            // If timer is not running and no end time is set, use current time
-            endPoint = LocalDateTime.now();
-        }
-        
-        long durationSeconds = Duration.between(startTime, endPoint).getSeconds();
+        long durationSeconds = Duration.between(startTime, endTime).toSeconds();
         
         // Ensure tasks always take at least 5 seconds
         if (durationSeconds < 5) {
             durationSeconds = 5;
         }
         
-        return durationSeconds;
-    }
-
-    /**
-     * Get elapsed seconds rounded down (for display when timer is running or paused)
-     * @return Elapsed seconds rounded down to the nearest 5 seconds
-     */
-    public long getElapsedSecondsRoundedDown() {
-        long rawElapsedSeconds = super.getElapsedSeconds();
-        
-        // Round down to nearest 5 seconds
-        // Example: 12 seconds becomes 10 seconds
-        long roundedDown = (rawElapsedSeconds / 5) * 5;
-        
-        // Log the rounding operation
-        System.out.println("TaskTimer: Rounding down elapsed seconds from " + 
-                          rawElapsedSeconds + " to " + roundedDown);
-        
-        return roundedDown;
-    }
-
-    /**
-     * Get elapsed seconds rounded up (for display when task is completed)
-     * @return Elapsed seconds rounded up to the nearest 5 seconds
-     */
-    public long getElapsedSecondsRoundedUp() {
-        long rawElapsedSeconds = super.getElapsedSeconds();
-        
-        // Round up to nearest 5 seconds
-        // Example: 12 seconds becomes 15 seconds
-        long roundedUp = (long) Math.ceil(rawElapsedSeconds / 5.0) * 5;
-        
-        // Log the rounding operation
-        System.out.println("TaskTimer: Rounding up elapsed seconds from " + 
-                          rawElapsedSeconds + " to " + roundedUp);
-        
-        return roundedUp;
+        return (int) durationSeconds;
     }
 }
